@@ -22,7 +22,7 @@ describe.skipIf(!enabled)('PostgresDriver (integration)', () => {
     },
     { password: env.DBCLIENT_PG_PASSWORD },
   );
-  const run = (sql: string, maxRows = 100) => driver.execute(sql, { maxRows });
+  const run = async (sql: string, maxRows = 100) => (await driver.execute(sql, { maxRows }))[0];
 
   beforeAll(async () => {
     await driver.connect();

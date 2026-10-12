@@ -31,17 +31,32 @@
     return options;
   }
 
+  /** Whether a field applies given the current form values (`showWhen`). */
+  function visible(f, options) {
+    if (!f.showWhen) return true;
+    return f.showWhen.values.includes(options[f.showWhen.field]);
+  }
+
+  function readInput(f) {
+    const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${f.key}`));
+    if (!input) return undefined;
+    if (f.kind === 'checkbox') return input.checked;
+    if (f.kind === 'number') return input.value === '' ? undefined : Number(input.value);
+    return input.value;
+  }
+
   function collect() {
     const options = {};
     const secrets = {};
     for (const f of driver().fields) {
-      const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${f.key}`));
-      let v;
-      if (f.kind === 'checkbox') v = input.checked;
-      else if (f.kind === 'number') v = input.value === '' ? undefined : Number(input.value);
-      else v = input.value;
-      if (f.secret) secrets[f.key] = v || undefined;
-      else options[f.key] = v;
+      if (!f.secret) options[f.key] = readInput(f);
+    }
+    for (const f of driver().fields) {
+      if (!visible(f, options)) {
+        delete options[f.key];
+        continue;
+      }
+      if (f.secret) secrets[f.key] = readInput(f) || undefined;
     }
     const name = /** @type {HTMLInputElement} */ (document.getElementById('f-name')).value;
     return { value: { name, type: value.type, options }, secrets };
@@ -58,7 +73,18 @@
     const current = value.options[f.key];
     let input;
     if (f.kind === 'select') {
-      input = el('select', { id }, ...(f.choices || []).map((c) => el('option', { value: c, selected: c === current }, c)));
+      input = el(
+        'select',
+        { id, on: { change: rerender } },
+        ...(f.choices || []).map((c) => el('option', { value: c, selected: c === current }, c)),
+      );
+    } else if (f.kind === 'file') {
+      input = el(
+        'div',
+        { class: 'file' },
+        el('input', { id, type: 'text', value: current ?? '', placeholder: f.placeholder || '', required: f.required, autocomplete: 'off' }),
+        el('button', { type: 'button', class: 'secondary', on: { click: () => vscode.postMessage({ type: 'browse', field: f.key }) } }, init.labels.browse),
+      );
     } else if (f.kind === 'checkbox') {
       input = el('input', { id, type: 'checkbox', checked: Boolean(current) });
     } else {
@@ -72,7 +98,19 @@
         autocomplete: 'off',
       });
     }
-    return el('div', { class: 'row' }, el('label', { for: id }, f.label + (f.required && !f.secret ? ' *' : '')), input);
+    const row = el('div', { class: 'row' }, el('label', { for: id }, f.label + (f.required && !f.secret ? ' *' : '')), input);
+    return f.hint ? [row, el('div', { class: 'hint' }, f.hint)] : [row];
+  }
+
+  /** Re-renders keeping what was typed, so `showWhen` fields follow select changes. */
+  function rerender() {
+    const { value: current, secrets } = collect();
+    value = { ...value, name: current.name, options: { ...value.options, ...current.options } };
+    render();
+    for (const [k, v] of Object.entries(secrets)) {
+      const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${k}`));
+      if (input && v) input.value = v;
+    }
   }
 
   function render() {
@@ -102,7 +140,9 @@
         { on: { submit: (e) => (e.preventDefault(), send('save')) } },
         el('div', { class: 'row' }, el('label', { for: 'f-name' }, `${init.labels.name} *`), el('input', { id: 'f-name', value: value.name, required: true, autofocus: true })),
         el('div', { class: 'row' }, el('label', { for: 'f-type' }, init.labels.type), typeSelect),
-        ...driver().fields.map(fieldRow),
+        ...driver()
+          .fields.filter((f) => visible(f, value.options))
+          .flatMap(fieldRow),
         el(
           'div',
           { class: 'actions' },
@@ -124,6 +164,9 @@
       render();
     } else if (msg.type === 'status') {
       setStatus(msg.message, msg.ok);
+    } else if (msg.type === 'browsed') {
+      const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${msg.field}`));
+      if (input) input.value = msg.path;
     }
   });
   vscode.postMessage({ type: 'ready' });

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ConnectionManager } from '../connections/manager';
 import { DocumentBindings } from './bindings';
 import { splitStatements } from './statements';
 
@@ -6,7 +7,10 @@ import { splitStatements } from './statements';
 export class RunCodeLens implements vscode.CodeLensProvider {
   readonly onDidChangeCodeLenses: vscode.Event<void>;
 
-  constructor(private readonly bindings: DocumentBindings) {
+  constructor(
+    private readonly bindings: DocumentBindings,
+    private readonly manager: ConnectionManager,
+  ) {
     const emitter = new vscode.EventEmitter<void>();
     bindings.onDidChange(() => emitter.fire());
     vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('dbclient.codeLens') && emitter.fire());
@@ -14,10 +18,12 @@ export class RunCodeLens implements vscode.CodeLensProvider {
   }
 
   provideCodeLenses(doc: vscode.TextDocument): vscode.CodeLens[] {
-    if (!vscode.workspace.getConfiguration('dbclient').get<boolean>('codeLens', true) || !this.bindings.get(doc)) {
+    const binding = this.bindings.get(doc);
+    if (!vscode.workspace.getConfiguration('dbclient').get<boolean>('codeLens', true) || !binding || doc.languageId !== 'sql') {
       return [];
     }
-    return splitStatements(doc.getText()).map((stmt) => {
+    const dialect = this.manager.factoryOf(this.manager.config(binding.connectionId)).dialect;
+    return splitStatements(doc.getText(), dialect).map((stmt) => {
       const start = doc.positionAt(stmt.start);
       return new vscode.CodeLens(new vscode.Range(start, start), {
         title: `$(play) ${vscode.l10n.t('Run')}`,

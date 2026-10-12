@@ -1,5 +1,5 @@
 // Launches a real VS Code with the extension and runs test/smoke/suite inside it.
-// Postgres settings come from DBCLIENT_PG_* (see test/integration/postgres.test.ts).
+// Engine settings come from DBCLIENT_* variables (see test/integration).
 import { runTests } from '@vscode/test-electron';
 import * as os from 'os';
 import * as path from 'path';
@@ -14,8 +14,8 @@ try {
     extensionDevelopmentPath: root,
     extensionTestsPath: path.join(root, 'test/smoke/suite/index.js'),
     launchArgs: ['--disable-extensions', '--user-data-dir', userData, '--skip-welcome', '--skip-release-notes'],
-    // The driver falls back to PGPASSWORD, so the test never touches the OS keychain.
-    extensionTestsEnv: { PGPASSWORD: process.env.DBCLIENT_PG_PASSWORD ?? '' },
+    // Forward the DBCLIENT_* settings; the suite injects passwords without SecretStorage.
+    extensionTestsEnv: Object.fromEntries(Object.entries(process.env).filter(([k]) => k.startsWith('DBCLIENT_'))),
   });
 } catch (err) {
   console.error(err);

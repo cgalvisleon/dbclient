@@ -1,0 +1,15 @@
+{
+  "scopeName": "source.redis",
+  "name": "Redis",
+  "patterns": [
+    { "name": "comment.line.number-sign.redis", "match": "^\\s*(#|//).*$" },
+    {
+      "match": "^\\s*([A-Za-z][A-Za-z.]*)(?:\\s+(GET|SET|INFO|LIST|STREAM|GROUP|CREATE|CHANNELS|USAGE|ENCODING))?\\b",
+      "captures": { "1": { "name": "keyword.control.redis" }, "2": { "name": "keyword.control.redis" } }
+    },
+    { "name": "string.quoted.double.redis", "begin": "\"", "end": "\"", "patterns": [{ "name": "constant.character.escape.redis", "match": "\\\\." }] },
+    { "name": "string.quoted.single.redis", "begin": "'", "end": "'" },
+    { "name": "constant.numeric.redis", "match": "(?<=\\s)-?\\d+(\\.\\d+)?(?=\\s|$)" },
+    { "name": "keyword.other.option.redis", "match": "(?<=\\s)(?:NX|XX|GT|LT|EX|PX|KEEPTTL|WITHSCORES|LIMIT|MATCH|COUNT|TYPE|BYSCORE|BYLEX|REV|MAXLEN|STREAMS|BLOCK)(?=\\s|$)" }
+  ]
+}

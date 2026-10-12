@@ -1,0 +1,218 @@
+body {
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  padding: 12px 16px;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100vh - 24px);
+}
+
+h3 {
+  margin: 0 0 6px;
+  font-size: 1em;
+}
+
+label {
+  display: block;
+  margin: 6px 0 2px;
+  opacity: 0.8;
+}
+
+input,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  padding: 3px 6px;
+  font: inherit;
+}
+
+textarea {
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+button {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+button.primary {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+}
+
+button.link {
+  background: transparent;
+  color: var(--vscode-textLink-foreground);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 700px) {
+  .top {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  padding: 10px 12px;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.row h3 {
+  margin: 0;
+}
+
+.row input.queue {
+  width: 160px;
+  flex: 0 0 160px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.muted {
+  opacity: 0.7;
+}
+
+.error {
+  color: var(--vscode-errorForeground);
+  white-space: pre-wrap;
+}
+
+.subs {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.messages {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 220px;
+}
+
+.messages .filter {
+  flex: 1;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  margin-top: 8px;
+}
+
+.list,
+.detail {
+  overflow: auto;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.detail {
+  padding: 6px 8px;
+}
+
+.msg {
+  display: flex;
+  gap: 8px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+}
+
+.msg:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.msg.selected {
+  color: var(--vscode-list-activeSelectionForeground);
+  background: var(--vscode-list-activeSelectionBackground);
+}
+
+.msg .time {
+  opacity: 0.6;
+}
+
+.msg.sent .kind {
+  color: var(--vscode-charts-blue);
+}
+
+.msg.reply .kind {
+  color: var(--vscode-charts-purple);
+}
+
+.msg.message .kind {
+  color: var(--vscode-charts-green);
+}
+
+.msg .preview {
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+pre {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+}
+
+pre.headers {
+  opacity: 0.8;
+}

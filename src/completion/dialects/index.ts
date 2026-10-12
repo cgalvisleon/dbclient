@@ -1,10 +1,14 @@
 import { ansi } from './ansi';
+import { mssql } from './mssql';
+import { mysql } from './mysql';
+import { oracle } from './oracle';
 import { postgres } from './postgres';
+import { sqlite } from './sqlite';
 import { Dialect } from './types';
 
 export type { Dialect, DialectFunction } from './types';
 
-const dialects = new Map<string, Dialect>([[postgres.id, postgres]]);
+const dialects = new Map<string, Dialect>([postgres, mysql, mssql, oracle, sqlite].map((d) => [d.id, d]));
 
 /** The ANSI base merged with the engine's own vocabulary; unknown ids get plain ANSI. */
 export function resolveDialect(id: string | undefined): Dialect {

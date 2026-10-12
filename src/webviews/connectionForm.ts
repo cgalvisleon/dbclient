@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
 import { allDrivers, getDriver } from '../drivers/registry';
-import { ConnectionConfig, ConnectionSecrets } from '../drivers/types';
+import { ConnectionConfig, ConnectionSecrets, FieldSpec } from '../drivers/types';
 import { SecretUpdate } from '../store/connectionStore';
+import { icon } from '../icons';
 import { mediaRoots, webviewHtml } from './html';
 
 interface FormValue {
@@ -14,7 +15,8 @@ interface FormValue {
 type FromWebview =
   | { type: 'ready' }
   | { type: 'test' | 'save'; value: FormValue; secrets: ConnectionSecrets }
-  | { type: 'cancel' };
+  | { type: 'cancel' }
+  | { type: 'browse'; field: string };
 
 const panels = new Map<string, vscode.WebviewPanel>();
 
@@ -40,7 +42,7 @@ export async function openConnectionForm(
     localResourceRoots: mediaRoots(extensionUri),
   });
   panels.set(key, panel);
-  panel.iconPath = vscode.Uri.joinPath(extensionUri, 'media', 'database.svg');
+  panel.iconPath = icon('database-settings');
   panel.webview.html = webviewHtml(panel.webview, extensionUri, 'connectionForm', title);
 
   const post = (message: unknown) => panel.webview.postMessage(message);
@@ -60,7 +62,8 @@ export async function openConnectionForm(
     if (!value.name.trim()) {
       return vscode.l10n.t('Name is required.');
     }
-    const missing = getDriver(value.type).fields.filter((f) => f.required && !f.secret && (value.options[f.key] ?? '') === '');
+    const applies = (f: FieldSpec) => !f.showWhen || f.showWhen.values.includes(value.options[f.showWhen.field] as string | boolean);
+    const missing = getDriver(value.type).fields.filter((f) => f.required && !f.secret && applies(f) && (value.options[f.key] ?? '') === '');
     return missing.length ? vscode.l10n.t('Required: {0}', missing.map((f) => f.label).join(', ')) : undefined;
   };
 
@@ -80,12 +83,20 @@ export async function openConnectionForm(
             cancel: vscode.l10n.t('Cancel'),
             saved: vscode.l10n.t('saved — leave empty to keep'),
             testing: vscode.l10n.t('Testing…'),
+            browse: vscode.l10n.t('Browse…'),
           },
         });
         return;
       case 'cancel':
         panel.dispose();
         return;
+      case 'browse': {
+        const picked = await vscode.window.showOpenDialog({ canSelectMany: false, openLabel: vscode.l10n.t('Select') });
+        if (picked?.[0]) {
+          post({ type: 'browsed', field: message.field, path: picked[0].fsPath });
+        }
+        return;
+      }
       case 'test': {
         const error = validate(message.value);
         if (error) {

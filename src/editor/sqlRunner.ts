@@ -25,26 +25,26 @@ export class SqlRunner implements vscode.Disposable {
   ) {}
 
   /** Statements to run: the selection, the one under the caret, the one at `offset`, or the whole file. */
-  private statementsFor(editor: vscode.TextEditor, mode: RunMode): Statement[] {
+  private statementsFor(editor: vscode.TextEditor, mode: RunMode, dialect: string | undefined): Statement[] {
     const doc = editor.document;
     if (mode === 'file') {
-      return splitStatements(doc.getText());
+      return splitStatements(doc.getText(), dialect);
     }
     if (typeof mode === 'object') {
-      const stmt = statementAt(splitStatements(doc.getText()), mode.offset);
+      const stmt = statementAt(splitStatements(doc.getText(), dialect), mode.offset);
       return stmt ? [stmt] : [];
     }
     const selection = editor.selection;
     if (!selection.isEmpty) {
       const base = doc.offsetAt(selection.start);
-      return splitStatements(doc.getText(selection)).map((s) => ({
+      return splitStatements(doc.getText(selection), dialect).map((s) => ({
         ...s,
         start: s.start + base,
         end: s.end + base,
         terminatorEnd: s.terminatorEnd + base,
       }));
     }
-    const stmt = statementAt(splitStatements(doc.getText()), doc.offsetAt(selection.active));
+    const stmt = statementAt(splitStatements(doc.getText(), dialect), doc.offsetAt(selection.active));
     return stmt ? [stmt] : [];
   }
 
@@ -63,13 +63,13 @@ export class SqlRunner implements vscode.Disposable {
     if (!binding) {
       return;
     }
-    const statements = this.statementsFor(editor, mode);
+    const config = this.manager.config(binding.connectionId);
+    const statements = this.statementsFor(editor, mode, this.manager.factoryOf(config).dialect);
     if (!statements.length) {
       vscode.window.showInformationMessage(vscode.l10n.t('There is no statement to run.'));
       return;
     }
 
-    const config = this.manager.config(binding.connectionId);
     const maxRows = vscode.workspace.getConfiguration('dbclient').get<number>('maxRows', 5000);
     const pageSize = vscode.workspace.getConfiguration('dbclient').get<number>('pageSize', 100);
     this.diagnostics.delete(doc.uri);
@@ -103,25 +103,27 @@ export class SqlRunner implements vscode.Disposable {
             }
             const location = this.locate(doc, stmt.start);
             try {
-              const result = await driver.execute(stmt.text, { database: binding.database, maxRows });
-              if (result.columns.length) {
-                this.results.post({
-                  type: 'result',
-                  tab: {
-                    ...result,
-                    title: preview(stmt.text, 40),
-                    rows: result.rows.map((r) => r.map(toCell)),
-                  },
-                });
+              const results = await driver.execute(stmt.text, { database: binding.database, maxRows });
+              for (const result of results) {
+                if (result.columns.length) {
+                  this.results.post({
+                    type: 'result',
+                    tab: {
+                      ...result,
+                      title: preview(stmt.text, 40),
+                      rows: result.rows.map((r) => r.map(toCell)),
+                    },
+                  });
+                }
+                this.log(config.name, stmt.text, true, describe(result.command, result.rowCount, result.columns.length > 0, result.truncated), location, result.durationMs);
               }
-              this.log(config.name, stmt.text, true, describe(result.command, result.rowCount, result.columns.length > 0, result.truncated), location, result.durationMs);
             } catch (err) {
               failed = true;
               const at = errorOffset(stmt, err);
-              this.log(config.name, stmt.text, false, (err as Error).message, at === undefined ? location : this.locate(doc, at));
+              this.log(config.name, stmt.text, false, (err as Error).message, at === undefined ? location : this.locate(doc, at.offset));
               this.diagnostics.set(doc.uri, [
                 new vscode.Diagnostic(
-                  at === undefined ? this.rangeOf(doc, stmt) : doc.getWordRangeAtPosition(doc.positionAt(at)) ?? new vscode.Range(doc.positionAt(at), doc.positionAt(at + 1)),
+                  this.errorRange(doc, stmt, at),
                   (err as Error).message,
                   vscode.DiagnosticSeverity.Error,
                 ),
@@ -157,8 +159,18 @@ export class SqlRunner implements vscode.Disposable {
     return { uri: doc.uri.toString(), line: pos.line, character: pos.character };
   }
 
-  private rangeOf(doc: vscode.TextDocument, stmt: Statement): vscode.Range {
-    return new vscode.Range(doc.positionAt(stmt.start), doc.positionAt(stmt.end));
+  private errorRange(doc: vscode.TextDocument, stmt: Statement, at: ReturnType<typeof errorOffset>): vscode.Range {
+    if (!at) {
+      return new vscode.Range(doc.positionAt(stmt.start), doc.positionAt(stmt.end));
+    }
+    const position = doc.positionAt(at.offset);
+    if (at.wholeLine) {
+      // Underline the statement's part of that line.
+      const line = doc.lineAt(position.line).range;
+      const end = doc.positionAt(Math.min(stmt.end, doc.offsetAt(line.end)));
+      return new vscode.Range(position, end.isAfter(position) ? end : line.end);
+    }
+    return doc.getWordRangeAtPosition(position) ?? new vscode.Range(position, doc.positionAt(at.offset + 1));
   }
 
   private log(connection: string, sql: string, ok: boolean, message: string, loc?: LogEntry['location'], durationMs?: number): void {
@@ -182,10 +194,21 @@ export class SqlRunner implements vscode.Disposable {
   }
 }
 
-/** Document offset of the engine's 1-based character position inside the statement. */
-function errorOffset(stmt: Statement, err: unknown): number | undefined {
-  if (err instanceof StatementError && err.position && err.position > 0) {
-    return stmt.start + Math.min(err.position - 1, stmt.text.length);
+/** Document offset of the error: the engine's 1-based character position, or the start of its 1-based line, inside the statement. */
+function errorOffset(stmt: Statement, err: unknown): { offset: number; wholeLine: boolean } | undefined {
+  if (!(err instanceof StatementError)) {
+    return undefined;
+  }
+  if (err.position && err.position > 0) {
+    return { offset: stmt.start + Math.min(err.position - 1, stmt.text.length), wholeLine: false };
+  }
+  if (err.line && err.line > 0) {
+    const lines = stmt.text.split('\n');
+    if (err.line <= lines.length) {
+      const before = lines.slice(0, err.line - 1).reduce((n, l) => n + l.length + 1, 0);
+      const indent = lines[err.line - 1].length - lines[err.line - 1].trimStart().length;
+      return { offset: stmt.start + before + indent, wholeLine: true };
+    }
   }
   return undefined;
 }
@@ -201,7 +224,10 @@ function describe(command: string | undefined, rowCount: number | null, isQuery:
       ? vscode.l10n.t('Fetched the first rows (result truncated by dbclient.maxRows)')
       : vscode.l10n.t('{0} rows fetched', rowCount ?? 0);
   }
-  if (rowCount !== null && command && /^(INSERT|UPDATE|DELETE|MERGE|COPY|MOVE|FETCH)$/.test(command)) {
+  if (rowCount !== null && command === 'DML') {
+    return vscode.l10n.t('{0} rows affected', rowCount);
+  }
+  if (rowCount !== null && command && /^(INSERT|UPDATE|DELETE|MERGE|COPY|MOVE|FETCH|REPLACE)$/.test(command)) {
     return vscode.l10n.t('{0}: {1} rows affected', command, rowCount);
   }
   return vscode.l10n.t('{0} executed successfully', command ?? 'Statement');

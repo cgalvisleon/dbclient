@@ -272,7 +272,7 @@ export class PostgresDriver implements SqlDriver {
     return this.typeNames;
   }
 
-  async execute(sql: string, options: QueryOptions): Promise<StatementResult> {
+  async execute(sql: string, options: QueryOptions): Promise<StatementResult[]> {
     const client = await this.session(options.database);
     const started = Date.now();
     const cursor = client.query(new Cursor<unknown[]>(sql, undefined, { rowMode: 'array' }));
@@ -293,7 +293,7 @@ export class PostgresDriver implements SqlDriver {
 
     const fields = result.fields ?? [];
     const typeNames = fields.length ? await this.resolveTypeNames() : new Map<number, string>();
-    return {
+    return [{
       sql,
       command: result.command,
       columns: fields.map((f) => ({ name: f.name, type: typeNames.get(f.dataTypeID) })),
@@ -301,7 +301,7 @@ export class PostgresDriver implements SqlDriver {
       rowCount: truncated ? null : fields.length ? rows.length : (result.rowCount ?? null),
       truncated,
       durationMs,
-    };
+    }];
   }
 
   async cancel(database?: string): Promise<void> {

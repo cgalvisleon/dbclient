@@ -1,12 +1,17 @@
 import * as vscode from 'vscode';
+import { RedisCompletionProvider } from './completion/redisCompletion';
 import { SqlCompletionProvider } from './completion/sqlCompletion';
 import { ConnectionManager } from './connections/manager';
-import { DocumentBindings } from './editor/bindings';
+import { DocumentBindings, EDITOR_CATEGORIES } from './editor/bindings';
 import { RunCodeLens } from './editor/codeLens';
+import { RedisRunner } from './editor/redisRunner';
 import { SqlRunner } from './editor/sqlRunner';
+import { initIcons } from './icons';
 import { ConnectionStore } from './store/connectionStore';
 import { ConnectionItem, ConnectionsTree, NodeItem } from './tree/connectionsTree';
 import { openConnectionForm } from './webviews/connectionForm';
+import { NatsConsoles } from './webviews/natsConsole';
+import { openValueViewer } from './webviews/redisValue';
 import { RESULTS_VIEW_ID, ResultsView } from './webviews/resultsView';
 
 /** Returned from activate() so the smoke test can drive the extension; not a public API. */
@@ -18,24 +23,31 @@ export interface DbClientInternals {
 }
 
 export function activate(context: vscode.ExtensionContext): DbClientInternals {
+  initIcons(context.extensionUri);
   const store = new ConnectionStore(vscode.Uri.joinPath(context.globalStorageUri, 'connections.json').fsPath, context.secrets);
   const manager = new ConnectionManager(store);
   const tree = new ConnectionsTree(manager);
   const bindings = new DocumentBindings(context.workspaceState, manager);
   const results = new ResultsView(context.extensionUri);
   const runner = new SqlRunner(manager, bindings, results);
+  const redisRunner = new RedisRunner(manager, bindings, results);
+  const natsConsoles = new NatsConsoles(context.extensionUri, manager);
 
   const sqlDocs: vscode.DocumentSelector = [{ language: 'sql' }];
+  const redisDocs: vscode.DocumentSelector = [{ language: 'redis' }];
   context.subscriptions.push(
     store.watch(),
     manager,
     tree,
     bindings,
     runner,
+    redisRunner,
+    natsConsoles,
     vscode.window.createTreeView('dbclient.connections', { treeDataProvider: tree, showCollapseAll: true }),
     vscode.window.registerWebviewViewProvider(RESULTS_VIEW_ID, results, { webviewOptions: { retainContextWhenHidden: true } }),
     vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings), '.', ' '),
-    vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings)),
+    vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager)),
+    vscode.languages.registerCompletionItemProvider(redisDocs, new RedisCompletionProvider(manager, bindings), ' ', ':'),
   );
 
   const command = (id: string, handler: (...args: any[]) => unknown) =>
@@ -132,27 +144,62 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }
   });
 
+  // SQL and Redis open a text editor bound to the connection; NATS opens its console.
   command('dbclient.newQuery', async (item?: ConnectionItem | NodeItem) => {
     const id = await connectionOf(item);
     if (!id) {
       return;
     }
-    const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: '' });
+    const category = manager.factoryOf(manager.config(id)).category;
+    if (category === 'pubsub') {
+      await natsConsoles.open(id);
+      return;
+    }
+    const language = category === 'kv' ? 'redis' : 'sql';
+    const content = category === 'kv' ? '# One command per line. Ctrl/Cmd+Enter runs the current line or the selection.\n' : '';
+    const doc = await vscode.workspace.openTextDocument({ language, content });
     await bindings.set(doc, { connectionId: id, database: item instanceof NodeItem ? item.node.database : undefined });
-    await vscode.window.showTextDocument(doc);
+    const editor = await vscode.window.showTextDocument(doc);
+    const end = doc.lineAt(doc.lineCount - 1).range.end;
+    editor.selection = new vscode.Selection(end, end);
+  });
+
+  command('dbclient.openConsole', async (item?: ConnectionItem | NodeItem) => {
+    const id = await connectionOf(item);
+    if (id) {
+      await natsConsoles.open(id, item instanceof NodeItem ? item.node.meta?.subject : undefined);
+    }
+  });
+
+  command('dbclient.unsubscribe', async (item?: NodeItem) => {
+    const subscription = item?.node.meta?.id;
+    if (item && subscription) {
+      (await manager.connectPubSub(item.connectionId)).unsubscribe(Number(subscription));
+    }
+  });
+
+  command('dbclient.openValue', (item?: NodeItem) => {
+    const key = item?.node.meta?.key;
+    if (item && key !== undefined) {
+      openValueViewer(context.extensionUri, manager, item.connectionId, Number(item.node.meta?.db ?? 0), key);
+    }
   });
 
   command('dbclient.selectConnection', async () => {
     const editor = vscode.window.activeTextEditor;
-    if (editor?.document.languageId === 'sql') {
+    if (editor && EDITOR_CATEGORIES[editor.document.languageId]) {
       await bindings.pick(editor.document);
     } else {
-      vscode.window.showWarningMessage(vscode.l10n.t('Open a SQL editor first.'));
+      vscode.window.showWarningMessage(vscode.l10n.t('Open a SQL or Redis editor first.'));
     }
   });
 
-  command('dbclient.run', () => runner.run(vscode.window.activeTextEditor, 'auto'));
-  command('dbclient.runFile', () => runner.run(vscode.window.activeTextEditor, 'file'));
+  const run = (mode: 'auto' | 'file') => {
+    const editor = vscode.window.activeTextEditor;
+    return editor?.document.languageId === 'redis' ? redisRunner.run(editor, mode) : runner.run(editor, mode);
+  };
+  command('dbclient.run', () => run('auto'));
+  command('dbclient.runFile', () => run('file'));
   command('dbclient.runAt', async (uri: vscode.Uri, offset: number) => {
     const editor = await vscode.window.showTextDocument(uri, { preserveFocus: false });
     await runner.run(editor, { offset });

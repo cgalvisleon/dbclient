@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
+import { DriverCategory } from '../drivers/types';
 
 export interface Binding {
   connectionId: string;
@@ -8,6 +9,9 @@ export interface Binding {
 }
 
 const STATE_KEY = 'dbclient.bindings';
+
+/** Editor languages that run against a connection, and the driver category each one needs. */
+export const EDITOR_CATEGORIES: Record<string, DriverCategory> = { sql: 'sql', redis: 'kv' };
 
 /**
  * Which connection each SQL document runs against. Saved files keep their binding per
@@ -45,7 +49,9 @@ export class DocumentBindings implements vscode.Disposable {
 
   get(doc: vscode.TextDocument): Binding | undefined {
     const binding = this.bindings.get(doc.uri.toString());
-    return binding && this.manager.store.get(binding.connectionId) ? binding : undefined;
+    const config = binding && this.manager.store.get(binding.connectionId);
+    // A binding only counts when the connection still exists and suits the editor's language.
+    return config && this.manager.factoryOf(config).category === EDITOR_CATEGORIES[doc.languageId] ? binding : undefined;
   }
 
   async set(doc: vscode.TextDocument, binding: Binding): Promise<void> {
@@ -55,21 +61,23 @@ export class DocumentBindings implements vscode.Disposable {
     this.updateStatus();
   }
 
-  /** Asks the user for a SQL connection (and database) and binds `doc` to it. */
+  /** Asks the user for a connection suited to the editor's language and binds `doc` to it. */
   async pick(doc: vscode.TextDocument): Promise<Binding | undefined> {
     const current = this.get(doc);
+    const category = EDITOR_CATEGORIES[doc.languageId];
     const items = this.manager.store
       .list()
-      .filter((c) => this.manager.factoryOf(c).category === 'sql')
+      .filter((c) => this.manager.factoryOf(c).category === category)
       .map((c) => ({
         label: c.name,
-        description: [this.manager.factoryOf(c).label, c.options.database].filter(Boolean).join(' · '),
+        description: [this.manager.factoryOf(c).label, c.options.database ?? c.options.host].filter(Boolean).join(' · '),
         detail: c.id === current?.connectionId ? vscode.l10n.t('current') : undefined,
         id: c.id,
       }));
     if (!items.length) {
       const add = vscode.l10n.t('Add Connection');
-      if ((await vscode.window.showInformationMessage(vscode.l10n.t('There are no SQL connections yet.'), add)) === add) {
+      const message = category === 'kv' ? vscode.l10n.t('There are no Redis connections yet.') : vscode.l10n.t('There are no SQL connections yet.');
+      if ((await vscode.window.showInformationMessage(message, add)) === add) {
         await vscode.commands.executeCommand('dbclient.addConnection');
       }
       return undefined;
@@ -79,6 +87,15 @@ export class DocumentBindings implements vscode.Disposable {
       return undefined;
     }
     const binding: Binding = { connectionId: picked.id };
+    if (category === 'kv') {
+      const config = this.manager.config(picked.id);
+      const dbs = Array.from({ length: 16 }, (_, i) => ({ label: `db${i}`, db: String(i), picked: i === Number(config.options.db ?? 0) }));
+      const db = await vscode.window.showQuickPick(dbs, { placeHolder: vscode.l10n.t('Redis database') });
+      if (!db) {
+        return undefined;
+      }
+      binding.database = db.db;
+    }
     await this.set(doc, binding);
     return binding;
   }
@@ -104,7 +121,7 @@ export class DocumentBindings implements vscode.Disposable {
 
   private updateStatus(): void {
     const doc = vscode.window.activeTextEditor?.document;
-    if (!doc || doc.languageId !== 'sql') {
+    if (!doc || !EDITOR_CATEGORIES[doc.languageId]) {
       this.status.hide();
       return;
     }
@@ -114,7 +131,7 @@ export class DocumentBindings implements vscode.Disposable {
       this.status.tooltip = vscode.l10n.t('Choose the connection this SQL editor runs against');
     } else {
       const config = this.manager.config(binding.connectionId);
-      const db = binding.database ?? config.options.database;
+      const db = config.type === 'redis' ? `db${binding.database ?? config.options.db ?? 0}` : (binding.database ?? config.options.database);
       const connected = this.manager.isConnected(binding.connectionId);
       this.status.text = `$(${connected ? 'database' : 'debug-disconnect'}) ${config.name}${db ? ` / ${db}` : ''}`;
       this.status.tooltip = vscode.l10n.t('Connection for this editor (click to change)');

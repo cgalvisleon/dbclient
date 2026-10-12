@@ -1,6 +1,17 @@
 import * as vscode from 'vscode';
 import { getDriver } from '../drivers/registry';
-import { ConnectionConfig, ConnectionSecrets, Driver, DriverFactory, isSqlDriver, SqlDriver } from '../drivers/types';
+import {
+  ConnectionConfig,
+  ConnectionSecrets,
+  Driver,
+  DriverFactory,
+  isKvDriver,
+  isPubSubDriver,
+  isSqlDriver,
+  KvDriver,
+  PubSubDriver,
+  SqlDriver,
+} from '../drivers/types';
 import { ConnectionStore } from '../store/connectionStore';
 
 /** Owns the live driver instance of each connected connection. */
@@ -10,6 +21,9 @@ export class ConnectionManager implements vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<string>();
   /** Fires the connection id whose connected state changed. */
   readonly onDidChangeState = this.changed.event;
+  private readonly contentChanged = new vscode.EventEmitter<string>();
+  /** Fires the connection id whose driver-side content changed (e.g. NATS subscriptions). */
+  readonly onDidChangeContent = this.contentChanged.event;
 
   constructor(readonly store: ConnectionStore) {}
 
@@ -47,6 +61,7 @@ export class ConnectionManager implements vscode.Disposable {
           throw err;
         }
         this.active.set(id, driver);
+        driver.onDidChange?.(() => this.active.get(id) === driver && this.contentChanged.fire(id));
         this.changed.fire(id);
         return driver;
       })().finally(() => this.pending.delete(id));
@@ -61,6 +76,27 @@ export class ConnectionManager implements vscode.Disposable {
       throw new Error(vscode.l10n.t('{0} is not a SQL connection.', this.config(id).name));
     }
     return driver;
+  }
+
+  async connectKv(id: string): Promise<KvDriver> {
+    const driver = await this.connect(id);
+    if (!isKvDriver(driver)) {
+      throw new Error(vscode.l10n.t('{0} is not a Redis connection.', this.config(id).name));
+    }
+    return driver;
+  }
+
+  async connectPubSub(id: string): Promise<PubSubDriver> {
+    const driver = await this.connect(id);
+    if (!isPubSubDriver(driver)) {
+      throw new Error(vscode.l10n.t('{0} is not a NATS connection.', this.config(id).name));
+    }
+    return driver;
+  }
+
+  /** Live driver, without connecting. */
+  driver(id: string): Driver | undefined {
+    return this.active.get(id);
   }
 
   async disconnect(id: string): Promise<void> {
@@ -89,5 +125,6 @@ export class ConnectionManager implements vscode.Disposable {
     }
     this.active.clear();
     this.changed.dispose();
+    this.contentChanged.dispose();
   }
 }

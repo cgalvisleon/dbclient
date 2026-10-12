@@ -1,8 +1,8 @@
 {
   "name": "dbclient",
   "displayName": "DB Client",
-  "description": "Database client for PostgreSQL, SQLite, MySQL, MSSQL, Oracle, Redis and NATS.",
-  "version": "0.1.0",
+  "description": "Database client for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS.",
+  "version": "0.2.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -19,7 +19,8 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
-    "onLanguage:sql"
+    "onLanguage:sql",
+    "onLanguage:redis"
   ],
   "contributes": {
     "viewsContainers": {
@@ -64,19 +65,28 @@
         "command": "dbclient.addConnection",
         "title": "Add Connection",
         "category": "DB Client",
-        "icon": "$(add)"
+        "icon": {
+          "light": "media/icons/light/database-add.png",
+          "dark": "media/icons/database-add.png"
+        }
       },
       {
         "command": "dbclient.refresh",
         "title": "Refresh",
         "category": "DB Client",
-        "icon": "$(refresh)"
+        "icon": {
+          "light": "media/icons/light/refresh.png",
+          "dark": "media/icons/refresh.png"
+        }
       },
       {
         "command": "dbclient.editConnection",
         "title": "Edit Connection",
         "category": "DB Client",
-        "icon": "$(edit)"
+        "icon": {
+          "light": "media/icons/light/database-settings.png",
+          "dark": "media/icons/database-settings.png"
+        }
       },
       {
         "command": "dbclient.duplicateConnection",
@@ -97,37 +107,55 @@
         "command": "dbclient.connect",
         "title": "Connect",
         "category": "DB Client",
-        "icon": "$(plug)"
+        "icon": {
+          "light": "media/icons/light/database-connect.png",
+          "dark": "media/icons/database-connect.png"
+        }
       },
       {
         "command": "dbclient.disconnect",
         "title": "Disconnect",
         "category": "DB Client",
-        "icon": "$(debug-disconnect)"
+        "icon": {
+          "light": "media/icons/light/database-remove.png",
+          "dark": "media/icons/database-remove.png"
+        }
       },
       {
         "command": "dbclient.newQuery",
         "title": "New Query",
         "category": "DB Client",
-        "icon": "$(new-file)"
+        "icon": {
+          "light": "media/icons/light/sql-file.png",
+          "dark": "media/icons/sql-file.png"
+        }
       },
       {
         "command": "dbclient.selectConnection",
         "title": "Select Connection for Editor",
         "category": "DB Client",
-        "icon": "$(database)"
+        "icon": {
+          "light": "media/icons/light/database.png",
+          "dark": "media/icons/database.png"
+        }
       },
       {
         "command": "dbclient.run",
-        "title": "Run Selection or Statement",
+        "title": "Run Selection or Statement / Line",
         "category": "DB Client",
-        "icon": "$(play)"
+        "icon": {
+          "light": "media/icons/light/run-query.png",
+          "dark": "media/icons/run-query.png"
+        }
       },
       {
         "command": "dbclient.runFile",
         "title": "Run File",
         "category": "DB Client",
-        "icon": "$(run-all)"
+        "icon": {
+          "light": "media/icons/light/query.png",
+          "dark": "media/icons/query.png"
+        }
       },
       {
         "command": "dbclient.cancelQuery",
@@ -138,6 +166,29 @@
         "command": "dbclient.runAt",
         "title": "Run Statement at Position",
         "category": "DB Client"
+      },
+      {
+        "command": "dbclient.openConsole",
+        "title": "Open NATS Console",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/terminal.png",
+          "dark": "media/icons/terminal.png"
+        }
+      },
+      {
+        "command": "dbclient.unsubscribe",
+        "title": "Unsubscribe",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.openValue",
+        "title": "Open Value",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/authentication.png",
+          "dark": "media/icons/authentication.png"
+        }
       }
     ],
     "menus": {
@@ -156,7 +207,12 @@
       "view/item/context": [
         {
           "command": "dbclient.newQuery",
-          "when": "view == dbclient.connections && viewItem =~ /^(connection|database)\\b/ && viewItem =~ /\\bsql\\b/",
+          "when": "view == dbclient.connections && viewItem =~ /^(connection|database)\\b/ && viewItem =~ /\\b(sql|kv)\\b/",
+          "group": "inline@1"
+        },
+        {
+          "command": "dbclient.openConsole",
+          "when": "view == dbclient.connections && viewItem =~ /^(connection|subscription)\\b/ && viewItem =~ /\\bpubsub\\b/",
           "group": "inline@1"
         },
         {
@@ -171,8 +227,23 @@
         },
         {
           "command": "dbclient.newQuery",
-          "when": "view == dbclient.connections && viewItem =~ /^(connection|database)\\b/ && viewItem =~ /\\bsql\\b/",
+          "when": "view == dbclient.connections && viewItem =~ /^(connection|database)\\b/ && viewItem =~ /\\b(sql|kv)\\b/",
           "group": "1_query@1"
+        },
+        {
+          "command": "dbclient.openConsole",
+          "when": "view == dbclient.connections && viewItem =~ /^(connection|subscription)\\b/ && viewItem =~ /\\bpubsub\\b/",
+          "group": "1_query@2"
+        },
+        {
+          "command": "dbclient.openValue",
+          "when": "view == dbclient.connections && viewItem =~ /^key\\b/",
+          "group": "1_query@3"
+        },
+        {
+          "command": "dbclient.unsubscribe",
+          "when": "view == dbclient.connections && viewItem =~ /^subscription\\b/",
+          "group": "1_query@4"
         },
         {
           "command": "dbclient.connect",
@@ -208,17 +279,17 @@
       "editor/title": [
         {
           "command": "dbclient.selectConnection",
-          "when": "editorLangId == sql",
+          "when": "editorLangId == sql || editorLangId == redis",
           "group": "navigation@0"
         },
         {
           "command": "dbclient.run",
-          "when": "editorLangId == sql",
+          "when": "editorLangId == sql || editorLangId == redis",
           "group": "navigation@1"
         },
         {
           "command": "dbclient.runFile",
-          "when": "editorLangId == sql",
+          "when": "editorLangId == sql || editorLangId == redis",
           "group": "navigation@2"
         }
       ],
@@ -232,16 +303,24 @@
           "when": "false"
         },
         {
+          "command": "dbclient.runAt",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.unsubscribe",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.openValue",
+          "when": "false"
+        },
+        {
           "command": "dbclient.run",
-          "when": "editorLangId == sql"
+          "when": "editorLangId == sql || editorLangId == redis"
         },
         {
           "command": "dbclient.runFile",
-          "when": "editorLangId == sql"
-        },
-        {
-          "command": "dbclient.runAt",
-          "when": "false"
+          "when": "editorLangId == sql || editorLangId == redis"
         }
       ]
     },
@@ -250,13 +329,13 @@
         "command": "dbclient.run",
         "key": "ctrl+enter",
         "mac": "cmd+enter",
-        "when": "editorTextFocus && editorLangId == sql"
+        "when": "editorTextFocus && (editorLangId == sql || editorLangId == redis)"
       },
       {
         "command": "dbclient.runFile",
         "key": "ctrl+shift+enter",
         "mac": "cmd+shift+enter",
-        "when": "editorTextFocus && editorLangId == sql"
+        "when": "editorTextFocus && (editorLangId == sql || editorLangId == redis)"
       }
     ],
     "configuration": {
@@ -280,7 +359,27 @@
           "description": "Show a Run action above each statement in SQL editors bound to a connection."
         }
       }
-    }
+    },
+    "languages": [
+      {
+        "id": "redis",
+        "aliases": [
+          "Redis",
+          "redis"
+        ],
+        "extensions": [
+          ".redis"
+        ],
+        "configuration": "./syntaxes/redis.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "redis",
+        "scopeName": "source.redis",
+        "path": "./syntaxes/redis.tmLanguage.json"
+      }
+    ]
   },
   "scripts": {
     "build": "node esbuild.mjs",
@@ -288,15 +387,23 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:smoke": "npm run build && node test/smoke/run.mjs",
-    "package": "npm run typecheck && node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository --skip-license",
-    "vscode:prepublish": "node esbuild.mjs --production"
+    "package": "npm run typecheck && node esbuild.mjs --production && vsce package --no-dependencies --skip-license",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
+    "ioredis": "^6.0.0",
+    "mssql": "^12.7.4",
+    "mysql2": "^3.24.5",
+    "nats": "^2.29.3",
+    "oracledb": "^26.0.0",
     "pg": "^8.23.1",
     "pg-cursor": "^2.22.1"
   },
   "devDependencies": {
+    "@types/mssql": "^12.3.0",
     "@types/node": "^22.0.0",
+    "@types/oracledb": "^7.0.3",
     "@types/pg": "^8.23.1",
     "@types/pg-cursor": "^2.7.2",
     "@types/vscode": "~1.90.0",
@@ -305,5 +412,15 @@
     "esbuild": "^0.28.2",
     "typescript": "^5.9.0",
     "vitest": "^5.0.4"
+  },
+  "author": "Cesar Galvis Leon",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cgalvisleon/dbclient.git"
+  },
+  "homepage": "https://github.com/cgalvisleon/dbclient#readme",
+  "bugs": {
+    "url": "https://github.com/cgalvisleon/dbclient/issues"
   }
 }
