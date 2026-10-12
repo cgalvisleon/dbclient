@@ -1,0 +1,22 @@
+## dbClient
+
+- Crea una extensión compatible para vscode que sea un cliente de base de datos al estilo de la extensión database que está instalada, con soporte para conectarse a postgres, sqlite, mysql, mssql, oracle, redis y nats.
+- debe tener una persistencia centralizada de la configuración de las conexiones
+- las bases de datos sql deben tener un editor con autocompletado para sql según su driver de conexión y para redis también debe tener un autocompletado
+- para nats debe permitir suscribirse y publicar eventos
+- el nombre de la extensión será dbclient
+- la extensión se escribe en typescript sobre la api de vscode, se empaqueta como .vsix y debe funcionar también en editores compatibles como cursor
+- debe tener un panel propio en la barra de actividad con un árbol de conexiones: conexión > base de datos/esquema > tablas, vistas, funciones, procedimientos, índices; para redis conexión > db > llaves agrupadas por prefijo; para nats conexión > streams/subjects y suscripciones activas
+- cada conexión se puede crear, editar, duplicar, eliminar, probar, conectar y desconectar desde un formulario propio, y las conexiones se pueden agrupar en carpetas
+- la persistencia centralizada guarda las conexiones a nivel de usuario (no por workspace) en un archivo json dentro del almacenamiento global de la extensión, y las contraseñas y tokens se guardan aparte en el secret storage de vscode, nunca en texto plano
+- se debe poder exportar e importar la configuración de conexiones (sin secretos) para llevarla a otra máquina
+- las conexiones deben soportar ssl/tls y túnel ssh
+- el editor sql abre archivos .sql asociados a una conexión activa, permite ejecutar todo el archivo, la selección o la sentencia bajo el cursor, y muestra los resultados en una grilla con paginación, ordenar, copiar y exportar a csv/json
+- el autocompletado sql debe sugerir palabras clave y funciones del dialecto del driver (postgres, sqlite, mysql, mssql, oracle) y los objetos reales de la conexión: esquemas, tablas, vistas y columnas, usando los alias de la consulta
+- se debe guardar un historial de consultas ejecutadas por conexión
+- desde el árbol se puede ver la estructura de una tabla, abrir sus datos, y generar el ddl o sentencias select/insert/update/delete
+- para redis debe haber un editor de comandos con autocompletado de comandos y sus argumentos, y sugerencia de llaves existentes, además de un visor/editor de valores según el tipo (string, hash, list, set, zset, stream) con ttl
+- para nats debe permitir conectarse con usuario/clave, token, nkey o archivo de credenciales, publicar mensajes con subject, payload y headers, hacer request/reply, suscribirse a subjects con comodines (* y >) y ver los mensajes recibidos en tiempo real en un panel, y si el servidor tiene jetstream listar streams y consumers
+- los drivers se implementan detrás de una interfaz común para que agregar un motor nuevo no requiera cambiar el árbol, el editor ni la grilla
+- la interfaz de la extensión debe estar en español e inglés
+- el editor sql toma como referencia el editor sql de netbeans: selector de conexión en la barra del editor, ejecutar el archivo completo o la sentencia bajo el cursor con atajos de teclado, resultados en pestañas debajo del editor (una por sentencia, con opción de conservar las pestañas anteriores), paginación de filas traídas con avance y retroceso, una salida sql que registra cada sentencia con su tiempo de ejecución, filas afectadas y errores con línea y columna que llevan al punto del editor, y edición de datos en la grilla (editar celdas, insertar y eliminar filas, confirmar o cancelar los cambios)

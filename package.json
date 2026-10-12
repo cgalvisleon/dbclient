@@ -1,0 +1,280 @@
+{
+  "name": "dbclient",
+  "displayName": "DB Client",
+  "description": "Database client for PostgreSQL, SQLite, MySQL, MSSQL, Oracle, Redis and NATS.",
+  "version": "0.1.0",
+  "publisher": "cgalvisleon",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "database",
+    "sql",
+    "postgres",
+    "redis",
+    "nats"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:sql"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dbclient",
+          "title": "DB Client",
+          "icon": "media/database.svg"
+        }
+      ]
+    },
+    "views": {
+      "dbclient": [
+        {
+          "id": "dbclient.connections",
+          "name": "Connections"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "dbclient.connections",
+        "contents": "No connections yet.\n[Add Connection](command:dbclient.addConnection)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "dbclient.addConnection",
+        "title": "Add Connection",
+        "category": "DB Client",
+        "icon": "$(add)"
+      },
+      {
+        "command": "dbclient.refresh",
+        "title": "Refresh",
+        "category": "DB Client",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "dbclient.editConnection",
+        "title": "Edit Connection",
+        "category": "DB Client",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "dbclient.duplicateConnection",
+        "title": "Duplicate Connection",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.deleteConnection",
+        "title": "Delete Connection",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.testConnection",
+        "title": "Test Connection",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.connect",
+        "title": "Connect",
+        "category": "DB Client",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "dbclient.disconnect",
+        "title": "Disconnect",
+        "category": "DB Client",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "dbclient.newQuery",
+        "title": "New Query",
+        "category": "DB Client",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "dbclient.selectConnection",
+        "title": "Select Connection for Editor",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.run",
+        "title": "Run Selection or Statement",
+        "category": "DB Client",
+        "icon": "$(play)"
+      },
+      {
+        "command": "dbclient.runFile",
+        "title": "Run File",
+        "category": "DB Client",
+        "icon": "$(run-all)"
+      },
+      {
+        "command": "dbclient.cancelQuery",
+        "title": "Cancel Running Query",
+        "category": "DB Client"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "dbclient.addConnection",
+          "when": "view == dbclient.connections",
+          "group": "navigation@1"
+        },
+        {
+          "command": "dbclient.refresh",
+          "when": "view == dbclient.connections",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "dbclient.newQuery",
+          "when": "view == dbclient.connections && viewItem =~ /^(connection|database)\\b/ && viewItem =~ /\\bsql\\b/",
+          "group": "inline@1"
+        },
+        {
+          "command": "dbclient.connect",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b.*\\bdisconnected\\b/",
+          "group": "inline@2"
+        },
+        {
+          "command": "dbclient.disconnect",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b.*\\bconnected\\b/",
+          "group": "inline@2"
+        },
+        {
+          "command": "dbclient.newQuery",
+          "when": "view == dbclient.connections && viewItem =~ /^(connection|database)\\b/ && viewItem =~ /\\bsql\\b/",
+          "group": "1_query@1"
+        },
+        {
+          "command": "dbclient.connect",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b.*\\bdisconnected\\b/",
+          "group": "2_state@1"
+        },
+        {
+          "command": "dbclient.disconnect",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b.*\\bconnected\\b/",
+          "group": "2_state@2"
+        },
+        {
+          "command": "dbclient.testConnection",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
+          "group": "2_state@3"
+        },
+        {
+          "command": "dbclient.editConnection",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "dbclient.duplicateConnection",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
+          "group": "3_edit@2"
+        },
+        {
+          "command": "dbclient.deleteConnection",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
+          "group": "3_edit@3"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "dbclient.run",
+          "when": "editorLangId == sql",
+          "group": "navigation@1"
+        },
+        {
+          "command": "dbclient.runFile",
+          "when": "editorLangId == sql",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "dbclient.editConnection",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.duplicateConnection",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.run",
+          "when": "editorLangId == sql"
+        },
+        {
+          "command": "dbclient.runFile",
+          "when": "editorLangId == sql"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "dbclient.run",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId == sql"
+      },
+      {
+        "command": "dbclient.runFile",
+        "key": "ctrl+shift+enter",
+        "mac": "cmd+shift+enter",
+        "when": "editorTextFocus && editorLangId == sql"
+      }
+    ],
+    "configuration": {
+      "title": "DB Client",
+      "properties": {
+        "dbclient.maxRows": {
+          "type": "number",
+          "default": 5000,
+          "minimum": 1,
+          "description": "Maximum number of rows fetched per statement. Larger result sets are truncated."
+        },
+        "dbclient.pageSize": {
+          "type": "number",
+          "default": 100,
+          "minimum": 10,
+          "description": "Rows per page in the results grid."
+        },
+        "dbclient.codeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a Run action above each statement in SQL editors bound to a connection."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:smoke": "npm run build && node test/smoke/run.mjs",
+    "package": "npm run typecheck && node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository --skip-license",
+    "vscode:prepublish": "node esbuild.mjs --production"
+  },
+  "dependencies": {
+    "pg": "^8.23.1",
+    "pg-cursor": "^2.22.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
+    "@types/pg-cursor": "^2.7.2",
+    "@types/vscode": "~1.90.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.4"
+  }
+}
