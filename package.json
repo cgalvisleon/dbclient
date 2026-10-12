@@ -29,6 +29,13 @@
           "title": "DB Client",
           "icon": "media/database.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "dbclientResults",
+          "title": "DB Client",
+          "icon": "media/database.svg"
+        }
       ]
     },
     "views": {
@@ -36,6 +43,13 @@
         {
           "id": "dbclient.connections",
           "name": "Connections"
+        }
+      ],
+      "dbclientResults": [
+        {
+          "type": "webview",
+          "id": "dbclient.results",
+          "name": "Results"
         }
       ]
     },
@@ -100,7 +114,8 @@
       {
         "command": "dbclient.selectConnection",
         "title": "Select Connection for Editor",
-        "category": "DB Client"
+        "category": "DB Client",
+        "icon": "$(database)"
       },
       {
         "command": "dbclient.run",
@@ -117,6 +132,11 @@
       {
         "command": "dbclient.cancelQuery",
         "title": "Cancel Running Query",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.runAt",
+        "title": "Run Statement at Position",
         "category": "DB Client"
       }
     ],
@@ -187,6 +207,11 @@
       ],
       "editor/title": [
         {
+          "command": "dbclient.selectConnection",
+          "when": "editorLangId == sql",
+          "group": "navigation@0"
+        },
+        {
           "command": "dbclient.run",
           "when": "editorLangId == sql",
           "group": "navigation@1"
@@ -213,6 +238,10 @@
         {
           "command": "dbclient.runFile",
           "when": "editorLangId == sql"
+        },
+        {
+          "command": "dbclient.runAt",
+          "when": "false"
         }
       ]
     },

@@ -1,0 +1,82 @@
+body {
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  padding: 16px 24px;
+}
+
+form {
+  max-width: 520px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+input[type='text'],
+input[type='number'],
+input[type='password'],
+input:not([type]),
+select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  font: inherit;
+}
+
+input:focus,
+select:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0 0 152px;
+}
+
+button {
+  padding: 5px 14px;
+  border: none;
+  border-radius: 2px;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+button.secondary {
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+}
+
+button.secondary:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.status {
+  margin: 14px 0 0 152px;
+  white-space: pre-wrap;
+}
+
+.status.ok {
+  color: var(--vscode-testing-iconPassed, #73c991);
+}
+
+.status.error {
+  color: var(--vscode-errorForeground);
+}
