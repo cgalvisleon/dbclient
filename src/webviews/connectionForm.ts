@@ -10,6 +10,7 @@ interface FormValue {
   name: string;
   type: string;
   options: ConnectionConfig['options'];
+  folderId?: string;
 }
 
 type FromWebview =
@@ -25,6 +26,8 @@ export async function openConnectionForm(
   extensionUri: vscode.Uri,
   manager: ConnectionManager,
   connectionId?: string,
+  /** Folder preselected for a new connection. */
+  folderId?: string,
 ): Promise<void> {
   const key = connectionId ?? 'new';
   const existing = panels.get(key);
@@ -73,7 +76,12 @@ export async function openConnectionForm(
         post({
           type: 'init',
           drivers: allDrivers().map((d) => ({ type: d.type, label: d.label, fields: d.fields })),
-          value: config ? { name: config.name, type: config.type, options: config.options } : undefined,
+          value: config ? { name: config.name, type: config.type, options: config.options, folderId: config.folderId } : undefined,
+          folderId,
+          folders: manager.store
+            .listFolders()
+            .map((f) => ({ id: f.id, path: manager.store.folderPath(f.id) }))
+            .sort((a, b) => a.path.localeCompare(b.path)),
           savedSecrets: Object.fromEntries(Object.entries(savedSecrets).map(([k, v]) => [k, Boolean(v)])),
           labels: {
             name: vscode.l10n.t('Name'),
@@ -84,6 +92,8 @@ export async function openConnectionForm(
             saved: vscode.l10n.t('saved — leave empty to keep'),
             testing: vscode.l10n.t('Testing…'),
             browse: vscode.l10n.t('Browse…'),
+            folder: vscode.l10n.t('Folder'),
+            noFolder: vscode.l10n.t('(none)'),
           },
         });
         return;
@@ -126,7 +136,10 @@ export async function openConnectionForm(
             // Running sessions were opened with the old settings.
             await manager.disconnect(config.id);
           }
-          await manager.store.save({ id: config?.id, ...message.value, name: message.value.name.trim() }, update);
+          await manager.store.save(
+            { id: config?.id, ...message.value, name: message.value.name.trim(), folderId: message.value.folderId || undefined },
+            update,
+          );
           panel.dispose();
         } catch (err) {
           post({ type: 'status', ok: false, message: (err as Error).message });

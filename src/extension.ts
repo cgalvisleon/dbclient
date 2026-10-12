@@ -8,7 +8,7 @@ import { RedisRunner } from './editor/redisRunner';
 import { SqlRunner } from './editor/sqlRunner';
 import { initIcons } from './icons';
 import { ConnectionStore } from './store/connectionStore';
-import { ConnectionItem, ConnectionsTree, NodeItem } from './tree/connectionsTree';
+import { ConnectionItem, ConnectionsDragAndDrop, ConnectionsTree, FolderItem, NodeItem } from './tree/connectionsTree';
 import { openConnectionForm } from './webviews/connectionForm';
 import { NatsConsoles } from './webviews/natsConsole';
 import { openValueViewer } from './webviews/redisValue';
@@ -19,6 +19,7 @@ export interface DbClientInternals {
   store: ConnectionStore;
   manager: ConnectionManager;
   tree: ConnectionsTree;
+  dragAndDrop: ConnectionsDragAndDrop;
   bindings: DocumentBindings;
 }
 
@@ -27,6 +28,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   const store = new ConnectionStore(vscode.Uri.joinPath(context.globalStorageUri, 'connections.json').fsPath, context.secrets);
   const manager = new ConnectionManager(store);
   const tree = new ConnectionsTree(manager);
+  const dragAndDrop = new ConnectionsDragAndDrop(manager);
   const bindings = new DocumentBindings(context.workspaceState, manager);
   const results = new ResultsView(context.extensionUri);
   const runner = new SqlRunner(manager, bindings, results);
@@ -43,7 +45,12 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     runner,
     redisRunner,
     natsConsoles,
-    vscode.window.createTreeView('dbclient.connections', { treeDataProvider: tree, showCollapseAll: true }),
+    vscode.window.createTreeView('dbclient.connections', {
+      treeDataProvider: tree,
+      showCollapseAll: true,
+      canSelectMany: true,
+      dragAndDropController: dragAndDrop,
+    }),
     vscode.window.registerWebviewViewProvider(RESULTS_VIEW_ID, results, { webviewOptions: { retainContextWhenHidden: true } }),
     vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings), '.', ' '),
     vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager)),
@@ -73,7 +80,91 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     return picked?.id;
   };
 
-  command('dbclient.addConnection', () => openConnectionForm(context.extensionUri, manager));
+  command('dbclient.addConnection', (item?: FolderItem) =>
+    openConnectionForm(context.extensionUri, manager, undefined, item instanceof FolderItem ? item.folderId : undefined),
+  );
+
+  // ---------- folders ----------
+
+  const askFolderName = (value = '') =>
+    vscode.window.showInputBox({
+      prompt: vscode.l10n.t('Folder name'),
+      value,
+      validateInput: (v) => (v.trim() ? undefined : vscode.l10n.t('Folder name is required.')),
+    });
+
+  /** Quick pick of folders (plus the top level); `exclude` hides a folder and everything below it. */
+  const pickFolder = async (exclude?: string): Promise<{ id: string | undefined } | undefined> => {
+    const below = (id: string | undefined): boolean => {
+      for (let f = id; f; f = store.getFolder(f)?.parentId) {
+        if (f === exclude) {
+          return true;
+        }
+      }
+      return false;
+    };
+    const items = [
+      { label: `$(root-folder) ${vscode.l10n.t('Top level')}`, id: undefined as string | undefined },
+      ...store
+        .listFolders()
+        .filter((f) => !below(f.id))
+        .map((f) => ({ label: `$(folder) ${store.folderPath(f.id)}`, id: f.id as string | undefined }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+    return vscode.window.showQuickPick(items, { placeHolder: vscode.l10n.t('Move to folder') });
+  };
+
+  command('dbclient.addFolder', async (item?: FolderItem) => {
+    const name = await askFolderName();
+    if (name) {
+      store.createFolder(name, item instanceof FolderItem ? item.folderId : undefined);
+    }
+  });
+
+  command('dbclient.renameFolder', async (item?: FolderItem) => {
+    const folder = item && store.getFolder(item.folderId);
+    if (!folder) {
+      return;
+    }
+    const name = await askFolderName(folder.name);
+    if (name) {
+      store.renameFolder(folder.id, name);
+    }
+  });
+
+  command('dbclient.deleteFolder', async (item?: FolderItem) => {
+    const folder = item && store.getFolder(item.folderId);
+    if (!folder) {
+      return;
+    }
+    const remove = vscode.l10n.t('Delete');
+    const answer = await vscode.window.showWarningMessage(
+      vscode.l10n.t('Delete folder "{0}"? Its connections and subfolders move up one level; nothing else is deleted.', folder.name),
+      { modal: true },
+      remove,
+    );
+    if (answer === remove) {
+      store.deleteFolder(folder.id);
+    }
+  });
+
+  command('dbclient.moveToFolder', async (item?: ConnectionItem | FolderItem, selected?: (ConnectionItem | FolderItem)[]) => {
+    const items = (selected?.length ? selected : item ? [item] : []).filter((i) => i instanceof ConnectionItem || i instanceof FolderItem);
+    if (!items.length) {
+      return;
+    }
+    const target = await pickFolder(items.length === 1 && items[0] instanceof FolderItem ? items[0].folderId : undefined);
+    if (!target) {
+      return;
+    }
+    for (const i of items) {
+      if (i instanceof FolderItem) {
+        store.moveFolder(i.folderId, target.id);
+      } else {
+        store.moveConnection(i.connectionId, target.id);
+      }
+    }
+  });
   command('dbclient.refresh', () => tree.refresh());
 
   command('dbclient.editConnection', async (item?: ConnectionItem) => {
@@ -206,7 +297,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   });
   command('dbclient.cancelQuery', () => runner.cancel(vscode.window.activeTextEditor));
 
-  return { store, manager, tree, bindings };
+  return { store, manager, tree, dragAndDrop, bindings };
 }
 
 export function deactivate(): void {

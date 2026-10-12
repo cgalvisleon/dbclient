@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ConnectionConfig, ConnectionSecrets, FieldSpec } from '../drivers/types';
+import { ConnectionConfig, ConnectionFolder, ConnectionSecrets, FieldSpec } from '../drivers/types';
 
 /** The subset of vscode.SecretStorage the store needs (keeps it testable without vscode). */
 export interface SecretStore {
@@ -13,6 +13,7 @@ export interface SecretStore {
 interface StoreFile {
   version: 1;
   connections: ConnectionConfig[];
+  folders?: ConnectionFolder[];
 }
 
 /** Secret updates: a string sets the value, `null` deletes it, missing/undefined keeps it. */
@@ -24,6 +25,7 @@ export type SecretUpdate = Record<string, string | null | undefined>;
  */
 export class ConnectionStore {
   private connections: ConnectionConfig[] = [];
+  private folders: ConnectionFolder[] = [];
   private readonly listeners = new Set<() => void>();
   private watcher?: fs.FSWatcher;
 
@@ -49,18 +51,20 @@ export class ConnectionStore {
     try {
       const data = JSON.parse(fs.readFileSync(this.file, 'utf8')) as StoreFile;
       this.connections = Array.isArray(data.connections) ? data.connections : [];
+      this.folders = Array.isArray(data.folders) ? data.folders : [];
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
         throw new Error(`Cannot read ${this.file}: ${(err as Error).message}`);
       }
       this.connections = [];
+      this.folders = [];
     }
   }
 
   private persist(): void {
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
     const tmp = `${this.file}.${process.pid}.tmp`;
-    const data: StoreFile = { version: 1, connections: this.connections };
+    const data: StoreFile = { version: 1, connections: this.connections, folders: this.folders };
     fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
     fs.renameSync(tmp, this.file);
   }
@@ -76,9 +80,10 @@ export class ConnectionStore {
       }
       clearTimeout(timer);
       timer = setTimeout(() => {
-        const before = JSON.stringify(this.connections);
+        const snapshot = () => JSON.stringify([this.connections, this.folders]);
+        const before = snapshot();
         this.load();
-        if (JSON.stringify(this.connections) !== before) {
+        if (snapshot() !== before) {
           this.emit();
         }
       }, 100);
@@ -135,6 +140,107 @@ export class ConnectionStore {
       name = `${source.name} (copy ${n})`;
     }
     return this.save({ ...source, id: undefined, name, options: { ...source.options } }, secrets);
+  }
+
+  // ---------- folders ----------
+
+  listFolders(): ConnectionFolder[] {
+    return [...this.folders].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  getFolder(id: string): ConnectionFolder | undefined {
+    return this.folders.find((f) => f.id === id);
+  }
+
+  /** Direct children of a folder (or of the top level when `parentId` is undefined). */
+  childrenOf(parentId: string | undefined): { folders: ConnectionFolder[]; connections: ConnectionConfig[] } {
+    // Items pointing at a folder that no longer exists show at the top level.
+    const parentOf = (folderId: string | undefined) => (folderId && this.getFolder(folderId) ? folderId : undefined);
+    return {
+      folders: this.listFolders().filter((f) => parentOf(f.parentId) === parentId),
+      connections: this.list().filter((c) => parentOf(c.folderId) === parentId),
+    };
+  }
+
+  /** "Parent / Child" path of a folder, for pickers. */
+  folderPath(id: string): string {
+    const names: string[] = [];
+    for (let f = this.getFolder(id); f; f = f.parentId ? this.getFolder(f.parentId) : undefined) {
+      names.unshift(f.name);
+      if (names.length > 50) {
+        break;
+      }
+    }
+    return names.join(' / ');
+  }
+
+  createFolder(name: string, parentId?: string): ConnectionFolder {
+    const folder: ConnectionFolder = { id: randomUUID(), name: name.trim(), parentId: parentId || undefined };
+    if (!folder.name) {
+      throw new Error('Folder name is required');
+    }
+    this.folders.push(folder);
+    this.commit();
+    return folder;
+  }
+
+  renameFolder(id: string, name: string): void {
+    const folder = this.requireFolder(id);
+    if (!name.trim()) {
+      throw new Error('Folder name is required');
+    }
+    folder.name = name.trim();
+    this.commit();
+  }
+
+  /** Moves a folder under another one (or to the top level); refuses to create cycles. */
+  moveFolder(id: string, parentId: string | undefined): void {
+    const folder = this.requireFolder(id);
+    for (let p = parentId; p; p = this.getFolder(p)?.parentId) {
+      if (p === id) {
+        throw new Error('A folder cannot be moved inside itself');
+      }
+    }
+    folder.parentId = parentId || undefined;
+    this.commit();
+  }
+
+  /** Deletes a folder; its connections and subfolders move up to its parent. */
+  deleteFolder(id: string): void {
+    const folder = this.requireFolder(id);
+    for (const c of this.connections.filter((c) => c.folderId === id)) {
+      c.folderId = folder.parentId;
+    }
+    for (const f of this.folders.filter((f) => f.parentId === id)) {
+      f.parentId = folder.parentId;
+    }
+    this.folders = this.folders.filter((f) => f.id !== id);
+    this.commit();
+  }
+
+  moveConnection(id: string, folderId: string | undefined): void {
+    const connection = this.get(id);
+    if (!connection) {
+      throw new Error(`Connection ${id} not found`);
+    }
+    if (folderId) {
+      this.requireFolder(folderId);
+    }
+    connection.folderId = folderId || undefined;
+    this.commit();
+  }
+
+  private requireFolder(id: string): ConnectionFolder {
+    const folder = this.getFolder(id);
+    if (!folder) {
+      throw new Error(`Folder ${id} not found`);
+    }
+    return folder;
+  }
+
+  private commit(): void {
+    this.persist();
+    this.emit();
   }
 
   async delete(id: string, fields: FieldSpec[]): Promise<void> {

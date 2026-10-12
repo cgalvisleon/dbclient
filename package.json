@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client",
   "description": "Database client for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -189,6 +189,34 @@
           "light": "media/icons/light/authentication.png",
           "dark": "media/icons/authentication.png"
         }
+      },
+      {
+        "command": "dbclient.addFolder",
+        "title": "New Folder",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/add-folder.png",
+          "dark": "media/icons/add-folder.png"
+        }
+      },
+      {
+        "command": "dbclient.renameFolder",
+        "title": "Rename Folder",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.deleteFolder",
+        "title": "Delete Folder",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/remove-folder.png",
+          "dark": "media/icons/remove-folder.png"
+        }
+      },
+      {
+        "command": "dbclient.moveToFolder",
+        "title": "Move to Folder…",
+        "category": "DB Client"
       }
     ],
     "menus": {
@@ -199,9 +227,14 @@
           "group": "navigation@1"
         },
         {
-          "command": "dbclient.refresh",
+          "command": "dbclient.addFolder",
           "when": "view == dbclient.connections",
           "group": "navigation@2"
+        },
+        {
+          "command": "dbclient.refresh",
+          "when": "view == dbclient.connections",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -274,6 +307,46 @@
           "command": "dbclient.deleteConnection",
           "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
           "group": "3_edit@3"
+        },
+        {
+          "command": "dbclient.addConnection",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "inline@1"
+        },
+        {
+          "command": "dbclient.addFolder",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "inline@2"
+        },
+        {
+          "command": "dbclient.addConnection",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "1_folder@1"
+        },
+        {
+          "command": "dbclient.addFolder",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "1_folder@2"
+        },
+        {
+          "command": "dbclient.renameFolder",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "dbclient.moveToFolder",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "3_edit@2"
+        },
+        {
+          "command": "dbclient.deleteFolder",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "3_edit@3"
+        },
+        {
+          "command": "dbclient.moveToFolder",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
+          "group": "3_edit@4"
         }
       ],
       "editor/title": [
@@ -321,6 +394,18 @@
         {
           "command": "dbclient.runFile",
           "when": "editorLangId == sql || editorLangId == redis"
+        },
+        {
+          "command": "dbclient.renameFolder",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.deleteFolder",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.moveToFolder",
+          "when": "false"
         }
       ]
     },

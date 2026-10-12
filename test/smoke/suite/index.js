@@ -84,6 +84,45 @@ exports.run = async function () {
     await api.store.delete(config.id, []);
   }
 
+  // Folders: nesting in the tree and drag and drop.
+  {
+    const prod = api.store.createFolder(`smoke-prod-${run}`);
+    const eu = api.store.createFolder('EU', prod.id);
+    const conn = await addConnection(`smoke-folder-${run}`, 'sqlite', { file: path.join(os.tmpdir(), `dbclient-${run}.db`) });
+    api.store.moveConnection(conn.id, eu.id);
+
+    const roots = await api.tree.getChildren();
+    const prodItem = roots.find((r) => r.folderId === prod.id);
+    assert.ok(prodItem && prodItem.label === `smoke-prod-${run}`, 'folder at the top level');
+    assert.ok(!roots.some((r) => r.connectionId === conn.id), 'connection not at the top level');
+    const euItem = (await api.tree.getChildren(prodItem)).find((r) => r.folderId === eu.id);
+    assert.ok(euItem, 'subfolder inside folder');
+    const connItem = (await api.tree.getChildren(euItem)).find((r) => r.connectionId === conn.id);
+    assert.ok(connItem, 'connection inside subfolder');
+
+    // Drag the connection to the top level, then the subfolder out of its parent.
+    const drag = new vscode.DataTransfer();
+    await api.dragAndDrop.handleDrag([connItem], drag);
+    await api.dragAndDrop.handleDrop(undefined, drag);
+    assert.strictEqual(api.store.get(conn.id).folderId, undefined, 'dropped at the top level');
+    const drag2 = new vscode.DataTransfer();
+    await api.dragAndDrop.handleDrag([euItem], drag2);
+    await api.dragAndDrop.handleDrop(undefined, drag2);
+    assert.strictEqual(api.store.getFolder(eu.id).parentId, undefined, 'folder moved to the top level');
+    // Dropping a parent into its own child is refused.
+    api.store.moveFolder(eu.id, prod.id);
+    const drag3 = new vscode.DataTransfer();
+    await api.dragAndDrop.handleDrag([prodItem], drag3);
+    await api.dragAndDrop.handleDrop(euItem, drag3);
+    assert.strictEqual(api.store.getFolder(prod.id).parentId, undefined, 'cycle refused');
+
+    api.store.deleteFolder(prod.id);
+    assert.strictEqual(api.store.getFolder(eu.id).parentId, undefined, 'children move up on delete');
+    api.store.deleteFolder(eu.id);
+    await api.store.delete(conn.id, []);
+    console.log('✓ folders: nesting, drag and drop, cycle refused, delete moves content up');
+  }
+
   if (env.DBCLIENT_PG_HOST) {
     await sqlEngine({
       name: 'postgres',

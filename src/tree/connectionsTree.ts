@@ -86,6 +86,21 @@ export class NodeItem extends vscode.TreeItem {
   }
 }
 
+/** A user folder that groups connections (not to be confused with a driver's `folder` nodes). */
+export class FolderItem extends vscode.TreeItem {
+  constructor(
+    readonly folderId: string,
+    name: string,
+    count: number,
+  ) {
+    super(name, vscode.TreeItemCollapsibleState.Expanded);
+    this.id = `folder:${folderId}`;
+    this.iconPath = icon('explorer');
+    this.description = count ? String(count) : undefined;
+    this.contextValue = 'connectionFolder';
+  }
+}
+
 class MessageItem extends vscode.TreeItem {
   constructor(message: string, icon = 'warning') {
     super(message, vscode.TreeItemCollapsibleState.None);
@@ -94,7 +109,54 @@ class MessageItem extends vscode.TreeItem {
   }
 }
 
-export type TreeNode = ConnectionItem | NodeItem | MessageItem;
+export type TreeNode = ConnectionItem | NodeItem | FolderItem | MessageItem;
+
+const DRAG_MIME = 'application/vnd.code.tree.dbclient.connections';
+
+/** Drag connections and folders onto a folder (or a connection inside it, or empty space for the top level). */
+export class ConnectionsDragAndDrop implements vscode.TreeDragAndDropController<TreeNode> {
+  readonly dragMimeTypes = [DRAG_MIME];
+  readonly dropMimeTypes = [DRAG_MIME];
+
+  constructor(private readonly manager: ConnectionManager) {}
+
+  handleDrag(source: readonly TreeNode[], data: vscode.DataTransfer): void {
+    const items = source
+      .map((s) => (s instanceof FolderItem ? { folder: s.folderId } : s instanceof ConnectionItem ? { connection: s.connectionId } : undefined))
+      .filter(Boolean);
+    if (items.length) {
+      data.set(DRAG_MIME, new vscode.DataTransferItem(items));
+    }
+  }
+
+  async handleDrop(target: TreeNode | undefined, data: vscode.DataTransfer): Promise<void> {
+    const items = data.get(DRAG_MIME)?.value as { folder?: string; connection?: string }[] | undefined;
+    if (!items?.length) {
+      return;
+    }
+    let folderId: string | undefined;
+    if (target instanceof FolderItem) {
+      folderId = target.folderId;
+    } else if (target instanceof ConnectionItem) {
+      folderId = this.manager.store.get(target.connectionId)?.folderId;
+    } else if (target) {
+      // Nodes inside a connection are not drop targets.
+      return;
+    }
+    const store = this.manager.store;
+    try {
+      for (const item of items) {
+        if (item.folder) {
+          store.moveFolder(item.folder, folderId);
+        } else if (item.connection) {
+          store.moveConnection(item.connection, folderId);
+        }
+      }
+    } catch (err) {
+      vscode.window.showErrorMessage((err as Error).message);
+    }
+  }
+}
 
 export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<TreeNode | undefined>();
@@ -124,13 +186,20 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
   }
 
   async getChildren(element?: TreeNode): Promise<TreeNode[]> {
-    if (!element) {
-      this.roots.clear();
-      return this.manager.store.list().map((c) => {
-        const item = new ConnectionItem(c.id, this.manager);
-        this.roots.set(c.id, item);
-        return item;
-      });
+    if (!element || element instanceof FolderItem) {
+      const store = this.manager.store;
+      const { folders, connections } = store.childrenOf(element?.folderId);
+      return [
+        ...folders.map((f) => {
+          const inside = store.childrenOf(f.id);
+          return new FolderItem(f.id, f.name, inside.connections.length + inside.folders.length);
+        }),
+        ...connections.map((c) => {
+          const item = new ConnectionItem(c.id, this.manager);
+          this.roots.set(c.id, item);
+          return item;
+        }),
+      ];
     }
     if (element instanceof MessageItem) {
       return [];

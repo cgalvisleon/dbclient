@@ -77,4 +77,59 @@ describe('ConnectionStore', () => {
     expect(secrets.values.size).toBe(0);
     expect(changes).toBe(2);
   });
+
+  describe('folders', () => {
+    it('nests folders and connections and persists them', async () => {
+      const prod = store.createFolder('Production');
+      const eu = store.createFolder('EU', prod.id);
+      const a = await store.save({ name: 'a', type: 'postgres', options: {}, folderId: eu.id });
+      await store.save({ name: 'b', type: 'postgres', options: {} });
+
+      expect(store.childrenOf(undefined).folders.map((f) => f.name)).toEqual(['Production']);
+      expect(store.childrenOf(undefined).connections.map((c) => c.name)).toEqual(['b']);
+      expect(store.childrenOf(prod.id).folders.map((f) => f.name)).toEqual(['EU']);
+      expect(store.childrenOf(eu.id).connections.map((c) => c.id)).toEqual([a.id]);
+      expect(store.folderPath(eu.id)).toBe('Production / EU');
+
+      const reopened = new ConnectionStore(file, secrets);
+      expect(reopened.childrenOf(eu.id).connections.map((c) => c.name)).toEqual(['a']);
+    });
+
+    it('moves connections and folders, refusing cycles', async () => {
+      const x = store.createFolder('X');
+      const y = store.createFolder('Y', x.id);
+      const c = await store.save({ name: 'c', type: 'postgres', options: {} });
+      store.moveConnection(c.id, y.id);
+      expect(store.get(c.id)?.folderId).toBe(y.id);
+      store.moveConnection(c.id, undefined);
+      expect(store.get(c.id)?.folderId).toBeUndefined();
+
+      expect(() => store.moveFolder(x.id, y.id)).toThrow(/inside itself/);
+      expect(() => store.moveFolder(x.id, x.id)).toThrow(/inside itself/);
+      store.moveFolder(y.id, undefined);
+      expect(store.childrenOf(undefined).folders.map((f) => f.name)).toEqual(['X', 'Y']);
+      store.renameFolder(y.id, 'Z');
+      expect(store.getFolder(y.id)?.name).toBe('Z');
+    });
+
+    it('deleting a folder moves its content up one level', async () => {
+      const top = store.createFolder('Top');
+      const mid = store.createFolder('Mid', top.id);
+      const inner = store.createFolder('Inner', mid.id);
+      const c = await store.save({ name: 'c', type: 'postgres', options: {}, folderId: mid.id });
+      store.deleteFolder(mid.id);
+      expect(store.get(c.id)?.folderId).toBe(top.id);
+      expect(store.getFolder(inner.id)?.parentId).toBe(top.id);
+      expect(store.getFolder(mid.id)).toBeUndefined();
+    });
+
+    it('shows items of a missing folder at the top level and keeps the folder on duplicate', async () => {
+      const f = store.createFolder('F');
+      const c = await store.save({ name: 'c', type: 'postgres', options: {}, folderId: 'gone' });
+      expect(store.childrenOf(undefined).connections.map((x) => x.id)).toEqual([c.id]);
+      store.moveConnection(c.id, f.id);
+      const copy = await store.duplicate(c.id, fields);
+      expect(copy.folderId).toBe(f.id);
+    });
+  });
 });

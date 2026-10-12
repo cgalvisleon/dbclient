@@ -13,7 +13,7 @@ Estado: ✅ implementado · ⏳ pendiente.
 | Capa | Responsabilidad | Estado |
 |---|---|---|
 | `src/extension.ts` | Activación, registro de comandos, vistas y proveedores. | ✅ |
-| `src/store/connectionStore.ts` | `ConnectionStore`: lee y escribe `connections.json` en `context.globalStorageUri` (nivel usuario, compartido entre ventanas con `fs.watch`). Los secretos van en `context.secrets` con la clave `dbclient.<connectionId>.<campo>`. | ✅ (carpetas e import/export ⏳) |
+| `src/store/connectionStore.ts` | `ConnectionStore`: lee y escribe `connections.json` en `context.globalStorageUri` (nivel usuario, compartido entre ventanas con `fs.watch`) con conexiones y carpetas anidadas. Los secretos van en `context.secrets` con la clave `dbclient.<connectionId>.<campo>`. | ✅ (import/export ⏳) |
 | `src/drivers/types.ts` + `registry.ts` | `Driver` (`connect`, `disconnect`, `children(node)`, `onDidChange`), `SqlDriver` (`execute` → varios resultados por lote, `cancel`, `dialect`), `KvDriver` (`command`, `scan`), `PubSubDriver` (`publish`, `request`, `subscribe`, `unsubscribe`) y `DriverFactory` (campos del formulario con `secret`/`showWhen`/`file`, categoría, dialecto). Sin dependencia de `vscode`. | ✅ |
 | `src/drivers/postgres.ts` | `pg` + `pg-cursor`: pool por base para metadatos, sesión dedicada por base (SET/BEGIN persisten), truncado en `dbclient.maxRows`, cancelación con `pg_cancel_backend`, error con posición. | ✅ |
 | `src/drivers/mysql.ts` | `mysql2`: bases > carpetas (tablas, vistas, funciones, procedimientos, triggers, índices) > columnas; sesión por base; truncado con `KILL QUERY` (esperado antes de liberar la sesión); error con línea. | ✅ |
@@ -23,7 +23,7 @@ Estado: ✅ implementado · ⏳ pendiente.
 | `src/drivers/redis.ts` | `ioredis`: dbs con número de llaves > llaves agrupadas por separador (SCAN, nunca KEYS, tope 5000 por nivel) con su tipo; un cliente por db. | ✅ |
 | `src/drivers/nats.ts` | `nats`: autenticación ninguna/usuario/token/nkey/credenciales; publicar con headers, request/reply, suscripciones con comodines y cola; árbol con suscripciones activas, streams y consumers de JetStream. | ✅ |
 | `src/connections/manager.ts` | Instancias vivas de drivers; conectar, desconectar, probar; cambios del driver refrescan solo su rama del árbol. | ✅ |
-| `src/tree/` | `TreeDataProvider` genérico: SQL, Redis y NATS en el mismo listado; iconos de `img/`. | ✅ |
+| `src/tree/` | `TreeDataProvider` genérico: SQL, Redis y NATS en el mismo listado, agrupados en carpetas (arrastrar y soltar, mover, renombrar, eliminar); iconos de `img/`. | ✅ |
 | `src/editor/` | `bindings.ts` (conexión de cada editor `.sql`/`.redis`, barra de estado), `statements.ts` (división por dialecto: `GO`, `DELIMITER`, `/` y bloques PL/SQL, triggers), `sqlRunner.ts`, `redisRunner.ts` (una orden por línea, confirma FLUSHDB/FLUSHALL), `codeLens.ts`. | ✅ |
 | `src/completion/` | Diccionarios ANSI + PostgreSQL, MySQL, SQL Server, Oracle y SQLite; catálogo de ~110 comandos Redis con opciones y sugerencia de llaves existentes. | ✅ (objetos SQL reales y alias ⏳) |
 | `src/webviews/` + `media/` | Formulario de conexión; panel *Results* (pestañas, paginación, orden, copiar, exportar, *Output*); visor/editor de valores Redis; consola NATS. | ✅ |
@@ -51,7 +51,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 107 (los pe
 | C1 | Panel en la barra de actividad con árbol de conexiones (SQL: BD/esquema > tablas, vistas, funciones, procedimientos, índices; Redis: db > llaves por prefijo; NATS: streams/subjects y suscripciones) | 6 | 1 |
 | C2 | Formulario de conexión: crear, editar, duplicar, eliminar, probar, conectar y desconectar | 6 | 1 |
 | C3 | Persistencia centralizada a nivel usuario (`globalStorage`) con secretos en `SecretStorage` | 6 | 1 |
-| C4 | Carpetas para agrupar conexiones | 2 | 0 |
+| C4 | Carpetas para agrupar conexiones | 2 | 1 |
 | C5 | Exportar e importar la configuración (sin secretos) | 2 | 0 |
 | C6 | SSL/TLS y túnel SSH | 4 | 0 |
 
@@ -108,30 +108,32 @@ brecha  = (total − avance) / total × 100 %
 | Bloque | Peso | Avance | Brecha (pts) |
 |---|---|---|---|
 | F — Fundación | 10 | 8 | 2 |
-| C — Conexiones y persistencia | 26 | 18 | 8 |
+| C — Conexiones y persistencia | 26 | 20 | 6 |
 | D — Drivers SQL | 16 | 16 | 0 |
 | S — Editor SQL | 33 | 18 | 15 |
 | R — Redis | 11 | 11 | 0 |
 | N — NATS | 11 | 9,5 | 1,5 |
-| **Total** | **107** | **80,5** | **26,5** |
+| **Total** | **107** | **82,5** | **24,5** |
 
-**Brecha actual: 24,8 % (26,5 de 107 pts)** — los 7 motores funcionan en el mismo listado de conexiones. Falta: autocompletado de objetos reales con alias (S4), historial (S5), acciones sobre tablas (S6), edición en grilla (S8), carpetas, import/export, SSL/SSH (C4–C6), i18n (F3) y verificar las autenticaciones de NATS distintas de "ninguna" (N1 parcial).
+**Brecha actual: 22,9 % (24,5 de 107 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas. Falta: autocompletado de objetos reales con alias (S4), historial (S5), acciones sobre tablas (S6), edición en grilla (S8), import/export y SSL/SSH (C5–C6), i18n (F3) y verificar las autenticaciones de NATS distintas de "ninguna" (N1 parcial).
 
 ## 5. Orden sugerido para cerrar la brecha
 
 1. ✅ **MVP (48 pts):** F1, F2, C1, C2, C3, D1, S1, S2, S3, S7. Una conexión PostgreSQL que se crea, se guarda y se consulta desde un `.sql` con autocompletado de palabras clave, resultados en pestañas y salida SQL.
-2. ◐ **SQL completo (+29):** ✅ D2–D5 (12); pendientes S4, S5, S6, S8, C4 (17).
+2. ◐ **SQL completo (+29):** ✅ D2–D5 (12), ✅ C4 (2); pendientes S4, S5, S6, S8 (15).
 3. ✅ **Redis (+11):** R1–R3.
 4. ◐ **NATS (+11):** N2–N4 completos; N1 parcial (solo verificado sin autenticación).
 5. **Cierre (+8):** C5, C6, F3.
 
-### Verificación (v0.2.0)
+### Verificación (v0.3.0)
 
 - `npm test` con `DBCLIENT_*`: 57 pruebas (2 omitidas: estado de sesión y cancelación no aplican a SQLite).
   - Unitarias: división de sentencias por dialecto, `ConnectionStore`, parser de líneas Redis, formato de respuestas, agrupación de llaves.
   - Integración contra los contenedores locales: PostgreSQL 15, MySQL 8.4, SQL Server 2022, Oracle Free (FREEPDB1), SQLite (archivo temporal), Redis 7.2 (db 15, prefijo único) y NATS 2.12 con JetStream (stream temporal). Cubren filas afectadas, tipos, truncado, error con línea/posición, estado de sesión, cancelación y árbol.
 - `npm run test:smoke`: VS Code real; por cada motor SQL: árbol, ejecutar archivo, error en la línea correcta del editor, ejecutar la sentencia bajo el cursor; Redis: árbol, autocompletado de comandos y opciones, ejecutar archivo, error en la línea, visor de valores; NATS: árbol, consola, suscribir/publicar.
-- `npm run package` genera `dbclient-0.2.0.vsix` (1,4 MB, sin dependencias nativas).
+- `npm run package` genera `dbclient-0.3.0.vsix` (1,4 MB, sin dependencias nativas).
+- Carpetas (C4): pruebas unitarias del store (anidar, mover, ciclos, eliminar sube el contenido, carpeta inexistente, duplicar) y prueba de humo en VS Code (árbol anidado y arrastrar y soltar).
+- Documentación: `README.md` (inglés, incluido en el `.vsix`) y `README.es.md` (traducción): instalación, funcionalidades, ejemplos de uso, configuración y desarrollo.
 - Sin verificar de forma automática: el aspecto visual de los webviews, la edición de valores desde el visor de Redis, la consola NATS en uso interactivo y las autenticaciones de NATS con usuario/token/nkey/credenciales.
 
 ### Verificación del MVP
@@ -151,3 +153,5 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-12 | Referencia del editor SQL de NetBeans: S1 y S2 ampliados, nuevos S7 (salida SQL, 3) y S8 (edición en grilla, 4); total 100 → 107 pts, la brecha pasa a % del total; S7 entra al MVP | 100 % |
 | 2026-10-12 | MVP implementado: F1, F2, C1, C2, C3, D1, S1, S2, S3, S7 (48 pts) | 55,1 % |
 | 2026-10-12 | Drivers MySQL, SQL Server, Oracle y SQLite (D2–D5); Redis con árbol, editor `.redis` y visor de valores (R1–R3); NATS con consola y JetStream (N2–N4, N1 parcial); iconos de `img/` integrados | 24,8 % |
+| 2026-10-12 | Documentación: `README.md` y su traducción `README.es.md`; contexto de agentes actualizado. Sin cambios de requisitos ni de implementación | 24,8 % |
+| 2026-10-12 | Carpetas para agrupar conexiones (C4): anidadas, crear/renombrar/eliminar/mover, arrastrar y soltar, campo Folder en el formulario | 22,9 % |

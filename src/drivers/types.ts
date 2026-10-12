@@ -10,6 +10,15 @@ export interface ConnectionConfig {
   type: string;
   /** Driver-specific values keyed by `FieldSpec.key` (host, port, database, ...). */
   options: Record<string, string | number | boolean | undefined>;
+  /** Folder that groups the connection in the tree; top level when missing. */
+  folderId?: string;
+}
+
+/** A user-defined folder of connections; folders nest through `parentId`. */
+export interface ConnectionFolder {
+  id: string;
+  name: string;
+  parentId?: string;
 }
 
 /** Secret values keyed by `FieldSpec.key`; kept out of the JSON store. */

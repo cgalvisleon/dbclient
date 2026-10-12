@@ -59,7 +59,9 @@
       if (f.secret) secrets[f.key] = readInput(f) || undefined;
     }
     const name = /** @type {HTMLInputElement} */ (document.getElementById('f-name')).value;
-    return { value: { name, type: value.type, options }, secrets };
+    const folder = /** @type {HTMLSelectElement} */ (document.getElementById('f-folder'));
+    const folderId = folder ? folder.value || undefined : value.folderId;
+    return { value: { name, type: value.type, options, folderId }, secrets };
   }
 
   function setStatus(text, ok) {
@@ -105,7 +107,7 @@
   /** Re-renders keeping what was typed, so `showWhen` fields follow select changes. */
   function rerender() {
     const { value: current, secrets } = collect();
-    value = { ...value, name: current.name, options: { ...value.options, ...current.options } };
+    value = { ...value, name: current.name, folderId: current.folderId, options: { ...value.options, ...current.options } };
     render();
     for (const [k, v] of Object.entries(secrets)) {
       const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${k}`));
@@ -122,7 +124,7 @@
         on: {
           change: (e) => {
             const name = /** @type {HTMLInputElement} */ (document.getElementById('f-name')).value;
-            value = { ...value, name, type: e.target.value, options: defaults(e.target.value) };
+            value = { ...value, name, type: e.target.value, options: defaults(e.target.value), folderId: collect().value.folderId };
             render();
           },
         },
@@ -140,6 +142,19 @@
         { on: { submit: (e) => (e.preventDefault(), send('save')) } },
         el('div', { class: 'row' }, el('label', { for: 'f-name' }, `${init.labels.name} *`), el('input', { id: 'f-name', value: value.name, required: true, autofocus: true })),
         el('div', { class: 'row' }, el('label', { for: 'f-type' }, init.labels.type), typeSelect),
+        init.folders.length
+          ? el(
+              'div',
+              { class: 'row' },
+              el('label', { for: 'f-folder' }, init.labels.folder),
+              el(
+                'select',
+                { id: 'f-folder' },
+                el('option', { value: '', selected: !value.folderId }, init.labels.noFolder),
+                ...init.folders.map((f) => el('option', { value: f.id, selected: f.id === value.folderId }, f.path)),
+              ),
+            )
+          : '',
         ...driver()
           .fields.filter((f) => visible(f, value.options))
           .flatMap(fieldRow),
@@ -160,7 +175,7 @@
     if (msg.type === 'init') {
       init = msg;
       const type = msg.value ? msg.value.type : msg.drivers[0].type;
-      value = msg.value ? { ...msg.value, isNew: false } : { name: '', type, options: defaults(type), isNew: true };
+      value = msg.value ? { ...msg.value, isNew: false } : { name: '', type, options: defaults(type), folderId: msg.folderId, isNew: true };
       render();
     } else if (msg.type === 'status') {
       setStatus(msg.message, msg.ok);

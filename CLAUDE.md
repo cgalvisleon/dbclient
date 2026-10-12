@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`dbclient` — a VS Code extension (TypeScript) that is a database client in the style of the "Database Client" extension (`cweijan.vscode-database-client2`), with the SQL editor modeled on NetBeans' SQL editor. Engines: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS — all in one connections tree, each with its own editor (`.sql` editor, `.redis` editor + value viewer, NATS console). The user tests it in Cursor (VS Code 1.128 base, Node 24); there is no VS Code or `code` CLI on this machine. Not a git repo yet; `package.json` already points at `github.com/cgalvisleon/dbclient`.
+`dbclient` — a VS Code extension (TypeScript) that is a database client in the style of the "Database Client" extension (`cweijan.vscode-database-client2`), with the SQL editor modeled on NetBeans' SQL editor. Engines: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS — all in one connections tree, each with its own editor (`.sql` editor, `.redis` editor + value viewer, NATS console). The user tests it in Cursor (VS Code 1.128 base, Node 24); there is no VS Code or `code` CLI on this machine. Not a git repo yet; `package.json` already points at `github.com/cgalvisleon/dbclient` (other repos of this user use `git@github.com:cgalvisleon/<repo>.git` as `origin`).
 
 ## Commands
 
@@ -25,7 +25,8 @@ Integration and smoke tests read `DBCLIENT_PG_*`, `DBCLIENT_MYSQL_*`, `DBCLIENT_
 - `src/drivers/` must never import `vscode`. `types.ts` defines `Driver` plus `SqlDriver` (`execute` returns one result per result set), `KvDriver` (`command`, `scan`) and `PubSubDriver`; a `DriverFactory` declares its form `fields` (`secret`, `showWhen`, `file` kinds), `category` (`sql`/`kv`/`pubsub`) and `dialect`. Adding an engine = new factory + one line in `registry.ts`.
 - Every SQL driver keeps metadata connections separate from one dedicated session per database/schema (so `SET`, `BEGIN`, temp tables persist), caps rows at `dbclient.maxRows` while streaming, and throws `StatementError` with `position` (1-based char) or `line` (1-based) inside the statement; `sqlRunner` maps either to a diagnostic. Engine quirks worth knowing: MySQL truncation sends `KILL QUERY` and waits for it before releasing the session; MSSQL must use `request.batch()` (not `query`) for session state; Oracle needs the trailing `;` re-added to PL/SQL blocks; SQLite uses `node:sqlite` (absent before Node 22.13).
 - `editor/statements.ts` splits per dialect (`GO` for mssql, `DELIMITER` and BEGIN…END bodies for mysql, `/` lines and PL/SQL blocks for oracle, triggers for sqlite, `$$` for postgres) and returns offsets into the document.
-- `src/store/connectionStore.ts` — user-level `connections.json` in `globalStorageUri`; secrets in SecretStorage as `dbclient.<id>.<field>`.
+- `src/store/connectionStore.ts` — user-level `connections.json` in `globalStorageUri` holding `connections` and nested `folders` (`parentId`; a connection's `folderId`); deleting a folder moves its content up a level, moves refuse cycles, items pointing at a missing folder show at the top level. Secrets in SecretStorage as `dbclient.<id>.<field>`.
+- The tree's `FolderItem` (contextValue `connectionFolder`) is a user folder — different from driver nodes of kind `folder` (Tables, Views…). `ConnectionsDragAndDrop` moves connections/folders; the form's Folder select must be kept when saving, or edits would drop the folder.
 - `src/connections/manager.ts` holds live drivers. `onDidChangeState` (connect/disconnect) refreshes the whole tree; `onDidChangeContent` (driver-side, e.g. NATS subscriptions, throttled) refreshes only that connection's subtree.
 - `editor/bindings.ts` maps a `.sql` or `.redis` document to `{connectionId, database}` (`EDITOR_CATEGORIES`: sql→sql, redis→kv). `dbclient.run`/`runFile` dispatch on the editor language; `dbclient.newQuery` opens a SQL or Redis editor, or the NATS console for pub/sub connections.
 - Webviews are plain JS/CSS in `media/` (no bundler) behind a nonce CSP (`webviews/html.ts`): connection form, results panel (bottom `WebviewView`, messages queued until `ready`), Redis value viewer (`redisValue.ts` turns edits into commands), NATS console (messages buffered per connection while connected).
@@ -33,6 +34,7 @@ Integration and smoke tests read `DBCLIENT_PG_*`, `DBCLIENT_MYSQL_*`, `DBCLIENT_
 
 ## Documentation workflow
 
+- `README.md` (English) is the user-facing doc and ships in the `.vsix`; `README.es.md` is its Spanish translation. Keep them in sync section by section: installation first, then short paragraphs, the features table and usage examples. When a feature lands or changes, update the features table and examples in both.
 - `feature.md` is the user's feature definition (Spanish). When complementing it, append plain bullets in the same style — don't restructure or reformat it.
 - `spec.md` holds the requirements (ID, weight in points, status 0 / 0.5 / 1), the gap formula `brecha = (total − avance) / total`, and a history table.
 - After every change to the project, update `spec.md`: requirement statuses, the per-block table, the current gap %, and a new history row. Mark a requirement 1 only when it is verified; partial or unverified pieces are 0.5 with the reason.
