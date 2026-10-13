@@ -120,3 +120,8 @@ button.secondary:hover {
   opacity: 0.7;
   font-size: 0.92em;
 }
+
+/* Show/Hide next to password inputs; fixed width so the input does not jump. */
+.reveal {
+  min-width: 70px;
+}

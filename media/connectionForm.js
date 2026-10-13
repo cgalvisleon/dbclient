@@ -34,7 +34,9 @@
   /** Whether a field applies given the current form values (`showWhen`). */
   function visible(f, options) {
     if (!f.showWhen) return true;
-    return f.showWhen.values.includes(options[f.showWhen.field]);
+    const on = driver().fields.find((x) => x.key === f.showWhen.field);
+    const current = options[f.showWhen.field] !== undefined ? options[f.showWhen.field] : on && on.default;
+    return f.showWhen.values.includes(current);
   }
 
   function readInput(f) {
@@ -90,6 +92,27 @@
     status.className = ok === undefined ? 'status' : ok ? 'status ok' : 'status error';
   }
 
+  /** Password input plus a Show/Hide button. A saved secret is never sent here, so only typed text shows. */
+  function revealable(input) {
+    const button = el('button', {
+      type: 'button',
+      class: 'secondary reveal',
+      title: t('Show password'),
+      'aria-pressed': 'false',
+      on: {
+        click: () => {
+          const show = input.type === 'password';
+          input.type = show ? 'text' : 'password';
+          button.textContent = show ? t('Hide') : t('Show');
+          button.title = show ? t('Hide password') : t('Show password');
+          button.setAttribute('aria-pressed', String(show));
+          input.focus();
+        },
+      },
+    }, t('Show'));
+    return el('div', { class: 'file' }, input, button);
+  }
+
   function fieldRow(f) {
     const id = `f-${f.key}`;
     const current = value.options[f.key];
@@ -119,6 +142,7 @@
         required: f.required && !f.secret,
         autocomplete: 'off',
       });
+      if (f.kind === 'password') input = revealable(input);
     }
     const row = el('div', { class: 'row' }, el('label', { for: id }, t(f.label) + (f.required && !f.secret ? ' *' : '')), input);
     return f.hint ? [row, el('div', { class: 'hint' }, t(f.hint))] : [row];
@@ -250,6 +274,12 @@
       render();
     } else if (msg.type === 'status') {
       setStatus(msg.message, msg.ok);
+    } else if (msg.type === 'fields') {
+      // Values normalized by the driver (e.g. credentials moved out of a JDBC URL).
+      for (const [key, v] of Object.entries(msg.values)) {
+        const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${key}`));
+        if (input) input.value = String(v);
+      }
     } else if (msg.type === 'browsed') {
       const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${msg.field}`));
       if (input && msg.append) {

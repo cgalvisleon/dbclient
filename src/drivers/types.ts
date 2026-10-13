@@ -250,6 +250,8 @@ export interface DriverFactory {
   readonly dialect?: string;
   readonly fields: FieldSpec[];
   create(config: ConnectionConfig, secrets: ConnectionSecrets): Driver;
+  /** Normalizes form values before they are tested or saved (may move values into `secrets`); throws on invalid input. */
+  prepare?(options: ConnectionConfig['options'], secrets: ConnectionSecrets): void;
 }
 
 export function isSqlDriver(driver: Driver): driver is SqlDriver {

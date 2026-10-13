@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import * as fs from 'fs';
 import * as net from 'net';
 import { Client, ConnectConfig } from 'ssh2';
+import { formatJdbcUrl, parseJdbcUrl, usesJdbcUrl, withAddress } from './oracleUrl';
 import { expandHome } from './tls';
 import { ConnectionConfig, ConnectionSecrets, Driver, DriverFactory, FieldSpec } from './types';
 
@@ -45,6 +46,13 @@ export function tunnelTarget(config: ConnectionConfig, fields: FieldSpec[]): { h
     const m = /^(?:\w+:\/\/)?(?:[^@/]*@)?(\[[^\]]+\]|[^:/]+)(?::(\d+))?/.exec(first);
     return { host: m?.[1]?.replace(/^\[|\]$/g, '') || 'localhost', port: Number(m?.[2] || 4222) };
   }
+  if (config.type === 'oracle' && usesJdbcUrl(o)) {
+    const url = parseJdbcUrl(String(o.jdbcUrl ?? ''));
+    if (!url.host) {
+      throw new Error('An SSH tunnel needs the host in the JDBC URL; a TNS alias cannot go through it.');
+    }
+    return { host: url.host, port: url.port ?? 1521 };
+  }
   const defaultOf = (key: string) => fields.find((f) => f.key === key)?.default;
   return { host: String(o.host || defaultOf('host') || 'localhost'), port: Number(o.port || defaultOf('port')) };
 }
@@ -57,6 +65,8 @@ export function throughTunnel(config: ConnectionConfig, localPort: number, targe
     const scheme = /^(\w+:\/\/)/.exec(first)?.[1] ?? 'nats://';
     const user = /^(?:\w+:\/\/)?([^@/]*@)/.exec(first)?.[1] ?? '';
     options.servers = `${scheme}${user}127.0.0.1:${localPort}`;
+  } else if (config.type === 'oracle' && usesJdbcUrl(config.options)) {
+    options.jdbcUrl = formatJdbcUrl(withAddress(parseJdbcUrl(String(config.options.jdbcUrl ?? '')), '127.0.0.1', localPort));
   } else {
     options.host = '127.0.0.1';
     options.port = localPort;

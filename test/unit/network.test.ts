@@ -101,5 +101,18 @@ describe('connection form sections', () => {
     const order = ids();
     expect(order.indexOf('password')).toBeLessThan(order.indexOf('ssl'));
     expect(order.indexOf('sslPassphrase')).toBeLessThan(order.indexOf('ssh'));
+
+    // Every password input has a Show/Hide toggle.
+    const password = doc.getElementById('f-password') as HTMLInputElement;
+    expect(doc.querySelectorAll('button.reveal')).toHaveLength(doc.querySelectorAll('input[type="password"]').length);
+    password.value = 'typed';
+    const toggle = password.parentElement!.querySelector('button.reveal') as HTMLButtonElement;
+    toggle.click();
+    expect(password.type).toBe('text');
+    expect(toggle.textContent).toBe('Hide');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    toggle.click();
+    expect(password.type).toBe('password');
+    expect(password.value).toBe('typed');
   });
 });

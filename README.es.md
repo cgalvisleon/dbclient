@@ -12,7 +12,7 @@ Descarga `dbclient-<versión>.vsix` (o genéralo con `npm install && npm run pac
 
 Un cliente de bases de datos dentro del editor. Las conexiones a PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis y NATS están en un solo árbol, y cada tipo abre su propio editor: un editor SQL inspirado en el de NetBeans, un editor de comandos Redis con visor de valores y una consola NATS.
 
-Las conexiones se guardan una sola vez por usuario y se comparten entre todas las ventanas y espacios de trabajo. Las contraseñas y los tokens van al almacenamiento seguro del editor, nunca al archivo de configuración.
+Las conexiones se guardan una sola vez por usuario y se comparten entre todas las ventanas y espacios de trabajo. Las contraseñas y los tokens van al almacenamiento seguro del editor, nunca al archivo de configuración. El botón **Show** (**Ver**) junto a cada campo de contraseña muestra lo que escribes.
 
 ## Funcionalidades
 
@@ -39,6 +39,7 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Explorador Redis | Bases con su número de llaves → llaves agrupadas por separador (`:`) con su tipo, usando `SCAN`. |
 | Editor Redis | Archivos `.redis`, un comando por línea; autocompletado de comandos, opciones y llaves existentes; pide confirmación antes de `FLUSHDB`/`FLUSHALL`. |
 | Valores Redis | Visor/editor de string, hash, list, set, sorted set y stream; TTL, renombrar y eliminar. |
+| URL JDBC de Oracle | Las conexiones Oracle pueden usar **Connect by → JDBC URL** en vez de host y servicio: `jdbc:oracle:thin:@//host:1521/servicio`, `@host:1521:SID`, `tcps://…`, `(DESCRIPTION=…)` o un alias de tnsnames.ora con `?TNS_ADMIN=<carpeta>`. Si la URL trae usuario y contraseña, pasan a sus campos, así la contraseña nunca se guarda en texto plano. Funciona con SSL y con el túnel SSH. |
 | NATS | Conexión sin autenticación o con usuario/clave, token, seed NKey o archivo `.creds`. Publicar con headers, request/reply, suscribirse con comodines `*`/`>` y grupos de cola, lista de mensajes en vivo; streams y consumers de JetStream en el árbol. |
 
 ## Uso

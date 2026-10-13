@@ -23,3 +23,5 @@
 - las bases de datos tipo sql tienen una carpeta sql por conexión donde se guardan archivos .sql persistentes; al abrir uno queda vinculado a su conexión, y se pueden crear, renombrar, eliminar y guardar ahí la consulta actual
 - los resultados de las consultas sql se pueden exportar a excel (.xlsx), con los números y las fechas como valores de excel
 - cada conexión sql puede vincular carpetas existentes que tienen archivos .sql (por ejemplo la carpeta sql de un repositorio), mostrarlas con sus subcarpetas en el árbol y ejecutar sus archivos, y definir dónde se guardan los archivos sql nuevos; las rutas aceptan ~ y ${workspaceFolder}, y desvincular una carpeta nunca borra sus archivos
+- en el formulario de conexión, los campos de contraseña tienen un botón para ver u ocultar lo que se escribe
+- la conexión de oracle se puede configurar con una url jdbc (servicio, sid, tcps, descriptor o alias de tnsnames) en vez de host y servicio

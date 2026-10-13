@@ -63,12 +63,26 @@ export async function openConnectionForm(
     return merged;
   };
 
-  const validate = (value: FormValue): string | undefined => {
+  /** Lets the driver normalize the values (shown back in the form), then checks required fields. */
+  const validate = (value: FormValue, secrets: ConnectionSecrets): string | undefined => {
     if (!value.name.trim()) {
       return vscode.l10n.t('Name is required.');
     }
-    const applies = (f: FieldSpec) => !f.showWhen || f.showWhen.values.includes(value.options[f.showWhen.field] as string | boolean);
-    const missing = getDriver(value.type).fields.filter((f) => f.required && !f.secret && applies(f) && (value.options[f.key] ?? '') === '');
+    const fields = getDriver(value.type).fields;
+    try {
+      const before = { ...value.options };
+      getDriver(value.type).prepare?.(value.options, secrets);
+      const changed = Object.fromEntries(Object.entries(value.options).filter(([k, v]) => v !== before[k]));
+      const moved = Object.fromEntries(fields.filter((f) => f.secret && secrets[f.key]).map((f) => [f.key, secrets[f.key]]));
+      if (Object.keys(changed).length) {
+        post({ type: 'fields', values: { ...changed, ...moved } });
+      }
+    } catch (err) {
+      return (err as Error).message;
+    }
+    const current = (key: string) => value.options[key] ?? fields.find((f) => f.key === key)?.default;
+    const applies = (f: FieldSpec) => !f.showWhen || f.showWhen.values.includes(current(f.showWhen.field) as string | boolean);
+    const missing = fields.filter((f) => f.required && !f.secret && applies(f) && (value.options[f.key] ?? '') === '');
     return missing.length ? vscode.l10n.t('Required: {0}', missing.map((f) => vscode.l10n.t(f.label)).join(', ')) : undefined;
   };
 
@@ -130,7 +144,7 @@ export async function openConnectionForm(
         return;
       }
       case 'test': {
-        const error = validate(message.value);
+        const error = validate(message.value, message.secrets);
         if (error) {
           post({ type: 'status', ok: false, message: error });
           return;
@@ -144,7 +158,7 @@ export async function openConnectionForm(
         return;
       }
       case 'save': {
-        const error = validate(message.value);
+        const error = validate(message.value, message.secrets);
         if (error) {
           post({ type: 'status', ok: false, message: error });
           return;

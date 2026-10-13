@@ -55,7 +55,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 115 (los pe
 | ID | Requisito | Peso | Estado |
 |---|---|---|---|
 | C1 | Panel en la barra de actividad con árbol de conexiones (SQL: BD/esquema > tablas, vistas, funciones, procedimientos, índices; Redis: db > llaves por prefijo; NATS: streams/subjects y suscripciones) | 6 | 1 |
-| C2 | Formulario de conexión: crear, editar, duplicar, eliminar, probar, conectar y desconectar | 6 | 1 |
+| C2 | Formulario de conexión: crear, editar, duplicar, eliminar, probar, conectar y desconectar; botón **Ver/Ocultar** en los campos de contraseña | 6 | 1 |
 | C3 | Persistencia centralizada a nivel usuario (`globalStorage`) con secretos en `SecretStorage` | 6 | 1 |
 | C4 | Carpetas para agrupar conexiones | 2 | 1 |
 | C5 | Exportar e importar la configuración (sin secretos): todo o una carpeta; importar fusionando (conserva lo existente, omite lo idéntico, copia renombrada si hay conflicto) o reemplazando (con confirmación); los ids se conservan para que una copia restaurada recupere sus claves y archivos SQL | 2 | 1 |
@@ -69,7 +69,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 115 (los pe
 | D2 | SQLite | 3 | 1 |
 | D3 | MySQL | 3 | 1 |
 | D4 | MSSQL | 3 | 1 |
-| D5 | Oracle | 3 | 1 |
+| D5 | Oracle (por host y servicio o por URL JDBC: servicio, SID, `tcps://`, descriptor o alias de tnsnames.ora) | 3 | 1 |
 
 ### S — Editor SQL (41)
 
@@ -139,6 +139,8 @@ brecha  = (total − avance) / total × 100 %
 - `npm run test:integration` (archivos en serie: en paralelo, con todos los entornos de prueba arriba, Oracle y SQL Server superan los tiempos de espera en esta máquina): 149 pruebas, 2 omitidas; `npm run test:smoke` completo con los 7 motores, SSL y SSH; `npm run package` genera `dbclient-0.9.0.vsix` sin módulos nativos.
 - SSL/TLS (C6): `scripts/tls-fixture.sh` crea una CA y certificados de servidor y cliente y levanta PostgreSQL, MySQL, Redis y NATS con TLS y un proxy TLS (`socat`) delante del Oracle local. 6 pruebas de integración: PostgreSQL (sin SSL rechazado, `require`, `verify-full` con CA, CA desconocida rechazada, archivo inexistente, usuario con certificado de cliente, clave cifrada con frase correcta e incorrecta), MySQL (transporte seguro y `REQUIRE X509`), Redis y NATS (certificado de cliente obligatorio), Oracle TCPS en modo *thin* contra el proxy (el Oracle en sí no se configuró con TCPS) y SQL Server cifrado con y sin verificar su certificado autofirmado. Prueba de humo: PostgreSQL `verify-full` con certificado de cliente desde el store y el árbol.
 - Túnel SSH (C6): `scripts/ssh-fixture.sh` levanta un `sshd` temporal. 4 pruebas de integración: PostgreSQL con contraseña, Redis con clave, NATS con clave cifrada, MySQL con huella del host; rechazos por contraseña, frase o huella incorrectas y archivo inexistente; el puerto local se cierra con el túnel. Prueba de humo: PostgreSQL y Redis por túnel y TLS dentro del túnel, con `ssh2` empaquetado (sin sus módulos nativos opcionales). 6 pruebas unitarias (destino y reescritura del túnel, opciones TLS, campos en todos los motores de red, secciones del formulario en jsdom). Corregido: un campo recién visible del formulario perdía su valor por defecto (el puerto SSH aparecía vacío).
+- URL JDBC de Oracle (D5, v0.9.2): `src/drivers/oracleUrl.ts` traduce la URL a Easy Connect o a un descriptor (`SID`), respeta `tcps://` y `TNS_ADMIN`, y la reescribe para el túnel SSH; el formulario mueve usuario y contraseña de la URL a sus campos antes de probar o guardar (`DriverFactory.prepare`). 10 pruebas unitarias (formatos, SID, TLS, descriptor, alias, credenciales, ida y vuelta, túnel, formulario en jsdom con una conexión guardada sin `connectBy`) y 5 de integración contra un Oracle Free temporal: servicio con y sin `//`, descriptor, SID (aceptado por el listener; uno inexistente se rechaza), credenciales en la URL y descriptor a través del túnel SSH de `scripts/ssh-fixture.sh`. Las pruebas de Oracle por host y servicio siguen pasando. Sin verificar: el alias con `TNS_ADMIN` contra un tnsnames.ora real y el formulario dentro de Cursor.
+- Ver contraseña (C2, v0.9.1): cada campo de contraseña del formulario (base, SSH, frases de clave, NKey…) tiene un botón **Show/Hide** (**Ver/Ocultar**) que alterna el tipo del campo; prueba unitaria en jsdom (un botón por campo, alterna y conserva lo escrito, `aria-pressed`). Una contraseña ya guardada no se envía al formulario, así que solo se ve lo que se escribe.
 - Idiomas (F3): 286 textos en `l10n/bundle.l10n.es.json` y 52 del manifiesto en `package.nls.es.json`; prueba unitaria que extrae todas las claves (`l10n.t` del código, `t()` de los webviews, campos de los drivers y palabras del árbol) y exige traducción completa, sin claves sobrantes y con los mismos marcadores `{n}`; prueba del inyector de traducciones de los webviews. Sin verificar: la interfaz en español dentro de VS Code/Cursor (el VS Code de pruebas siguió en inglés con `--locale es`, incluso con el paquete de idioma instalado).
 
 ### Verificación (v0.8.0)
@@ -201,3 +203,5 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-12 | SSL/TLS en PostgreSQL, MySQL, SQL Server, Oracle (TCPS), Redis y NATS (C6 en 0,5) | 3,5 % |
 | 2026-10-12 | Túnel SSH para todos los motores de red (C6 completo) | 1,7 % |
 | 2026-10-12 | Interfaz en español: código, manifiesto, webviews y formularios traducidos y verificados por pruebas; falta verla en el editor (F3 en 0,5) | 0,9 % |
+| 2026-10-13 | Botón para ver u ocultar la contraseña en el formulario de conexión (C2, sin cambio de puntaje) | 0,9 % |
+| 2026-10-13 | Conexión Oracle por URL JDBC (D5, sin cambio de puntaje) | 0,9 % |

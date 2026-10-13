@@ -78,7 +78,7 @@ export class DocumentBindings implements vscode.Disposable {
       .filter((c) => this.manager.factoryOf(c).category === category && (tie.length < 2 || tie.includes(c.id)))
       .map((c) => ({
         label: c.name,
-        description: [this.manager.factoryOf(c).label, c.options.database ?? c.options.host].filter(Boolean).join(' · '),
+        description: [this.manager.factoryOf(c).label, c.options.database ?? c.options.host ?? c.options.jdbcUrl].filter(Boolean).join(' · '),
         detail: c.id === current?.connectionId ? vscode.l10n.t('current') : undefined,
         id: c.id,
       }));

@@ -12,7 +12,7 @@ Download `dbclient-<version>.vsix` (or build it with `npm install && npm run pac
 
 A database client inside the editor. PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS connections live in one tree, and each kind opens its own editor: a SQL editor modeled on NetBeans, a Redis command editor with a value viewer, and a NATS console.
 
-Connections are stored once per user, shared by every window and workspace. Passwords and tokens go to the editor's secret storage, never to the settings file.
+Connections are stored once per user, shared by every window and workspace. Passwords and tokens go to the editor's secret storage, never to the settings file. A **Show** button next to each password field reveals what you type.
 
 ## Features
 
@@ -39,6 +39,7 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | Redis explorer | Databases with key counts → keys grouped by separator (`:`) with their type, using `SCAN`. |
 | Redis editor | `.redis` files, one command per line; completion of commands, options and existing keys; asks before `FLUSHDB`/`FLUSHALL`. |
 | Redis values | Viewer/editor for string, hash, list, set, sorted set and stream; TTL, rename and delete. |
+| Oracle JDBC URL | Oracle connections can use **Connect by → JDBC URL** instead of host and service: `jdbc:oracle:thin:@//host:1521/service`, `@host:1521:SID`, `tcps://…`, `(DESCRIPTION=…)` or a tnsnames.ora alias with `?TNS_ADMIN=<folder>`. A user and password inside the URL move to their fields, so the password is never saved in plain text. Works with SSL and the SSH tunnel. |
 | NATS | Connect without auth or with user/password, token, NKey seed or a `.creds` file. Publish with headers, request/reply, subscribe with `*`/`>` wildcards and queue groups, live message list; JetStream streams and consumers in the tree. |
 
 ## Usage

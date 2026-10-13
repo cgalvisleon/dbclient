@@ -56,7 +56,7 @@ export class ConnectionItem extends vscode.TreeItem {
     super(config.name, vscode.TreeItemCollapsibleState.Collapsed);
     this.id = `conn:${connectionId}`;
     const o = config.options;
-    const target = o.file ? path.basename(String(o.file)) : o.servers ? String(o.servers) : o.host ? `${o.host}${o.port ? `:${o.port}` : ''}` : '';
+    const target = o.file ? path.basename(String(o.file)) : o.servers ? String(o.servers) : o.jdbcUrl ? String(o.jdbcUrl).replace(/^jdbc:oracle:\w+:@?/i, '') : o.host ? `${o.host}${o.port ? `:${o.port}` : ''}` : '';
     this.description = [factory.label, target].filter(Boolean).join(' · ');
     this.tooltip = `${config.name}\n${factory.label} · ${o.file ?? o.servers ?? `${target}${o.database ? `/${o.database}` : ''}`}`;
     this.iconPath = icon(CONNECTION_IMAGES[factory.category][connected ? 1 : 0]);

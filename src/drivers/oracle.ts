@@ -1,6 +1,8 @@
+import * as os from 'os';
 import oracledb from 'oracledb';
 import { bindTemporal, checkCount } from './params';
 import { sslFields, tlsOptions } from './tls';
+import { ORACLE_BY_URL, connectString, formatJdbcUrl, parseJdbcUrl, usesJdbcUrl } from './oracleUrl';
 import { sshFields } from './sshTunnel';
 import {
   Catalog,
@@ -60,15 +62,21 @@ export class OracleDriver implements SqlDriver {
     private readonly secrets: ConnectionSecrets,
   ) {}
 
-  private get connectString(): string {
-    const o = this.config.options;
-    const address = `${o.host || 'localhost'}:${o.port || 1521}/${o.service || 'FREEPDB1'}`;
-    return tlsOptions(o, this.secrets) ? `tcps://${address}` : address;
-  }
-
   private get credentials(): oracledb.ConnectionAttributes {
     const o = this.config.options;
-    const credentials: oracledb.ConnectionAttributes = { user: String(o.user || ''), password: this.secrets.password, connectString: this.connectString };
+    const credentials: oracledb.ConnectionAttributes = { user: String(o.user || ''), password: this.secrets.password };
+    if (usesJdbcUrl(o)) {
+      const url = parseJdbcUrl(String(o.jdbcUrl ?? ''));
+      credentials.connectString = connectString(url, Boolean(tlsOptions(o, this.secrets)));
+      if (url.configDir) {
+        credentials.configDir = url.configDir.replace(/^~(?=$|\/)/, os.homedir());
+      }
+      credentials.user ||= url.user ?? '';
+      credentials.password ??= url.password;
+    } else {
+      const address = `${o.host || 'localhost'}:${o.port || 1521}/${o.service || 'FREEPDB1'}`;
+      credentials.connectString = tlsOptions(o, this.secrets) ? `tcps://${address}` : address;
+    }
     const tls = tlsOptions(o, this.secrets);
     if (tls) {
       // Thin mode reads one PEM "wallet" as certificate, key and CA at once, so a CA file only
@@ -411,15 +419,27 @@ function toStatementError(err: unknown): StatementError {
   return new StatementError(e.message ?? String(err), e.offset ? e.offset + 1 : undefined, e.code ?? (e.errorNum ? `ORA-${e.errorNum}` : undefined));
 }
 
+const BY_HOST = 'host and service';
+
 export const oracleFactory: DriverFactory = {
   type: 'oracle',
   label: 'Oracle',
   category: 'sql',
   dialect: 'oracle',
   fields: [
-    { key: 'host', label: 'Host', kind: 'text', required: true, default: 'localhost' },
-    { key: 'port', label: 'Port', kind: 'number', required: true, default: 1521 },
-    { key: 'service', label: 'Service name', kind: 'text', required: true, default: 'FREEPDB1' },
+    { key: 'connectBy', label: 'Connect by', kind: 'select', default: BY_HOST, choices: [BY_HOST, ORACLE_BY_URL] },
+    { key: 'host', label: 'Host', kind: 'text', required: true, default: 'localhost', showWhen: { field: 'connectBy', values: [BY_HOST] } },
+    { key: 'port', label: 'Port', kind: 'number', required: true, default: 1521, showWhen: { field: 'connectBy', values: [BY_HOST] } },
+    { key: 'service', label: 'Service name', kind: 'text', required: true, default: 'FREEPDB1', showWhen: { field: 'connectBy', values: [BY_HOST] } },
+    {
+      key: 'jdbcUrl',
+      label: 'JDBC URL',
+      kind: 'text',
+      required: true,
+      placeholder: 'jdbc:oracle:thin:@//host:1521/service',
+      showWhen: { field: 'connectBy', values: [ORACLE_BY_URL] },
+      hint: 'Also host:port:SID, tcps://…, (DESCRIPTION=…) or a tnsnames.ora alias with ?TNS_ADMIN=<folder>. A user and password in the URL move to their fields.',
+    },
     { key: 'user', label: 'User', kind: 'text', required: true },
     { key: 'password', label: 'Password', kind: 'password', secret: true },
     { key: 'autoCommit', label: 'Auto-commit', kind: 'checkbox', default: true },
@@ -427,4 +447,18 @@ export const oracleFactory: DriverFactory = {
     ...sshFields(),
   ],
   create: (config, secrets) => new OracleDriver(config, secrets),
+  prepare: (options, secrets) => {
+    if (!usesJdbcUrl(options) || !options.jdbcUrl) {
+      return;
+    }
+    // Credentials never stay in the URL (it is saved as plain text and exported): move them to their fields.
+    const url = parseJdbcUrl(String(options.jdbcUrl));
+    if (url.user || url.password) {
+      options.user = url.user ?? options.user;
+      if (url.password) {
+        secrets.password = url.password;
+      }
+      options.jdbcUrl = formatJdbcUrl({ ...url, user: undefined, password: undefined });
+    }
+  },
 };
