@@ -86,6 +86,35 @@ button.secondary:hover {
   gap: 6px;
 }
 
+.section {
+  margin: 22px 0 10px;
+  font-size: 1em;
+}
+
+.row.top {
+  align-items: start;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.stack textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  resize: vertical;
+}
+
 .hint {
   margin: -4px 0 10px 152px;
   opacity: 0.7;

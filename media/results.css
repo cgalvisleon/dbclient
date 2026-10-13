@@ -243,3 +243,82 @@ tr.selected td {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* grid editing */
+.sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 6px;
+  background: var(--vscode-panel-border);
+}
+
+button.primary {
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.readonly {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 0.85em;
+  opacity: 0.7;
+  border: 1px solid var(--vscode-panel-border);
+  cursor: help;
+}
+
+.edit-error {
+  margin-left: 8px;
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vscode-errorForeground);
+}
+
+td.editable {
+  cursor: text;
+}
+
+td.focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+td.dirty {
+  background: var(--vscode-diffEditor-insertedTextBackground, rgba(155, 185, 85, 0.2));
+}
+
+td.default {
+  opacity: 0.45;
+}
+
+tr.inserted td.rownum {
+  color: var(--vscode-gitDecoration-addedResourceForeground, #81b88b);
+  opacity: 1;
+}
+
+tr.deleted td:not(.rownum) {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+td.editing {
+  padding: 0;
+}
+
+.cell-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 80px;
+  padding: 1px 6px;
+  border: 1px solid var(--vscode-focusBorder);
+  outline: none;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  font: inherit;
+}

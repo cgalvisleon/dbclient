@@ -16,6 +16,44 @@ interface StoreFile {
   folders?: ConnectionFolder[];
 }
 
+/** File written by Export Connections…: configuration only, never secrets. */
+export interface ExportFile {
+  format: 'dbclient-connections';
+  version: 1;
+  exportedAt: string;
+  folders: ConnectionFolder[];
+  connections: ConnectionConfig[];
+}
+
+export type ImportMode = 'merge' | 'replace';
+
+export interface ImportResult {
+  added: string[];
+  /** Imported under a new id and name because a different connection already used them. */
+  renamed: string[];
+  /** Already present with the same configuration. */
+  skipped: string[];
+  /** Replace mode: local connections that were not in the file (secrets deleted). */
+  removed: string[];
+  /** Entries ignored: unknown engine or malformed. */
+  invalid: string[];
+}
+
+/** Reads an export file, or a raw connections.json; throws on anything else. */
+export function parseExport(text: string): { folders: ConnectionFolder[]; connections: ConnectionConfig[] } {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`Not a JSON file: ${(err as Error).message}`);
+  }
+  const d = data as Partial<ExportFile> | null;
+  if (!d || typeof d !== 'object' || !Array.isArray(d.connections) || (d.format !== undefined && d.format !== 'dbclient-connections')) {
+    throw new Error('Not a DB Client connections file.');
+  }
+  return { folders: Array.isArray(d.folders) ? d.folders : [], connections: d.connections };
+}
+
 /** Secret updates: a string sets the value, `null` deletes it, missing/undefined keeps it. */
 export type SecretUpdate = Record<string, string | null | undefined>;
 
@@ -142,6 +180,23 @@ export class ConnectionStore {
     return this.save({ ...source, id: undefined, name, options: { ...source.options } }, secrets);
   }
 
+  /** Changes some fields of a connection (secrets untouched); `undefined` values remove the field. */
+  patch(id: string, changes: Partial<Omit<ConnectionConfig, 'id'>>): ConnectionConfig {
+    const connection = this.get(id);
+    if (!connection) {
+      throw new Error(`Connection ${id} not found`);
+    }
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === undefined) {
+        delete (connection as unknown as Record<string, unknown>)[key];
+      } else {
+        (connection as unknown as Record<string, unknown>)[key] = value;
+      }
+    }
+    this.commit();
+    return connection;
+  }
+
   // ---------- folders ----------
 
   listFolders(): ConnectionFolder[] {
@@ -243,14 +298,171 @@ export class ConnectionStore {
     this.emit();
   }
 
-  async delete(id: string, fields: FieldSpec[]): Promise<void> {
+  // ---------- export / import ----------
+
+  /**
+   * Connections and folders to export: everything, or one folder with its subfolders (that
+   * folder becomes top level). Secret option keys are dropped even if an old entry has them.
+   */
+  exportData(secretKeysOf: (type: string) => string[], folderId?: string): ExportFile {
+    let folders = this.folders;
+    let connections = this.connections;
+    if (folderId) {
+      const ids = new Set([this.requireFolder(folderId).id]);
+      for (let grew = true; grew; ) {
+        grew = false;
+        for (const f of this.folders) {
+          if (f.parentId && ids.has(f.parentId) && !ids.has(f.id)) {
+            ids.add(f.id);
+            grew = true;
+          }
+        }
+      }
+      folders = this.folders.filter((f) => ids.has(f.id)).map((f) => (f.id === folderId ? { ...f, parentId: undefined } : f));
+      connections = this.connections.filter((c) => c.folderId && ids.has(c.folderId));
+    }
+    return {
+      format: 'dbclient-connections',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      folders: folders.map((f) => ({ ...f })),
+      connections: connections.map((c) => {
+        const secret = new Set(secretKeysOf(c.type));
+        return { ...c, options: Object.fromEntries(Object.entries(c.options).filter(([k]) => !secret.has(k))) };
+      }),
+    };
+  }
+
+  /**
+   * Imports an export. Ids are kept when free, so a backup restored on the same machine finds
+   * its saved passwords and SQL files again. Merge never loses anything: identical connections
+   * are skipped and a different one with the same id or name is added as a renamed copy.
+   * Replace also removes local connections missing from the file (and their secrets).
+   */
+  async importData(
+    data: { folders: ConnectionFolder[]; connections: ConnectionConfig[] },
+    mode: ImportMode,
+    fieldsOf: (type: string) => FieldSpec[] | undefined,
+  ): Promise<ImportResult> {
+    const result: ImportResult = { added: [], renamed: [], skipped: [], removed: [], invalid: [] };
+    const valid = data.connections.filter((c) => {
+      const ok = c && typeof c.name === 'string' && typeof c.type === 'string' && fieldsOf(c.type) && c.options && typeof c.options === 'object';
+      if (!ok) {
+        result.invalid.push(String(c?.name ?? '?'));
+      }
+      return ok;
+    });
+
+    if (mode === 'replace') {
+      const keep = new Set(valid.map((c) => c.id).filter(Boolean));
+      for (const c of this.connections.filter((c) => !keep.has(c.id))) {
+        await this.deleteSecrets(c.id, fieldsOf(c.type) ?? []);
+        result.removed.push(c.id);
+      }
+      this.connections = this.connections.filter((c) => keep.has(c.id));
+      this.folders = [];
+    }
+
+    // Folders: reuse an existing one with the same name under the same parent, else create.
+    const folderIds = new Map<string, string>();
+    const pending = data.folders.filter((f) => f && typeof f.id === 'string' && typeof f.name === 'string' && f.name.trim());
+    for (let progress = true; pending.length && progress; ) {
+      progress = false;
+      for (const f of [...pending]) {
+        if (f.parentId && pending.some((p) => p.id === f.parentId)) {
+          continue; // parent first
+        }
+        const parentId = f.parentId ? folderIds.get(f.parentId) : undefined;
+        const existing = this.folders.find((x) => x.name === f.name && x.parentId === parentId);
+        const id = existing?.id ?? (this.getFolder(f.id) ? randomUUID() : f.id);
+        if (!existing) {
+          this.folders.push({ id, name: f.name.trim(), parentId });
+        }
+        folderIds.set(f.id, id);
+        pending.splice(pending.indexOf(f), 1);
+        progress = true;
+      }
+    }
+
+    // Same settings, whatever the id or folder.
+    const same = (a: ConnectionConfig, b: ConnectionConfig) =>
+      stableJson({ ...a, id: undefined, folderId: undefined }) === stableJson({ ...b, id: undefined, folderId: undefined });
+    for (const source of valid) {
+      const secret = new Set((fieldsOf(source.type) ?? []).filter((f) => f.secret).map((f) => f.key));
+      const incoming: ConnectionConfig = {
+        ...source,
+        id: source.id || randomUUID(),
+        options: Object.fromEntries(Object.entries(source.options).filter(([k]) => !secret.has(k))),
+        folderId: source.folderId ? folderIds.get(source.folderId) : undefined,
+      };
+      if (!incoming.folderId) {
+        delete incoming.folderId;
+      }
+      const byId = this.get(incoming.id);
+      if (byId && same(byId, incoming)) {
+        byId.folderId = incoming.folderId;
+        result.skipped.push(incoming.name);
+        continue;
+      }
+      if (mode === 'replace' && byId) {
+        // Same connection, new settings: update in place so its secrets still match.
+        Object.assign(byId, incoming);
+        result.added.push(incoming.name);
+        continue;
+      }
+      const sameName = this.connections.find((c) => c.name === incoming.name && (c.folderId ?? '') === (incoming.folderId ?? ''));
+      if (sameName && same(sameName, incoming)) {
+        result.skipped.push(incoming.name);
+        continue;
+      }
+      if (byId || sameName) {
+        if (byId) {
+          incoming.id = randomUUID();
+        }
+        if (sameName) {
+          const names = new Set(this.connections.map((c) => c.name));
+          let name = `${incoming.name} (imported)`;
+          for (let n = 2; names.has(name); n++) {
+            name = `${incoming.name} (imported ${n})`;
+          }
+          incoming.name = name;
+        }
+        result.renamed.push(incoming.name);
+      } else {
+        result.added.push(incoming.name);
+      }
+      this.connections.push(incoming);
+    }
+    this.commit();
+    return result;
+  }
+
+  private async deleteSecrets(id: string, fields: FieldSpec[]): Promise<void> {
     for (const field of fields.filter((f) => f.secret)) {
       await this.secrets.delete(secretKey(id, field.key));
     }
+  }
+
+  async delete(id: string, fields: FieldSpec[]): Promise<void> {
+    await this.deleteSecrets(id, fields);
     this.connections = this.connections.filter((c) => c.id !== id);
     this.persist();
     this.emit();
   }
+}
+
+/** JSON with sorted keys and without undefined values, for comparing configurations. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJson).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => a.localeCompare(b));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableJson(v)}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function secretKey(id: string, field: string): string {

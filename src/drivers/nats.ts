@@ -9,8 +9,11 @@ import {
   MsgHdrs,
   NatsConnection,
   nkeyAuthenticator,
+  nkeys,
   Subscription as NatsSubscription,
 } from 'nats';
+import { expandHome, sslFields, tlsOptions } from './tls';
+import { sshFields } from './sshTunnel';
 import { ConnectionConfig, ConnectionSecrets, DbNode, DriverFactory, PubSubDriver, PubSubMessage, Subscription } from './types';
 
 const decoder = new TextDecoder();
@@ -52,6 +55,29 @@ function toMessage(msg: Msg, subscription: number): PubSubMessage {
   };
 }
 
+/** Seeds are often pasted with a trailing newline; a bad one would only surface as a connect timeout. */
+function parseSeed(seed: string): Uint8Array {
+  const bytes = encoder.encode(seed.trim());
+  try {
+    nkeys.fromSeed(bytes);
+  } catch {
+    throw new Error('Invalid NKey seed: expected the user seed (starts with SU)');
+  }
+  return bytes;
+}
+
+function readCreds(file: string): Uint8Array {
+  const full = expandHome(file);
+  try {
+    return fs.readFileSync(full);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new Error(`Credentials file not found: ${full}`);
+    }
+    throw err;
+  }
+}
+
 interface Active extends Subscription {
   handle: NatsSubscription;
 }
@@ -76,6 +102,11 @@ export class NatsDriver implements PubSubDriver {
       .map((s) => s.trim())
       .filter(Boolean);
     const options: ConnectionOptions = { servers, name: 'dbclient', timeout: 10000, maxReconnectAttempts: 10 };
+    const host = /^(?:\w+:\/\/)?([^:/,\s]+)/.exec(servers[0] ?? '')?.[1];
+    const tls = tlsOptions(o, this.secrets, host);
+    if (tls) {
+      options.tls = tls as ConnectionOptions['tls'];
+    }
     let authenticator: Authenticator | undefined;
     switch (o.auth) {
       case 'user/password':
@@ -86,10 +117,10 @@ export class NatsDriver implements PubSubDriver {
         options.token = this.secrets.token;
         break;
       case 'nkey':
-        authenticator = nkeyAuthenticator(encoder.encode(this.secrets.seed ?? ''));
+        authenticator = nkeyAuthenticator(parseSeed(this.secrets.seed ?? ''));
         break;
       case 'credentials file':
-        authenticator = credsAuthenticator(fs.readFileSync(String(o.credsFile)));
+        authenticator = credsAuthenticator(readCreds(String(o.credsFile || '')));
         break;
     }
     if (authenticator) {
@@ -275,6 +306,8 @@ export const natsFactory: DriverFactory = {
     { key: 'token', label: 'Token', kind: 'password', secret: true, showWhen: { field: 'auth', values: ['token'] } },
     { key: 'seed', label: 'NKey seed', kind: 'password', secret: true, showWhen: { field: 'auth', values: ['nkey'] } },
     { key: 'credsFile', label: 'Credentials file', kind: 'file', required: true, showWhen: { field: 'auth', values: ['credentials file'] } },
+    ...sslFields(),
+    ...sshFields(),
   ],
   create: (config, secrets) => new NatsDriver(config, secrets),
 };

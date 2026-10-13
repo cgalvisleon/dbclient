@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
+import { QueryHistory, SECRET_REDIS_COMMANDS } from '../store/queryHistory';
 import { toCell } from '../webviews/cells';
 import { ResultsView } from '../webviews/resultsView';
 import { DocumentBindings } from './bindings';
@@ -15,6 +16,7 @@ export class RedisRunner implements vscode.Disposable {
     private readonly manager: ConnectionManager,
     private readonly bindings: DocumentBindings,
     private readonly results: ResultsView,
+    private readonly history: QueryHistory,
   ) {}
 
   private linesFor(editor: vscode.TextEditor, mode: 'auto' | 'file'): CommandLine[] {
@@ -76,9 +78,24 @@ export class RedisRunner implements vscode.Disposable {
         const pos = doc.positionAt(line.start);
         const location = { uri: doc.uri.toString(), line: pos.line, character: pos.character };
         const started = Date.now();
+        const record = (ok: boolean, extra: { rows?: number; error?: string }) => {
+          if (!SECRET_REDIS_COMMANDS.has(line.args[0]?.toUpperCase())) {
+            this.history.add({
+              time: new Date(started).toISOString(),
+              connectionId: binding.connectionId,
+              database: String(db),
+              language: 'redis',
+              text: line.text,
+              ok,
+              durationMs: Date.now() - started,
+              ...extra,
+            });
+          }
+        };
         try {
           const reply = await driver.command(db, line.args);
           const durationMs = Date.now() - started;
+          record(true, { rows: Array.isArray(reply) ? reply.length : undefined });
           const table = replyTable(line.args, reply);
           this.results.post({
             type: 'result',
@@ -97,6 +114,7 @@ export class RedisRunner implements vscode.Disposable {
           this.log(config.name, line.text, true, summary, location, durationMs);
         } catch (err) {
           failed = true;
+          record(false, { error: (err as Error).message });
           this.log(config.name, line.text, false, (err as Error).message, location);
           this.diagnostics.set(doc.uri, [
             new vscode.Diagnostic(new vscode.Range(pos, doc.positionAt(line.end)), (err as Error).message, vscode.DiagnosticSeverity.Error),

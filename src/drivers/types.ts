@@ -12,6 +12,10 @@ export interface ConnectionConfig {
   options: Record<string, string | number | boolean | undefined>;
   /** Folder that groups the connection in the tree; top level when missing. */
   folderId?: string;
+  /** Folders with .sql files linked to a SQL connection (absolute, `~/…` or `${workspaceFolder}/…`). */
+  sqlLocations?: { path: string; label?: string }[];
+  /** Where new .sql files are saved; the connection's internal folder when missing. */
+  sqlSaveLocation?: string;
 }
 
 /** A user-defined folder of connections; folders nest through `parentId`. */
@@ -38,6 +42,8 @@ export interface FieldSpec {
   /** Only shown (and used) while another field has one of these values. */
   showWhen?: { field: string; values: (string | boolean)[] };
   hint?: string;
+  /** Heading the field is grouped under in the form (e.g. "SSL / TLS"); fields without one come first. */
+  section?: string;
 }
 
 export type NodeKind =
@@ -125,8 +131,75 @@ export class StatementError extends Error {
   }
 }
 
+/** A table or view. `database` is the engine's database (or Oracle schema session); `schema` its owner/namespace. */
+export interface TableRef {
+  database?: string;
+  schema?: string;
+  name: string;
+}
+
+export interface CatalogTable {
+  schema?: string;
+  name: string;
+  kind: 'table' | 'view';
+}
+
+/** Tables and views of one database, for completion; unqualified names resolve in `defaultSchema`. */
+export interface Catalog {
+  defaultSchema?: string;
+  tables: CatalogTable[];
+}
+
+export interface ColumnInfo {
+  name: string;
+  /** Declared type as the engine shows it (`varchar(20)`, `NUMBER(10,2)`). */
+  type: string;
+  nullable: boolean;
+  primaryKey: boolean;
+  default?: string;
+}
+
+export interface IndexInfo {
+  name: string;
+  columns: string[];
+  unique: boolean;
+  primary: boolean;
+}
+
+export interface TableInfo {
+  ref: TableRef;
+  kind: 'table' | 'view';
+  columns: ColumnInfo[];
+  /** Primary key columns in key order; empty when there is none. */
+  primaryKey: string[];
+  indexes: IndexInfo[];
+}
+
+export type ParamValue = string | number | boolean | null;
+
+/** One parameterized statement; placeholders follow the dialect (`$1`, `?`, `@p1`, `:1`). */
+export interface ParamStatement {
+  sql: string;
+  params: ParamValue[];
+  /** Declared column type per parameter, so drivers can bind dates as dates. */
+  types?: (string | undefined)[];
+  /** Rows the statement must affect; anything else rolls the transaction back. */
+  expect?: number;
+}
+
 export interface SqlDriver extends Driver {
   readonly dialect: string;
+  /** Tables and views of `database` (the connection's default when omitted). */
+  catalog(database?: string): Promise<Catalog>;
+  /** Columns, primary key and indexes; undefined when the table or view does not exist. */
+  describe(ref: TableRef): Promise<TableInfo | undefined>;
+  /** CREATE statement(s) of a table (with its indexes) or view. */
+  ddl(ref: TableRef): Promise<string>;
+  /**
+   * Runs the statements in one transaction on a connection of its own (not the editor's
+   * session) and commits; any error or unexpected row count rolls everything back.
+   */
+  transaction(database: string | undefined, statements: ParamStatement[]): Promise<number[]>;
   /**
    * Executes one statement (or batch) on the session of `options.database`; session state
    * such as SET or BEGIN persists. Returns one result per result set or affected-rows count.

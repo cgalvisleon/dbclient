@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ConnectionStore, SecretStore } from '../../src/store/connectionStore';
+import { ConnectionStore, parseExport, SecretStore } from '../../src/store/connectionStore';
 import { postgresFactory } from '../../src/drivers/postgres';
 
 class MemorySecrets implements SecretStore {
@@ -130,6 +130,80 @@ describe('ConnectionStore', () => {
       store.moveConnection(c.id, f.id);
       const copy = await store.duplicate(c.id, fields);
       expect(copy.folderId).toBe(f.id);
+    });
+  });
+
+  describe('export and import', () => {
+    const fieldsOf = (type: string) => (type === 'postgres' ? fields : undefined);
+    const secretKeys = (type: string) => (fieldsOf(type) ?? []).filter((f) => f.secret).map((f) => f.key);
+
+    async function seed() {
+      const prod = store.createFolder('Prod');
+      const eu = store.createFolder('EU', prod.id);
+      const a = await store.save({ name: 'a', type: 'postgres', folderId: eu.id, options: { host: 'h1', password: 'leaked' } as never, sqlLocations: [{ path: '${workspaceFolder}/sql' }] }, { password: 's3cret' });
+      const b = await store.save({ name: 'b', type: 'postgres', options: { host: 'h2' } }, { password: 'pw' });
+      return { prod, eu, a, b };
+    }
+
+    it('exports configuration without secrets, all or one folder', async () => {
+      const { prod, eu, a } = await seed();
+      const all = store.exportData(secretKeys);
+      expect(all.format).toBe('dbclient-connections');
+      expect(all.connections.map((c) => c.name).sort()).toEqual(['a', 'b']);
+      expect(JSON.stringify(all)).not.toMatch(/s3cret|leaked|"password"/);
+      expect(all.connections.find((c) => c.id === a.id)?.sqlLocations).toEqual([{ path: '${workspaceFolder}/sql' }]);
+
+      const sub = store.exportData(secretKeys, prod.id);
+      expect(sub.folders.map((f) => [f.name, f.parentId])).toEqual([['Prod', undefined], ['EU', prod.id]]);
+      expect(sub.connections.map((c) => [c.name, c.folderId])).toEqual([['a', eu.id]]);
+      expect(() => store.exportData(secretKeys, 'nope')).toThrow(/not found/);
+    });
+
+    it('restores a backup on the same store keeping ids, so secrets still match', async () => {
+      const { a } = await seed();
+      const backup = parseExport(JSON.stringify(store.exportData(secretKeys)));
+      await store.delete(a.id, []); // connection gone, secret kept
+      const result = await store.importData(backup, 'merge', fieldsOf);
+      expect(result).toMatchObject({ added: ['a'], skipped: ['b'], renamed: [], removed: [], invalid: [] });
+      expect(store.get(a.id)?.folderId).toBeDefined();
+      expect(store.folderPath(store.get(a.id)!.folderId!)).toBe('Prod / EU');
+      expect(store.listFolders()).toHaveLength(2); // existing folders reused
+      expect((await store.getSecrets(a.id, fields)).password).toBe('s3cret');
+    });
+
+    it('merges into another store: renames conflicts, never overwrites, skips unknown engines', async () => {
+      await seed();
+      const exported = parseExport(JSON.stringify(store.exportData(secretKeys)));
+      const other = new ConnectionStore(path.join(path.dirname(file), 'other.json'), new MemorySecrets());
+      await other.save({ name: 'a', type: 'postgres', options: { host: 'different' } });
+      const local = await other.save({ id: exported.connections.find((c) => c.name === 'b')!.id, name: 'mine', type: 'postgres', options: { host: 'x' } });
+      exported.connections.push({ id: 'z', name: 'weird', type: 'cassandra', options: {} });
+      const result = await other.importData(exported, 'merge', fieldsOf);
+      expect(result.invalid).toEqual(['weird']);
+      expect(result.renamed.sort()).toEqual(['b']);
+      expect(result.added).toEqual(['a']); // 'a' sits in a folder there, so no name clash
+      expect(other.get(local.id)?.name).toBe('mine');
+      expect(other.list().map((c) => c.name).sort()).toEqual(['a', 'a', 'b', 'mine']);
+      // A same-named connection at the same level is renamed.
+      const again = await other.importData({ folders: [], connections: [{ id: 'n1', name: 'mine', type: 'postgres', options: { host: 'y' } }] }, 'merge', fieldsOf);
+      expect(again.renamed).toEqual(['mine (imported)']);
+    });
+
+    it('replace removes connections missing from the file and their secrets', async () => {
+      const { a, b } = await seed();
+      const file2 = parseExport(JSON.stringify({ format: 'dbclient-connections', version: 1, folders: [], connections: [{ ...store.get(b.id), options: { host: 'h2-new' } }] }));
+      const result = await store.importData(file2, 'replace', fieldsOf);
+      expect(result.removed).toEqual([a.id]);
+      expect(store.list().map((c) => [c.name, c.options.host])).toEqual([['b', 'h2-new']]);
+      expect(store.listFolders()).toEqual([]);
+      expect(secrets.values.has(`dbclient.${a.id}.password`)).toBe(false);
+      expect((await store.getSecrets(b.id, fields)).password).toBe('pw');
+    });
+
+    it('rejects files that are not exports', () => {
+      expect(() => parseExport('{')).toThrow(/Not a JSON file/);
+      expect(() => parseExport('{"format":"other","connections":[]}')).toThrow(/Not a DB Client/);
+      expect(parseExport('{"version":1,"connections":[]}')).toEqual({ folders: [], connections: [] });
     });
   });
 });

@@ -70,7 +70,7 @@
 
   function send(type) {
     if (!form.subject.trim()) {
-      error = 'Subject is required.';
+      error = t('Subject is required.');
       render();
       return;
     }
@@ -83,24 +83,24 @@
     return el(
       'section',
       { class: 'card' },
-      el('h3', {}, 'Publish'),
-      el('label', {}, 'Subject'),
+      el('h3', {}, t('Publish')),
+      el('label', {}, t('Subject')),
       el('input', { value: form.subject, placeholder: 'orders.created', on: bind('subject') }),
-      el('label', {}, 'Payload'),
+      el('label', {}, t('Payload')),
       el('textarea', { rows: '6', value: form.data, placeholder: '{"id": 1}', spellcheck: 'false', on: bind('data') }),
-      el('label', {}, 'Headers (one "Key: value" per line)'),
+      el('label', {}, t('Headers (one "Key: value" per line)')),
       el('textarea', { rows: '2', value: form.headers, placeholder: 'X-Trace: abc', spellcheck: 'false', on: bind('headers') }),
       el(
         'div',
         { class: 'row' },
-        el('input', { value: form.reply, placeholder: 'reply-to (optional)', on: bind('reply') }),
-        el('button', { class: 'primary', disabled: !connected, on: { click: () => send('publish') } }, 'Publish'),
+        el('input', { value: form.reply, placeholder: t('reply-to (optional)'), on: bind('reply') }),
+        el('button', { class: 'primary', disabled: !connected, on: { click: () => send('publish') } }, t('Publish')),
       ),
       el(
         'div',
         { class: 'row' },
-        el('input', { type: 'number', min: '1', value: String(form.timeout), title: 'Request timeout (ms)', on: bind('timeout') }),
-        el('button', { disabled: !connected, on: { click: () => send('request') } }, 'Request / reply'),
+        el('input', { type: 'number', min: '1', value: String(form.timeout), title: t('Request timeout (ms)'), on: bind('timeout') }),
+        el('button', { disabled: !connected, on: { click: () => send('request') } }, t('Request / reply')),
       ),
     );
   }
@@ -109,12 +109,12 @@
     return el(
       'section',
       { class: 'card' },
-      el('h3', {}, 'Subscribe'),
+      el('h3', {}, t('Subscribe')),
       el(
         'div',
         { class: 'row' },
-        el('input', { value: form.subSubject, placeholder: 'orders.* or orders.>', on: bind('subSubject') }),
-        el('input', { class: 'queue', value: form.queue, placeholder: 'queue group', on: bind('queue') }),
+        el('input', { value: form.subSubject, placeholder: t('orders.* or orders.>'), on: bind('subSubject') }),
+        el('input', { class: 'queue', value: form.queue, placeholder: t('queue group'), on: bind('queue') }),
         el(
           'button',
           {
@@ -122,7 +122,7 @@
             disabled: !connected,
             on: { click: () => form.subSubject.trim() && vscode.postMessage({ type: 'subscribe', subject: form.subSubject.trim(), queue: form.queue.trim() || undefined }) },
           },
-          'Subscribe',
+          t('Subscribe'),
         ),
       ),
       subscriptions.length
@@ -134,13 +134,13 @@
                 'li',
                 {},
                 el('code', {}, s.subject),
-                s.queue ? el('span', { class: 'muted' }, ` queue ${s.queue}`) : null,
-                el('span', { class: 'muted' }, ` · ${s.received} msgs`),
-                el('button', { class: 'link', on: { click: () => vscode.postMessage({ type: 'unsubscribe', id: s.id }) } }, 'Unsubscribe'),
+                s.queue ? el('span', { class: 'muted' }, ` ${t('queue {0}', s.queue)}`) : null,
+                el('span', { class: 'muted' }, ` · ${t('{0} msgs', s.received)}`),
+                el('button', { class: 'link', on: { click: () => vscode.postMessage({ type: 'unsubscribe', id: s.id }) } }, t('Unsubscribe')),
               ),
             ),
           )
-        : el('p', { class: 'muted' }, 'No active subscriptions. Wildcards: * matches one token, > the rest.'),
+        : el('p', { class: 'muted' }, t('No active subscriptions. Wildcards: * matches one token, > the rest.')),
     );
   }
 
@@ -155,10 +155,10 @@
       el(
         'div',
         { class: 'row' },
-        el('h3', {}, `Messages (${messages.length})`),
+        el('h3', {}, t('Messages ({0})', messages.length)),
         el('input', {
           class: 'filter',
-          placeholder: 'Filter subject or payload…',
+          placeholder: t('Filter subject or payload…'),
           value: filter,
           on: {
             input: (e) => {
@@ -170,8 +170,8 @@
             },
           },
         }),
-        el('button', { on: { click: () => ((paused = !paused), render()) } }, paused ? 'Resume' : 'Pause'),
-        el('button', { on: { click: () => ((messages = []), (selected = -1), vscode.postMessage({ type: 'clear' }), render()) } }, 'Clear'),
+        el('button', { on: { click: () => ((paused = !paused), render()) } }, paused ? t('Resume') : t('Pause')),
+        el('button', { on: { click: () => ((messages = []), (selected = -1), vscode.postMessage({ type: 'clear' }), render()) } }, t('Clear')),
       ),
       el(
         'div',
@@ -200,12 +200,12 @@
             ? el(
                 'div',
                 {},
-                el('div', { class: 'row' }, el('code', {}, current.subject), el('div', { class: 'spacer' }), el('button', { on: { click: () => vscode.postMessage({ type: 'copy', text: current.data }) } }, 'Copy payload'), el('button', { on: { click: () => ((form.subject = current.subject), (form.data = current.data), persist(), render()) } }, 'Use in publish')),
-                el('div', { class: 'muted' }, `${current.time}${current.reply ? ` · reply-to ${current.reply}` : ''}`),
+                el('div', { class: 'row' }, el('code', {}, current.subject), el('div', { class: 'spacer' }), el('button', { on: { click: () => vscode.postMessage({ type: 'copy', text: current.data }) } }, t('Copy payload')), el('button', { on: { click: () => ((form.subject = current.subject), (form.data = current.data), persist(), render()) } }, t('Use in publish'))),
+                el('div', { class: 'muted' }, `${current.time}${current.reply ? ` · ${t('reply-to {0}', current.reply)}` : ''}`),
                 current.headers ? el('pre', { class: 'headers' }, Object.entries(current.headers).map(([k, v]) => `${k}: ${v.join(', ')}`).join('\n')) : null,
                 el('pre', {}, pretty(current.data)),
               )
-            : el('p', { class: 'muted' }, 'Select a message to see its payload and headers.'),
+            : el('p', { class: 'muted' }, t('Select a message to see its payload and headers.')),
         ),
       ),
     );
@@ -213,7 +213,7 @@
 
   function render() {
     app.replaceChildren(
-      !connected ? el('div', { class: 'error' }, 'Disconnected. Reconnect from the Connections view.') : null,
+      !connected ? el('div', { class: 'error' }, t('Disconnected. Reconnect from the Connections view.')) : null,
       error ? el('div', { class: 'error' }, error) : null,
       el('div', { class: 'top' }, publishPanel(), subscribePanel()),
       messagesPanel(),

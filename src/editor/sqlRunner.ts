@@ -1,9 +1,12 @@
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
 import { StatementError } from '../drivers/types';
+import { CatalogCache } from '../connections/catalog';
+import { QueryHistory } from '../store/queryHistory';
 import { toCell } from '../webviews/cells';
 import { LogEntry, ResultsView } from '../webviews/resultsView';
 import { DocumentBindings } from './bindings';
+import { GridEditor } from './gridEditor';
 import { splitStatements, Statement, statementAt } from './statements';
 
 export type RunMode = 'auto' | 'file' | { offset: number };
@@ -22,7 +25,13 @@ export class SqlRunner implements vscode.Disposable {
     private readonly manager: ConnectionManager,
     private readonly bindings: DocumentBindings,
     private readonly results: ResultsView,
-  ) {}
+    private readonly history: QueryHistory,
+    private readonly catalog: CatalogCache,
+  ) {
+    this.grid = new GridEditor(manager, catalog, results);
+  }
+
+  private readonly grid: GridEditor;
 
   /** Statements to run: the selection, the one under the caret, the one at `offset`, or the whole file. */
   private statementsFor(editor: vscode.TextEditor, mode: RunMode, dialect: string | undefined): Statement[] {
@@ -102,16 +111,37 @@ export class SqlRunner implements vscode.Disposable {
               progress.report({ message: `${i + 1}/${statements.length}`, increment: 100 / statements.length });
             }
             const location = this.locate(doc, stmt.start);
+            const started = Date.now();
+            const record = (ok: boolean, extra: { rows?: number; error?: string }) =>
+              this.history.add({
+                time: new Date(started).toISOString(),
+                connectionId: binding.connectionId,
+                database: binding.database,
+                language: 'sql',
+                text: stmt.text,
+                ok,
+                durationMs: Date.now() - started,
+                ...extra,
+              });
             try {
               const results = await driver.execute(stmt.text, { database: binding.database, maxRows });
+              const counted = results.filter((r) => r.rowCount !== null && r.rowCount !== undefined);
+              record(true, { rows: counted.length ? counted.reduce((n, r) => n + (r.rowCount ?? 0), 0) : undefined });
+              if (/^\s*(create|alter|drop|rename|truncate|comment)\b/i.test(stmt.text)) {
+                // Tables or columns may have changed: completion and grid editing re-read them.
+                this.catalog.invalidate(binding.connectionId);
+              }
+              const sets = results.filter((r) => r.columns.length);
               for (const result of results) {
                 if (result.columns.length) {
+                  const editing = sets.length === 1 ? await this.grid.prepare(binding, driver.dialect, stmt.text, result) : {};
                   this.results.post({
                     type: 'result',
                     tab: {
                       ...result,
                       title: preview(stmt.text, 40),
                       rows: result.rows.map((r) => r.map(toCell)),
+                      ...editing,
                     },
                   });
                 }
@@ -119,6 +149,7 @@ export class SqlRunner implements vscode.Disposable {
               }
             } catch (err) {
               failed = true;
+              record(false, { error: (err as Error).message });
               const at = errorOffset(stmt, err);
               this.log(config.name, stmt.text, false, (err as Error).message, at === undefined ? location : this.locate(doc, at.offset));
               this.diagnostics.set(doc.uri, [

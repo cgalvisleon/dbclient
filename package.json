@@ -1,8 +1,8 @@
 {
   "name": "dbclient",
   "displayName": "DB Client",
-  "description": "Database client for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS.",
-  "version": "0.3.0",
+  "description": "%extension.description%",
+  "version": "0.9.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -27,14 +27,14 @@
       "activitybar": [
         {
           "id": "dbclient",
-          "title": "DB Client",
+          "title": "%viewsContainer.dbclient%",
           "icon": "media/database.svg"
         }
       ],
       "panel": [
         {
           "id": "dbclientResults",
-          "title": "DB Client",
+          "title": "%viewsContainer.dbclientResults%",
           "icon": "media/database.svg"
         }
       ]
@@ -43,27 +43,27 @@
       "dbclient": [
         {
           "id": "dbclient.connections",
-          "name": "Connections"
+          "name": "%view.dbclient.connections%"
         }
       ],
       "dbclientResults": [
         {
           "type": "webview",
           "id": "dbclient.results",
-          "name": "Results"
+          "name": "%view.dbclient.results%"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "dbclient.connections",
-        "contents": "No connections yet.\n[Add Connection](command:dbclient.addConnection)"
+        "contents": "%viewsWelcome.dbclient.connections%"
       }
     ],
     "commands": [
       {
         "command": "dbclient.addConnection",
-        "title": "Add Connection",
+        "title": "%command.addConnection%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/database-add.png",
@@ -72,7 +72,7 @@
       },
       {
         "command": "dbclient.refresh",
-        "title": "Refresh",
+        "title": "%command.refresh%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/refresh.png",
@@ -81,7 +81,7 @@
       },
       {
         "command": "dbclient.editConnection",
-        "title": "Edit Connection",
+        "title": "%command.editConnection%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/database-settings.png",
@@ -90,22 +90,22 @@
       },
       {
         "command": "dbclient.duplicateConnection",
-        "title": "Duplicate Connection",
+        "title": "%command.duplicateConnection%",
         "category": "DB Client"
       },
       {
         "command": "dbclient.deleteConnection",
-        "title": "Delete Connection",
+        "title": "%command.deleteConnection%",
         "category": "DB Client"
       },
       {
         "command": "dbclient.testConnection",
-        "title": "Test Connection",
+        "title": "%command.testConnection%",
         "category": "DB Client"
       },
       {
         "command": "dbclient.connect",
-        "title": "Connect",
+        "title": "%command.connect%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/database-connect.png",
@@ -114,7 +114,7 @@
       },
       {
         "command": "dbclient.disconnect",
-        "title": "Disconnect",
+        "title": "%command.disconnect%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/database-remove.png",
@@ -123,7 +123,7 @@
       },
       {
         "command": "dbclient.newQuery",
-        "title": "New Query",
+        "title": "%command.newQuery%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/sql-file.png",
@@ -131,8 +131,51 @@
         }
       },
       {
+        "command": "dbclient.showHistory",
+        "title": "%command.showHistory%",
+        "category": "DB Client",
+        "icon": "$(history)"
+      },
+      {
+        "command": "dbclient.openData",
+        "title": "%command.openData%",
+        "category": "DB Client",
+        "icon": "$(table)"
+      },
+      {
+        "command": "dbclient.showStructure",
+        "title": "%command.showStructure%",
+        "category": "DB Client",
+        "icon": "$(symbol-structure)"
+      },
+      {
+        "command": "dbclient.showDdl",
+        "title": "%command.showDdl%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.generateSelect",
+        "title": "%command.generateSelect%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.generateInsert",
+        "title": "%command.generateInsert%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.generateUpdate",
+        "title": "%command.generateUpdate%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.generateDelete",
+        "title": "%command.generateDelete%",
+        "category": "DB Client"
+      },
+      {
         "command": "dbclient.selectConnection",
-        "title": "Select Connection for Editor",
+        "title": "%command.selectConnection%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/database.png",
@@ -141,7 +184,7 @@
       },
       {
         "command": "dbclient.run",
-        "title": "Run Selection or Statement / Line",
+        "title": "%command.run%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/run-query.png",
@@ -150,7 +193,7 @@
       },
       {
         "command": "dbclient.runFile",
-        "title": "Run File",
+        "title": "%command.runFile%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/query.png",
@@ -159,17 +202,17 @@
       },
       {
         "command": "dbclient.cancelQuery",
-        "title": "Cancel Running Query",
+        "title": "%command.cancelQuery%",
         "category": "DB Client"
       },
       {
         "command": "dbclient.runAt",
-        "title": "Run Statement at Position",
+        "title": "%command.runAt%",
         "category": "DB Client"
       },
       {
         "command": "dbclient.openConsole",
-        "title": "Open NATS Console",
+        "title": "%command.openConsole%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/terminal.png",
@@ -178,12 +221,12 @@
       },
       {
         "command": "dbclient.unsubscribe",
-        "title": "Unsubscribe",
+        "title": "%command.unsubscribe%",
         "category": "DB Client"
       },
       {
         "command": "dbclient.openValue",
-        "title": "Open Value",
+        "title": "%command.openValue%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/authentication.png",
@@ -192,7 +235,7 @@
       },
       {
         "command": "dbclient.addFolder",
-        "title": "New Folder",
+        "title": "%command.addFolder%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/add-folder.png",
@@ -201,12 +244,12 @@
       },
       {
         "command": "dbclient.renameFolder",
-        "title": "Rename Folder",
+        "title": "%command.renameFolder%",
         "category": "DB Client"
       },
       {
         "command": "dbclient.deleteFolder",
-        "title": "Delete Folder",
+        "title": "%command.deleteFolder%",
         "category": "DB Client",
         "icon": {
           "light": "media/icons/light/remove-folder.png",
@@ -215,8 +258,88 @@
       },
       {
         "command": "dbclient.moveToFolder",
-        "title": "Move to Folder…",
+        "title": "%command.moveToFolder%",
         "category": "DB Client"
+      },
+      {
+        "command": "dbclient.newSqlFile",
+        "title": "%command.newSqlFile%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/sql-file.png",
+          "dark": "media/icons/sql-file.png"
+        }
+      },
+      {
+        "command": "dbclient.saveToSqlFolder",
+        "title": "%command.saveToSqlFolder%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/import.png",
+          "dark": "media/icons/import.png"
+        }
+      },
+      {
+        "command": "dbclient.renameSqlFile",
+        "title": "%command.renameSqlFile%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.deleteSqlFile",
+        "title": "%command.deleteSqlFile%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/remove-record.png",
+          "dark": "media/icons/remove-record.png"
+        }
+      },
+      {
+        "command": "dbclient.revealSqlFolder",
+        "title": "%command.revealSqlFolder%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/explorer.png",
+          "dark": "media/icons/explorer.png"
+        }
+      },
+      {
+        "command": "dbclient.addSqlFolder",
+        "title": "%command.addSqlFolder%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/add-folder.png",
+          "dark": "media/icons/add-folder.png"
+        }
+      },
+      {
+        "command": "dbclient.removeSqlFolder",
+        "title": "%command.removeSqlFolder%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/remove-folder.png",
+          "dark": "media/icons/remove-folder.png"
+        }
+      },
+      {
+        "command": "dbclient.setSaveLocation",
+        "title": "%command.setSaveLocation%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/import.png",
+          "dark": "media/icons/import.png"
+        }
+      },
+      {
+        "command": "dbclient.exportConnections",
+        "title": "%command.exportConnections%",
+        "category": "DB Client",
+        "icon": "$(export)"
+      },
+      {
+        "command": "dbclient.importConnections",
+        "title": "%command.importConnections%",
+        "category": "DB Client",
+        "icon": "$(cloud-download)"
       }
     ],
     "menus": {
@@ -235,6 +358,16 @@
           "command": "dbclient.refresh",
           "when": "view == dbclient.connections",
           "group": "navigation@3"
+        },
+        {
+          "command": "dbclient.importConnections",
+          "when": "view == dbclient.connections",
+          "group": "2_transfer@1"
+        },
+        {
+          "command": "dbclient.exportConnections",
+          "when": "view == dbclient.connections",
+          "group": "2_transfer@2"
         }
       ],
       "view/item/context": [
@@ -242,6 +375,11 @@
           "command": "dbclient.newQuery",
           "when": "view == dbclient.connections && viewItem =~ /^(connection|database)\\b/ && viewItem =~ /\\b(sql|kv)\\b/",
           "group": "inline@1"
+        },
+        {
+          "command": "dbclient.showHistory",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/ && viewItem =~ /\\b(sql|kv)\\b/",
+          "group": "1_query@1"
         },
         {
           "command": "dbclient.openConsole",
@@ -347,6 +485,131 @@
           "command": "dbclient.moveToFolder",
           "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
           "group": "3_edit@4"
+        },
+        {
+          "command": "dbclient.newSqlFile",
+          "when": "view == dbclient.connections && viewItem == sqlFolder",
+          "group": "inline@1"
+        },
+        {
+          "command": "dbclient.addSqlFolder",
+          "when": "view == dbclient.connections && viewItem == sqlFolder",
+          "group": "inline@2"
+        },
+        {
+          "command": "dbclient.newSqlFile",
+          "when": "view == dbclient.connections && viewItem == sqlFolder",
+          "group": "1_sql@1"
+        },
+        {
+          "command": "dbclient.addSqlFolder",
+          "when": "view == dbclient.connections && viewItem == sqlFolder",
+          "group": "1_sql@2"
+        },
+        {
+          "command": "dbclient.setSaveLocation",
+          "when": "view == dbclient.connections && viewItem == sqlFolder",
+          "group": "1_sql@3"
+        },
+        {
+          "command": "dbclient.revealSqlFolder",
+          "when": "view == dbclient.connections && viewItem == sqlFolder",
+          "group": "1_sql@4"
+        },
+        {
+          "command": "dbclient.newSqlFile",
+          "when": "view == dbclient.connections && viewItem =~ /^(connection|database)\\b/ && viewItem =~ /\\bsql\\b/",
+          "group": "1_query@2"
+        },
+        {
+          "command": "dbclient.addSqlFolder",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/ && viewItem =~ /\\bsql\\b/",
+          "group": "4_sql@1"
+        },
+        {
+          "command": "dbclient.setSaveLocation",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/ && viewItem =~ /\\bsql\\b/",
+          "group": "4_sql@2"
+        },
+        {
+          "command": "dbclient.newSqlFile",
+          "when": "view == dbclient.connections && viewItem =~ /^sqlLocation\\b/ && viewItem =~ /^(?!.*\\bmissing\\b)/",
+          "group": "inline@1"
+        },
+        {
+          "command": "dbclient.newSqlFile",
+          "when": "view == dbclient.connections && viewItem =~ /^sqlLocation\\b/ && viewItem =~ /^(?!.*\\bmissing\\b)/",
+          "group": "1_sql@1"
+        },
+        {
+          "command": "dbclient.setSaveLocation",
+          "when": "view == dbclient.connections && viewItem =~ /^sqlLocation\\b/ && viewItem =~ /^(?!.*\\bmissing\\b)/ && viewItem =~ /^(?!.*\\bsave\\b)/",
+          "group": "1_sql@2"
+        },
+        {
+          "command": "dbclient.revealSqlFolder",
+          "when": "view == dbclient.connections && viewItem =~ /^sqlLocation\\b/ && viewItem =~ /^(?!.*\\bmissing\\b)/",
+          "group": "1_sql@3"
+        },
+        {
+          "command": "dbclient.removeSqlFolder",
+          "when": "view == dbclient.connections && viewItem =~ /^sqlLocation (linked|save)\\b/",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "dbclient.newSqlFile",
+          "when": "view == dbclient.connections && viewItem == sqlDir",
+          "group": "inline@1"
+        },
+        {
+          "command": "dbclient.newSqlFile",
+          "when": "view == dbclient.connections && viewItem == sqlDir",
+          "group": "1_sql@1"
+        },
+        {
+          "command": "dbclient.revealSqlFolder",
+          "when": "view == dbclient.connections && viewItem == sqlDir",
+          "group": "1_sql@2"
+        },
+        {
+          "command": "dbclient.renameSqlFile",
+          "when": "view == dbclient.connections && viewItem == sqlFile",
+          "group": "3_edit@1"
+        },
+        {
+          "command": "dbclient.deleteSqlFile",
+          "when": "view == dbclient.connections && viewItem == sqlFile",
+          "group": "3_edit@2"
+        },
+        {
+          "command": "dbclient.openData",
+          "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
+          "group": "inline@1"
+        },
+        {
+          "command": "dbclient.openData",
+          "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
+          "group": "0_table@1"
+        },
+        {
+          "command": "dbclient.showStructure",
+          "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
+          "group": "0_table@2"
+        },
+        {
+          "command": "dbclient.showDdl",
+          "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
+          "group": "0_table@3"
+        },
+        {
+          "submenu": "dbclient.generateSql",
+          "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
+          "group": "0_table@4"
+        },
+        {
+          "command": "dbclient.exportConnections",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "4_transfer@1"
         }
       ],
       "editor/title": [
@@ -364,6 +627,16 @@
           "command": "dbclient.runFile",
           "when": "editorLangId == sql || editorLangId == redis",
           "group": "navigation@2"
+        },
+        {
+          "command": "dbclient.saveToSqlFolder",
+          "when": "editorLangId == sql",
+          "group": "navigation@3"
+        },
+        {
+          "command": "dbclient.showHistory",
+          "when": "editorLangId == sql || editorLangId == redis",
+          "group": "1_history@1"
         }
       ],
       "commandPalette": [
@@ -406,6 +679,71 @@
         {
           "command": "dbclient.moveToFolder",
           "when": "false"
+        },
+        {
+          "command": "dbclient.renameSqlFile",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.deleteSqlFile",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.saveToSqlFolder",
+          "when": "editorLangId == sql"
+        },
+        {
+          "command": "dbclient.removeSqlFolder",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.openData",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.showStructure",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.showDdl",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.generateSelect",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.generateInsert",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.generateUpdate",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.generateDelete",
+          "when": "false"
+        }
+      ],
+      "dbclient.generateSql": [
+        {
+          "command": "dbclient.generateSelect",
+          "group": "1@1"
+        },
+        {
+          "command": "dbclient.generateInsert",
+          "when": "viewItem =~ /^table sql\\b/",
+          "group": "1@2"
+        },
+        {
+          "command": "dbclient.generateUpdate",
+          "when": "viewItem =~ /^table sql\\b/",
+          "group": "1@3"
+        },
+        {
+          "command": "dbclient.generateDelete",
+          "when": "viewItem =~ /^table sql\\b/",
+          "group": "1@4"
         }
       ]
     },
@@ -424,24 +762,35 @@
       }
     ],
     "configuration": {
-      "title": "DB Client",
+      "title": "%configuration.title%",
       "properties": {
         "dbclient.maxRows": {
           "type": "number",
           "default": 5000,
           "minimum": 1,
-          "description": "Maximum number of rows fetched per statement. Larger result sets are truncated."
+          "description": "%config.dbclient.maxRows.description%"
         },
         "dbclient.pageSize": {
           "type": "number",
           "default": 100,
           "minimum": 10,
-          "description": "Rows per page in the results grid."
+          "description": "%config.dbclient.pageSize.description%"
         },
         "dbclient.codeLens": {
           "type": "boolean",
           "default": true,
-          "description": "Show a Run action above each statement in SQL editors bound to a connection."
+          "description": "%config.dbclient.codeLens.description%"
+        },
+        "dbclient.sqlFolder": {
+          "type": "string",
+          "default": "",
+          "description": "%config.dbclient.sqlFolder.description%"
+        },
+        "dbclient.historySize": {
+          "type": "number",
+          "default": 500,
+          "minimum": 0,
+          "description": "%config.dbclient.historySize.description%"
         }
       }
     },
@@ -464,6 +813,12 @@
         "scopeName": "source.redis",
         "path": "./syntaxes/redis.tmLanguage.json"
       }
+    ],
+    "submenus": [
+      {
+        "id": "dbclient.generateSql",
+        "label": "%submenu.dbclient.generateSql%"
+      }
     ]
   },
   "scripts": {
@@ -471,6 +826,7 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "vitest run --no-file-parallelism",
     "test:smoke": "npm run build && node test/smoke/run.mjs",
     "package": "npm run typecheck && node esbuild.mjs --production && vsce package --no-dependencies --skip-license",
     "vscode:prepublish": "node esbuild.mjs --production",
@@ -483,18 +839,22 @@
     "nats": "^2.29.3",
     "oracledb": "^26.0.0",
     "pg": "^8.23.1",
-    "pg-cursor": "^2.22.1"
+    "pg-cursor": "^2.22.1",
+    "ssh2": "^1.16.0"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
     "@types/mssql": "^12.3.0",
     "@types/node": "^22.0.0",
     "@types/oracledb": "^7.0.3",
     "@types/pg": "^8.23.1",
     "@types/pg-cursor": "^2.7.2",
+    "@types/ssh2": "^1.15.1",
     "@types/vscode": "~1.90.0",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
+    "jsdom": "^24.1.3",
     "typescript": "^5.9.0",
     "vitest": "^5.0.4"
   },
@@ -507,5 +867,6 @@
   "homepage": "https://github.com/cgalvisleon/dbclient#readme",
   "bugs": {
     "url": "https://github.com/cgalvisleon/dbclient/issues"
-  }
+  },
+  "l10n": "./l10n"
 }

@@ -5,3 +5,6 @@
 !README.md
 !CHANGELOG.md
 !syntaxes/**
+!package.nls.json
+!package.nls.*.json
+!l10n/**

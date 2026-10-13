@@ -1,15 +1,24 @@
-import { Client, ClientConfig, DatabaseError, FieldDef, Pool } from 'pg';
+import { Client, ClientConfig, CustomTypesConfig, DatabaseError, FieldDef, Pool, types as pgTypes } from 'pg';
 import Cursor from 'pg-cursor';
+import { createTableSql } from '../sql/generate';
+import { checkCount } from './params';
+import { sslFields, tlsOptions } from './tls';
+import { sshFields } from './sshTunnel';
+import { qualifiedName } from '../sql/identifiers';
 import {
+  Catalog,
   ConnectionConfig,
   ConnectionSecrets,
   DbNode,
   DriverFactory,
   NodeKind,
+  ParamStatement,
   QueryOptions,
   SqlDriver,
   StatementError,
   StatementResult,
+  TableInfo,
+  TableRef,
 } from './types';
 
 const FOLDERS: { name: string; kind: NodeKind }[] = [
@@ -19,6 +28,14 @@ const FOLDERS: { name: string; kind: NodeKind }[] = [
   { name: 'Procedures', kind: 'procedure' },
   { name: 'Indexes', kind: 'index' },
 ];
+
+// date, time, timetz, timestamp, timestamptz: keep the server's text. Parsing them into JS
+// Dates shifts plain dates by the local time zone and drops microseconds.
+const RAW_TEMPORAL = new Set([1082, 1083, 1266, 1114, 1184]);
+const typeParsers: CustomTypesConfig = {
+  getTypeParser: ((oid: number, format?: 'text' | 'binary') =>
+    RAW_TEMPORAL.has(oid) ? (value: string) => value : pgTypes.getTypeParser(oid, format)) as CustomTypesConfig['getTypeParser'],
+};
 
 // Node paths are `db/schema/folder/name`, each segment URI-encoded.
 function makePath(...segments: string[]): string {
@@ -62,6 +79,8 @@ export class PostgresDriver implements SqlDriver {
       database: database || this.defaultDatabase,
       application_name: 'dbclient',
       connectionTimeoutMillis: 10000,
+      ssl: tlsOptions(o, this.secrets, String(o.host || 'localhost')) ?? false,
+      types: typeParsers,
     };
   }
 
@@ -191,15 +210,16 @@ export class PostgresDriver implements SqlDriver {
             order by c.relname`,
           [schema, kinds],
         );
-        return rows.map((r) =>
-          node(
+        return rows.map((r) => ({
+          ...node(
             folder === 'Tables' ? 'table' : 'view',
             r.relname,
             r.relname,
             r.relkind === 'm' ? 'materialized' : r.relkind === 'p' ? 'partitioned' : r.relkind === 'f' ? 'foreign' : undefined,
             true,
           ),
-        );
+          meta: { schema, name: r.relname },
+        }));
       }
       case 'Functions':
       case 'Procedures': {
@@ -260,6 +280,140 @@ export class PostgresDriver implements SqlDriver {
       database: db,
       description: `${r.type}${r.pk ? ' · PK' : ''}${r.notnull ? ' · not null' : ''}`,
     }));
+  }
+
+  async catalog(database?: string): Promise<Catalog> {
+    const pool = this.pool(database || undefined);
+    const [{ rows }, current] = await Promise.all([
+      pool.query<{ schema: string; name: string; kind: 'table' | 'view' }>(
+        `select n.nspname as schema, c.relname as name,
+                case when c.relkind in ('v', 'm') then 'view' else 'table' end as kind
+           from pg_class c
+           join pg_namespace n on n.oid = c.relnamespace
+          where c.relkind in ('r', 'p', 'f', 'v', 'm')
+            and n.nspname not like 'pg\\_%' and n.nspname <> 'information_schema'
+          order by 1, 2`,
+      ),
+      pool.query<{ schema: string }>('select current_schema() as schema'),
+    ]);
+    return { defaultSchema: current.rows[0]?.schema ?? 'public', tables: rows };
+  }
+
+  /** oid, schema and kind of a relation; unqualified names prefer the search_path. */
+  private async relation(ref: TableRef): Promise<{ oid: number; schema: string; relkind: string } | undefined> {
+    const { rows } = await this.pool(ref.database || undefined).query<{ oid: number; schema: string; relkind: string }>(
+      `select c.oid::int as oid, n.nspname as schema, c.relkind
+         from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where c.relname = $1 and c.relkind in ('r', 'p', 'f', 'v', 'm')
+          and ($2::text is null or n.nspname = $2)
+          and n.nspname not like 'pg\\_%' and n.nspname <> 'information_schema'
+        -- Unqualified: the search_path's table first, else one in any schema.
+        order by pg_table_is_visible(c.oid) desc, n.nspname
+        limit 1`,
+      [ref.name, ref.schema ?? null],
+    );
+    return rows[0];
+  }
+
+  async describe(ref: TableRef): Promise<TableInfo | undefined> {
+    const rel = await this.relation(ref);
+    if (!rel) {
+      return undefined;
+    }
+    const pool = this.pool(ref.database || undefined);
+    const [columns, indexes] = await Promise.all([
+      pool.query<{ name: string; type: string; notnull: boolean; def: string | null }>(
+        `select a.attname as name, format_type(a.atttypid, a.atttypmod) as type, a.attnotnull as notnull,
+                pg_get_expr(d.adbin, d.adrelid) as def
+           from pg_attribute a
+           left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+          where a.attrelid = $1 and a.attnum > 0 and not a.attisdropped
+          order by a.attnum`,
+        [rel.oid],
+      ),
+      pool.query<{ name: string; uniq: boolean; prim: boolean; cols: string[] }>(
+        `select i.relname as name, x.indisunique as uniq, x.indisprimary as prim,
+                array(select a.attname from unnest(x.indkey) with ordinality k(attnum, ord)
+                        join pg_attribute a on a.attrelid = x.indrelid and a.attnum = k.attnum
+                       order by k.ord)::text[] as cols
+           from pg_index x join pg_class i on i.oid = x.indexrelid
+          where x.indrelid = $1
+          order by x.indisprimary desc, i.relname`,
+        [rel.oid],
+      ),
+    ]);
+    const primaryKey = indexes.rows.find((i) => i.prim)?.cols ?? [];
+    return {
+      ref: { database: ref.database, schema: rel.schema, name: ref.name },
+      kind: rel.relkind === 'v' || rel.relkind === 'm' ? 'view' : 'table',
+      columns: columns.rows.map((c) => ({
+        name: c.name,
+        type: c.type,
+        nullable: !c.notnull,
+        primaryKey: primaryKey.includes(c.name),
+        default: c.def ?? undefined,
+      })),
+      primaryKey,
+      indexes: indexes.rows.map((i) => ({ name: i.name, columns: i.cols, unique: i.uniq, primary: i.prim })),
+    };
+  }
+
+  async ddl(ref: TableRef): Promise<string> {
+    const info = await this.describe(ref);
+    const rel = info && (await this.relation(info.ref));
+    if (!info || !rel) {
+      throw new Error(`${ref.name} not found.`);
+    }
+    const pool = this.pool(ref.database || undefined);
+    const name = qualifiedName(info.ref, 'postgres');
+    if (info.kind === 'view') {
+      const { rows } = await pool.query<{ def: string }>('select pg_get_viewdef($1::oid, true) as def', [rel.oid]);
+      const body = rows[0].def.trim().replace(/;$/, '');
+      return `CREATE ${rel.relkind === 'm' ? 'MATERIALIZED VIEW' : 'OR REPLACE VIEW'} ${name} AS\n${body};`;
+    }
+    const [constraints, indexes] = await Promise.all([
+      pool.query<{ def: string }>(
+        `select 'CONSTRAINT ' || quote_ident(conname) || ' ' || pg_get_constraintdef(oid, true) as def
+           from pg_constraint where conrelid = $1 and contype <> 'n'
+          order by case contype when 'p' then 0 when 'u' then 1 when 'f' then 2 else 3 end, conname`,
+        [rel.oid],
+      ),
+      pool.query<{ def: string }>(
+        `select pg_get_indexdef(x.indexrelid) || ';' as def from pg_index x
+          where x.indrelid = $1 and not exists (select 1 from pg_constraint k where k.conindid = x.indexrelid)
+          order by 1`,
+        [rel.oid],
+      ),
+    ]);
+    return createTableSql(info, 'postgres', {
+      constraints: constraints.rows.map((r) => r.def),
+      indexes: indexes.rows.map((r) => r.def),
+    });
+  }
+
+  async transaction(database: string | undefined, statements: ParamStatement[]): Promise<number[]> {
+    const client = await this.pool(database || undefined).connect();
+    const counts: number[] = [];
+    try {
+      await client.query('begin');
+      for (const s of statements) {
+        let rowCount: number;
+        try {
+          rowCount = (await client.query(s.sql, s.params)).rowCount ?? 0;
+        } catch (err) {
+          throw toStatementError(err);
+        }
+        checkCount(s, rowCount);
+        counts.push(rowCount);
+      }
+      await client.query('commit');
+      return counts;
+    } catch (err) {
+      await client.query('rollback').catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   private resolveTypeNames(): Promise<Map<number, string>> {
@@ -336,6 +490,8 @@ export const postgresFactory: DriverFactory = {
     { key: 'database', label: 'Database', kind: 'text', required: true, default: 'postgres' },
     { key: 'user', label: 'User', kind: 'text', required: true, default: 'postgres' },
     { key: 'password', label: 'Password', kind: 'password', secret: true },
+    ...sslFields(),
+    ...sshFields(),
   ],
   create: (config, secrets) => new PostgresDriver(config, secrets),
 };

@@ -1,0 +1,40 @@
+import { TableInfo } from '../drivers/types';
+import { findByName } from './identifiers';
+import { SingleTableSelect } from './parse';
+
+export interface EditMapping {
+  /** Table column behind each result column; null for read-only (expressions, duplicates). */
+  columns: (string | null)[];
+  /** Result column index of each primary key column, in key order. */
+  key: number[];
+}
+
+/**
+ * Maps the result of a single-table SELECT onto the table, or explains why the grid stays
+ * read-only. Rows are identified by primary key, so every key column must be in the result.
+ */
+export function editMapping(select: SingleTableSelect, resultColumns: string[], info: TableInfo): EditMapping | { reason: string } {
+  const name = [info.ref.schema, info.ref.name].filter(Boolean).join('.');
+  if (info.kind === 'view') {
+    return { reason: `${name} is a view.` };
+  }
+  if (!info.primaryKey.length) {
+    return { reason: `${name} has no primary key.` };
+  }
+  let columns: (string | null)[];
+  const stars = select.items.filter((i) => i && 'star' in i).length;
+  if (stars === 1 && select.items.length === 1) {
+    columns = resultColumns.map((c) => findByName(info.columns, c, (col) => col.name)?.name ?? null);
+  } else if (stars === 0 && select.items.length === resultColumns.length) {
+    columns = select.items.map((item) => (item && 'column' in item ? findByName(info.columns, item.column, (c) => c.name, item.quoted)?.name ?? null : null));
+  } else {
+    return { reason: 'The result columns cannot be matched to the table.' };
+  }
+  // The same table column twice: only the first copy is editable.
+  columns = columns.map((c, i) => (c && columns.indexOf(c) !== i ? null : c));
+  const key = info.primaryKey.map((k) => columns.indexOf(k));
+  if (key.some((k) => k < 0)) {
+    return { reason: `Include the primary key (${info.primaryKey.join(', ')}) in the result to edit it.` };
+  }
+  return { columns, key };
+}

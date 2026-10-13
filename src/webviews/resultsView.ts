@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import type { ParamValue } from '../drivers/types';
+import type { GridEdit, GridRowChange } from '../editor/gridEditor';
+import { buildXlsx, XlsxCell } from '../export/xlsx';
 import { mediaRoots, webviewHtml } from './html';
 
 export const RESULTS_VIEW_ID = 'dbclient.results';
@@ -12,6 +15,10 @@ export interface ResultTab {
   rowCount: number | null;
   truncated: boolean;
   durationMs: number;
+  /** Present when the grid can edit these rows. */
+  edit?: GridEdit;
+  /** Why a single-table result is not editable. */
+  readOnly?: string;
 }
 
 export interface LogEntry {
@@ -29,13 +36,27 @@ type ToView =
   | { type: 'run'; title: string; pageSize: number }
   | { type: 'result'; tab: ResultTab }
   | { type: 'log'; entry: LogEntry }
-  | { type: 'focusLog' };
+  | { type: 'focusLog' }
+  /** Activates a result tab; negative counts from the end. */
+  | { type: 'select'; tab: number }
+  | {
+      type: 'committed';
+      editId: number;
+      ok: boolean;
+      message?: string;
+      /** Rows re-read after saving; absent when the query could not be re-run. */
+      rows?: ParamValue[][];
+      rowCount?: number | null;
+      truncated?: boolean;
+    };
 
 type FromView =
   | { type: 'ready' }
   | { type: 'copy'; text: string }
   | { type: 'save'; format: 'csv' | 'json'; content: string; name: string }
-  | { type: 'reveal'; location: NonNullable<LogEntry['location']> };
+  | { type: 'saveXlsx'; name: string; sheet: string; columns: string[]; types: (string | undefined)[]; rows: XlsxCell[][] }
+  | { type: 'reveal'; location: NonNullable<LogEntry['location']> }
+  | { type: 'commit'; editId: number; changes: GridRowChange[] };
 
 /** Bottom-panel view with one tab per result set plus the SQL output log. */
 export class ResultsView implements vscode.WebviewViewProvider {
@@ -43,6 +64,7 @@ export class ResultsView implements vscode.WebviewViewProvider {
   private ready = false;
   private queue: ToView[] = [];
   private readyWaiters: (() => void)[] = [];
+  private commitHandler?: (editId: number, changes: GridRowChange[]) => Promise<void>;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -56,6 +78,11 @@ export class ResultsView implements vscode.WebviewViewProvider {
       this.view = undefined;
       this.ready = false;
     });
+  }
+
+  /** Handles "Commit" from an editable grid. */
+  onCommit(handler: (editId: number, changes: GridRowChange[]) => Promise<void>): void {
+    this.commitHandler = handler;
   }
 
   /** Makes the panel visible without taking focus from the editor. */
@@ -106,6 +133,20 @@ export class ResultsView implements vscode.WebviewViewProvider {
         }
         return;
       }
+      case 'saveXlsx': {
+        const target = await vscode.window.showSaveDialog({
+          defaultUri: vscode.Uri.file(`${message.name}.xlsx`),
+          filters: { Excel: ['xlsx'] },
+        });
+        if (target) {
+          await vscode.workspace.fs.writeFile(target, buildXlsx({ name: message.sheet, columns: message.columns, types: message.types, rows: message.rows }));
+          vscode.window.setStatusBarMessage(vscode.l10n.t('Saved {0}', target.fsPath), 3000);
+        }
+        return;
+      }
+      case 'commit':
+        await this.commitHandler?.(message.editId, message.changes);
+        return;
       case 'reveal': {
         const { uri, line, character } = message.location;
         const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(uri));

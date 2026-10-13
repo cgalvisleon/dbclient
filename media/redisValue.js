@@ -27,7 +27,7 @@
   const edit = (e) => vscode.postMessage({ type: 'edit', edit: e, valueType: data.type });
 
   function ttlText(ttl) {
-    if (ttl === -1) return 'no expiry';
+    if (ttl === -1) return t('no expiry');
     if (ttl < 0) return '—';
     const d = Math.floor(ttl / 86400);
     const h = Math.floor((ttl % 86400) / 3600);
@@ -47,29 +47,29 @@
   }
 
   function header() {
-    const name = el('input', { class: 'keyname', value: data.key, title: 'Key name (Enter to rename)' });
+    const name = el('input', { class: 'keyname', value: data.key, title: t('Key name (Enter to rename)') });
     name.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && name.value && name.value !== data.key) edit({ op: 'rename', name: name.value });
     });
-    const ttl = el('input', { class: 'ttl', type: 'number', min: '-1', placeholder: 'seconds', value: data.ttl >= 0 ? String(data.ttl) : '' });
+    const ttl = el('input', { class: 'ttl', type: 'number', min: '-1', placeholder: t('seconds'), value: data.ttl >= 0 ? String(data.ttl) : '' });
     return el(
       'div',
       { class: 'header' },
       el('span', { class: `badge type-${data.type}` }, data.type),
       name,
-      el('span', { class: 'meta' }, `db${data.db} · ${data.type === 'string' ? `${data.length} bytes` : `${data.length} items`} · TTL ${ttlText(data.ttl)}`),
+      el('span', { class: 'meta' }, `db${data.db} · ${data.type === 'string' ? t('{0} bytes', data.length) : t('{0} items', data.length)} · TTL ${ttlText(data.ttl)}`),
       el('div', { class: 'spacer' }),
       ttl,
-      el('button', { title: 'Set TTL in seconds (empty = no expiry)', on: { click: () => edit({ op: 'ttl', seconds: ttl.value === '' ? null : Number(ttl.value) }) } }, 'Set TTL'),
-      el('button', { on: { click: () => vscode.postMessage({ type: 'reload' }) } }, 'Reload'),
-      el('button', { class: 'danger', on: { click: () => edit({ op: 'delete' }) } }, 'Delete key'),
+      el('button', { title: t('Set TTL in seconds (empty = no expiry)'), on: { click: () => edit({ op: 'ttl', seconds: ttl.value === '' ? null : Number(ttl.value) }) } }, t('Set TTL')),
+      el('button', { on: { click: () => vscode.postMessage({ type: 'reload' }) } }, t('Reload')),
+      el('button', { class: 'danger', on: { click: () => edit({ op: 'delete' }) } }, t('Delete key')),
     );
   }
 
   function stringView() {
     const area = el('textarea', { class: 'value', spellcheck: 'false' });
     area.value = data.value;
-    const toggle = el('button', { on: { click: () => (area.value = pretty(area.value)) } }, 'Format JSON');
+    const toggle = el('button', { on: { click: () => (area.value = pretty(area.value)) } }, t('Format JSON'));
     return el(
       'div',
       { class: 'body' },
@@ -78,8 +78,8 @@
         'div',
         { class: 'actions' },
         toggle,
-        el('button', { class: 'primary', disabled: data.truncated, on: { click: () => edit({ op: 'setString', value: area.value }) } }, 'Save'),
-        data.truncated ? el('span', { class: 'warn' }, 'Showing the first 1 MB; saving is disabled.') : null,
+        el('button', { class: 'primary', disabled: data.truncated, on: { click: () => edit({ op: 'setString', value: area.value }) } }, t('Save')),
+        data.truncated ? el('span', { class: 'warn' }, t('Showing the first 1 MB; saving is disabled.')) : null,
       ),
     );
   }
@@ -96,12 +96,12 @@
         el(
           'td',
           { class: 'rowactions' },
-          opts.save ? el('button', { title: 'Save', on: { click: () => opts.save(row, inputs.map((i) => (i.tagName === 'TEXTAREA' ? i.value : null))) } }, '✓') : null,
-          el('button', { class: 'danger', title: 'Delete', on: { click: () => opts.remove(row) } }, '✕'),
+          opts.save ? el('button', { title: t('Save'), on: { click: () => opts.save(row, inputs.map((i) => (i.tagName === 'TEXTAREA' ? i.value : null))) } }, '✓') : null,
+          el('button', { class: 'danger', title: t('Delete'), on: { click: () => opts.remove(row) } }, '✕'),
         ),
       );
     });
-    const addInputs = opts.add ? opts.add.fields.map((f) => el('input', { placeholder: f })) : [];
+    const addInputs = opts.add ? opts.add.fields.map((f) => el('input', { placeholder: t(f) })) : [];
     return el(
       'div',
       { class: 'body' },
@@ -110,7 +110,7 @@
         { class: 'actions' },
         el('input', {
           class: 'filter',
-          placeholder: 'Filter…',
+          placeholder: t('Filter…'),
           value: filter,
           on: {
             input: (e) => {
@@ -122,9 +122,9 @@
             },
           },
         }),
-        data.truncated ? el('span', { class: 'warn' }, `Showing ${rows.length} of ${data.length}`) : null,
+        data.truncated ? el('span', { class: 'warn' }, t('Showing {0} of {1}', rows.length, data.length)) : null,
       ),
-      el('div', { class: 'grid' }, el('table', {}, el('thead', {}, el('tr', {}, ...columns.map((c) => el('th', {}, c)), el('th', {}))), el('tbody', {}, ...body))),
+      el('div', { class: 'grid' }, el('table', {}, el('thead', {}, el('tr', {}, ...columns.map((c) => el('th', {}, t(c))), el('th', {}))), el('tbody', {}, ...body))),
       opts.add
         ? el(
             'div',
@@ -145,28 +145,28 @@
           editable: [true, true],
           save: (row, [field, value]) => edit({ op: 'setField', oldField: row[0], field, value }),
           remove: (row) => edit({ op: 'delField', field: row[0] }),
-          add: { fields: ['field', 'value'], label: 'Add field', submit: ([field, value]) => field && edit({ op: 'setField', field, value }) },
+          add: { fields: ['field', 'value'], label: t('Add field'), submit: ([field, value]) => field && edit({ op: 'setField', field, value }) },
         });
       case 'list':
         return tableView(['#', 'value'], data.value, {
           editable: [false, true],
           save: (row, [, value]) => edit({ op: 'setIndex', index: row[0], value }),
           remove: (row) => edit({ op: 'delIndex', index: row[0] }),
-          add: { fields: ['value'], label: 'Push (RPUSH)', submit: ([value]) => edit({ op: 'push', value }) },
+          add: { fields: ['value'], label: t('Push (RPUSH)'), submit: ([value]) => edit({ op: 'push', value }) },
         });
       case 'set':
         return tableView(['member'], data.value, {
           editable: [true],
           save: (row, [member]) => edit({ op: 'addMember', oldMember: row[0], member }),
           remove: (row) => edit({ op: 'delMember', member: row[0] }),
-          add: { fields: ['member'], label: 'Add member', submit: ([member]) => member && edit({ op: 'addMember', member }) },
+          add: { fields: ['member'], label: t('Add member'), submit: ([member]) => member && edit({ op: 'addMember', member }) },
         });
       case 'zset':
         return tableView(['member', 'score'], data.value, {
           editable: [true, true],
           save: (row, [member, score]) => edit({ op: 'addMember', oldMember: row[0], member, score }),
           remove: (row) => edit({ op: 'delMember', member: row[0] }),
-          add: { fields: ['member', 'score'], label: 'Add member', submit: ([member, score]) => member && edit({ op: 'addMember', member, score: score || '0' }) },
+          add: { fields: ['member', 'score'], label: t('Add member'), submit: ([member, score]) => member && edit({ op: 'addMember', member, score: score || '0' }) },
         });
       case 'stream':
         return tableView(['id', 'fields'], data.value, {
@@ -174,12 +174,12 @@
           remove: (row) => edit({ op: 'delEntry', id: row[0] }),
           add: {
             fields: ['{"field": "value"}'],
-            label: 'Add entry (XADD *)',
+            label: t('Add entry (XADD *)'),
             submit: ([json]) => {
               try {
                 edit({ op: 'addEntry', fields: JSON.parse(json) });
               } catch {
-                error = 'Entry must be a JSON object of field/value pairs.';
+                error = t('Entry must be a JSON object of field/value pairs.');
                 render();
               }
             },
@@ -192,7 +192,7 @@
 
   function render() {
     if (!data) {
-      app.replaceChildren(el('div', { class: 'empty' }, error || 'Loading…'));
+      app.replaceChildren(el('div', { class: 'empty' }, error || t('Loading…')));
       return;
     }
     app.replaceChildren(header(), error ? el('div', { class: 'error' }, error) : null, valueView());

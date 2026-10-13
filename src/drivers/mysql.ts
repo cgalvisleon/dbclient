@@ -1,14 +1,21 @@
 import * as mysql from 'mysql2';
+import { checkCount } from './params';
+import { sslFields, tlsOptions } from './tls';
+import { sshFields } from './sshTunnel';
 import {
+  Catalog,
   ConnectionConfig,
   ConnectionSecrets,
   DbNode,
   DriverFactory,
   NodeKind,
+  ParamStatement,
   QueryOptions,
   SqlDriver,
   StatementError,
   StatementResult,
+  TableInfo,
+  TableRef,
 } from './types';
 
 const FOLDERS: { name: string; kind: NodeKind }[] = [
@@ -60,6 +67,7 @@ export class MysqlDriver implements SqlDriver {
       supportBigNumbers: true,
       bigNumberStrings: true,
       multipleStatements: false,
+      ssl: tlsOptions(o, this.secrets, String(o.host || 'localhost')) as mysql.ConnectionOptions['ssl'],
     };
   }
 
@@ -137,7 +145,7 @@ export class MysqlDriver implements SqlDriver {
               'select table_name as name from information_schema.tables where table_schema = ? and table_type in (?) order by table_name',
               [db, folder === 'Tables' ? ['BASE TABLE', 'SYSTEM VIEW'] : ['VIEW']],
             );
-            return rows.map((r) => node(folder === 'Tables' ? 'table' : 'view', r.name, undefined, true));
+            return rows.map((r) => ({ ...node(folder === 'Tables' ? 'table' : 'view', r.name, undefined, true), meta: { name: r.name } }));
           }
           case 'Functions':
           case 'Procedures': {
@@ -184,6 +192,104 @@ export class MysqlDriver implements SqlDriver {
       }
       default:
         return [];
+    }
+  }
+
+  // In MySQL a "schema" is a database: `ref.schema` (from `db.table`) wins over `ref.database`.
+  private databaseOf(ref: { database?: string; schema?: string }): string {
+    return ref.schema || ref.database || this.defaultDatabase;
+  }
+
+  async catalog(database?: string): Promise<Catalog> {
+    const db = database || this.defaultDatabase;
+    if (!db) {
+      return { tables: [] };
+    }
+    const rows = await this.query<{ name: string; type: string }>(
+      'select table_name as name, table_type as type from information_schema.tables where table_schema = ? order by table_name',
+      [db],
+    );
+    return { tables: rows.map((r) => ({ name: r.name, kind: r.type === 'VIEW' ? ('view' as const) : ('table' as const) })) };
+  }
+
+  async describe(ref: TableRef): Promise<TableInfo | undefined> {
+    const db = this.databaseOf(ref);
+    const tables = await this.query<{ type: string }>(
+      'select table_type as type from information_schema.tables where table_schema = ? and table_name = ?',
+      [db, ref.name],
+    );
+    if (!tables.length) {
+      return undefined;
+    }
+    const [columns, stats] = await Promise.all([
+      this.query<{ name: string; type: string; nullable: string; def: string | null; ckey: string }>(
+        `select column_name as name, column_type as type, is_nullable as nullable, column_default as def, column_key as ckey
+           from information_schema.columns where table_schema = ? and table_name = ? order by ordinal_position`,
+        [db, ref.name],
+      ),
+      this.query<{ name: string; col: string; uniq: number }>(
+        `select index_name as name, column_name as col, 1 - non_unique as uniq
+           from information_schema.statistics where table_schema = ? and table_name = ?
+          order by index_name = 'PRIMARY' desc, index_name, seq_in_index`,
+        [db, ref.name],
+      ),
+    ]);
+    const indexes = new Map<string, { name: string; columns: string[]; unique: boolean; primary: boolean }>();
+    for (const s of stats) {
+      const index = indexes.get(s.name) ?? { name: s.name, columns: [], unique: Boolean(Number(s.uniq)), primary: s.name === 'PRIMARY' };
+      index.columns.push(s.col);
+      indexes.set(s.name, index);
+    }
+    const primaryKey = indexes.get('PRIMARY')?.columns ?? [];
+    return {
+      ref: { database: db, name: ref.name },
+      kind: tables[0].type === 'VIEW' ? 'view' : 'table',
+      columns: columns.map((c) => ({
+        name: c.name,
+        type: c.type,
+        nullable: c.nullable === 'YES',
+        primaryKey: primaryKey.includes(c.name),
+        default: c.def ?? undefined,
+      })),
+      primaryKey,
+      indexes: [...indexes.values()],
+    };
+  }
+
+  async ddl(ref: TableRef): Promise<string> {
+    const info = await this.describe(ref);
+    if (!info) {
+      throw new Error(`${ref.name} not found.`);
+    }
+    const name = `\`${this.databaseOf(ref).replace(/`/g, '``')}\`.\`${ref.name.replace(/`/g, '``')}\``;
+    const rows = await this.query<Record<string, string>>(`show create ${info.kind === 'view' ? 'view' : 'table'} ${name}`);
+    return `${rows[0][info.kind === 'view' ? 'Create View' : 'Create Table']};`;
+  }
+
+  async transaction(database: string | undefined, statements: ParamStatement[]): Promise<number[]> {
+    // FOUND_ROWS: an UPDATE that sets the same values still counts the row it matched.
+    const connection = mysql.createConnection({ ...this.connectionOptions(database), flags: ['FOUND_ROWS'] }).promise();
+    const counts: number[] = [];
+    try {
+      await connection.beginTransaction();
+      for (const s of statements) {
+        let count: number;
+        try {
+          const [result] = await connection.query(s.sql, s.params);
+          count = (result as mysql.ResultSetHeader).affectedRows;
+        } catch (err) {
+          throw toStatementError(err as mysql.QueryError);
+        }
+        checkCount(s, count);
+        counts.push(count);
+      }
+      await connection.commit();
+      return counts;
+    } catch (err) {
+      await connection.rollback().catch(() => undefined);
+      throw err;
+    } finally {
+      await connection.end().catch(() => undefined);
     }
   }
 
@@ -268,6 +374,8 @@ export const mysqlFactory: DriverFactory = {
     { key: 'database', label: 'Database', kind: 'text', placeholder: 'optional' },
     { key: 'user', label: 'User', kind: 'text', required: true, default: 'root' },
     { key: 'password', label: 'Password', kind: 'password', secret: true },
+    ...sslFields(),
+    ...sshFields(),
   ],
   create: (config, secrets) => new MysqlDriver(config, secrets),
 };

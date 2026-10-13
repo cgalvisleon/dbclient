@@ -1,5 +1,7 @@
 import IORedis from 'ioredis';
 import { ConnectionConfig, ConnectionSecrets, DbNode, DriverFactory, KvDriver } from './types';
+import { sslFields, tlsOptions } from './tls';
+import { sshFields } from './sshTunnel';
 
 type RedisClient = InstanceType<typeof IORedis>;
 
@@ -77,6 +79,7 @@ export class RedisDriver implements KvDriver {
           // Give up quickly instead of retrying forever behind the user's back.
           retryStrategy: (times) => (times > 3 ? null : 500),
           connectionName: 'dbclient',
+          tls: tlsOptions(o, this.secrets, String(o.host || 'localhost')),
         });
         redis.on('error', () => undefined);
         redis.on('end', () => this.clients.delete(db));
@@ -212,6 +215,8 @@ export const redisFactory: DriverFactory = {
     { key: 'db', label: 'Default database', kind: 'number', default: 0 },
     { key: 'separator', label: 'Key separator', kind: 'text', default: ':', hint: 'Keys are grouped into folders by this separator.' },
     { key: 'showEmptyDbs', label: 'Show empty databases', kind: 'checkbox', default: false },
+    ...sslFields(),
+    ...sshFields(),
   ],
   create: (config, secrets) => new RedisDriver(config, secrets),
 };

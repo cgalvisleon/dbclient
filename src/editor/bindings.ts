@@ -27,6 +27,8 @@ export class DocumentBindings implements vscode.Disposable {
   constructor(
     private readonly state: vscode.Memento,
     private readonly manager: ConnectionManager,
+    /** Connections implied by where a file is saved (SQL locations); several ids mean a tie. */
+    private readonly impliedConnections: (uri: vscode.Uri) => string[] = () => [],
   ) {
     this.bindings = new Map(Object.entries(state.get<Record<string, Binding>>(STATE_KEY, {})));
     this.status = vscode.window.createStatusBarItem('dbclient.connection', vscode.StatusBarAlignment.Left, 100);
@@ -48,7 +50,12 @@ export class DocumentBindings implements vscode.Disposable {
   }
 
   get(doc: vscode.TextDocument): Binding | undefined {
-    const binding = this.bindings.get(doc.uri.toString());
+    let binding = this.bindings.get(doc.uri.toString());
+    if (!binding && doc.uri.scheme === 'file') {
+      const implied = this.impliedConnections(doc.uri);
+      // A tie (folder linked to several connections) is resolved once with pick() and remembered.
+      binding = implied.length === 1 ? { connectionId: implied[0] } : undefined;
+    }
     const config = binding && this.manager.store.get(binding.connectionId);
     // A binding only counts when the connection still exists and suits the editor's language.
     return config && this.manager.factoryOf(config).category === EDITOR_CATEGORIES[doc.languageId] ? binding : undefined;
@@ -65,9 +72,10 @@ export class DocumentBindings implements vscode.Disposable {
   async pick(doc: vscode.TextDocument): Promise<Binding | undefined> {
     const current = this.get(doc);
     const category = EDITOR_CATEGORIES[doc.languageId];
+    const tie = doc.uri.scheme === 'file' ? this.impliedConnections(doc.uri) : [];
     const items = this.manager.store
       .list()
-      .filter((c) => this.manager.factoryOf(c).category === category)
+      .filter((c) => this.manager.factoryOf(c).category === category && (tie.length < 2 || tie.includes(c.id)))
       .map((c) => ({
         label: c.name,
         description: [this.manager.factoryOf(c).label, c.options.database ?? c.options.host].filter(Boolean).join(' · '),
@@ -82,7 +90,12 @@ export class DocumentBindings implements vscode.Disposable {
       }
       return undefined;
     }
-    const picked = await vscode.window.showQuickPick(items, { placeHolder: vscode.l10n.t('Connection for this editor') });
+    const picked = await vscode.window.showQuickPick(items, {
+      placeHolder:
+        tie.length > 1
+          ? vscode.l10n.t('This file is in a folder linked to several connections; choose one (it is remembered)')
+          : vscode.l10n.t('Connection for this editor'),
+    });
     if (!picked) {
       return undefined;
     }

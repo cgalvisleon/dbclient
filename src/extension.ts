@@ -1,14 +1,35 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { RedisCompletionProvider } from './completion/redisCompletion';
 import { SqlCompletionProvider } from './completion/sqlCompletion';
+import { CatalogCache } from './connections/catalog';
 import { ConnectionManager } from './connections/manager';
+import { SqlLocations } from './connections/sqlLocations';
 import { DocumentBindings, EDITOR_CATEGORIES } from './editor/bindings';
 import { RunCodeLens } from './editor/codeLens';
+import { HistoryPicker } from './editor/historyPicker';
 import { RedisRunner } from './editor/redisRunner';
 import { SqlRunner } from './editor/sqlRunner';
+import { TableActions, TemplateKind } from './editor/tableActions';
 import { initIcons } from './icons';
-import { ConnectionStore } from './store/connectionStore';
-import { ConnectionItem, ConnectionsDragAndDrop, ConnectionsTree, FolderItem, NodeItem } from './tree/connectionsTree';
+import { allDrivers } from './drivers/registry';
+import { ConnectionStore, ImportMode, parseExport } from './store/connectionStore';
+import { QueryHistory } from './store/queryHistory';
+import { sqlFileName, SqlFileStore } from './store/sqlFiles';
+import { displayPath, expandPath, isInside } from './store/sqlLocations';
+import {
+  ConnectionItem,
+  ConnectionsDragAndDrop,
+  ConnectionsTree,
+  FolderItem,
+  NodeItem,
+  SqlDirItem,
+  SqlFileItem,
+  SqlFolderItem,
+  SqlLocationItem,
+} from './tree/connectionsTree';
 import { openConnectionForm } from './webviews/connectionForm';
 import { NatsConsoles } from './webviews/natsConsole';
 import { openValueViewer } from './webviews/redisValue';
@@ -21,28 +42,49 @@ export interface DbClientInternals {
   tree: ConnectionsTree;
   dragAndDrop: ConnectionsDragAndDrop;
   bindings: DocumentBindings;
+  sqlFiles: SqlFileStore;
+  sqlLocations: SqlLocations;
+  history: QueryHistory;
+  catalog: CatalogCache;
+  results: ResultsView;
 }
 
 export function activate(context: vscode.ExtensionContext): DbClientInternals {
   initIcons(context.extensionUri);
   const store = new ConnectionStore(vscode.Uri.joinPath(context.globalStorageUri, 'connections.json').fsPath, context.secrets);
   const manager = new ConnectionManager(store);
-  const tree = new ConnectionsTree(manager);
+  const sqlRoot = () => {
+    const custom = vscode.workspace.getConfiguration('dbclient').get<string>('sqlFolder', '').trim();
+    return custom ? custom.replace(/^~(?=$|[\\/])/, os.homedir()) : vscode.Uri.joinPath(context.globalStorageUri, 'sql').fsPath;
+  };
+  const sqlFiles = new SqlFileStore(sqlRoot());
+  const sqlLocations = new SqlLocations(manager, sqlFiles);
+  const tree = new ConnectionsTree(manager, sqlLocations);
   const dragAndDrop = new ConnectionsDragAndDrop(manager);
-  const bindings = new DocumentBindings(context.workspaceState, manager);
+  const bindings = new DocumentBindings(context.workspaceState, manager, (uri) => sqlLocations.owners(uri.fsPath));
   const results = new ResultsView(context.extensionUri);
-  const runner = new SqlRunner(manager, bindings, results);
-  const redisRunner = new RedisRunner(manager, bindings, results);
+  const history = new QueryHistory(vscode.Uri.joinPath(context.globalStorageUri, 'history').fsPath, () =>
+    Math.max(0, Math.floor(vscode.workspace.getConfiguration('dbclient').get<number>('historySize', 500))),
+  );
+  const historyPicker = new HistoryPicker(manager, bindings, history);
+  const catalog = new CatalogCache(manager);
+  const runner = new SqlRunner(manager, bindings, results, history, catalog);
+  const tableActions = new TableActions(manager, bindings, catalog, results, runner);
+  const redisRunner = new RedisRunner(manager, bindings, results, history);
   const natsConsoles = new NatsConsoles(context.extensionUri, manager);
 
   const sqlDocs: vscode.DocumentSelector = [{ language: 'sql' }];
   const redisDocs: vscode.DocumentSelector = [{ language: 'redis' }];
   context.subscriptions.push(
     store.watch(),
+    sqlFiles.watch(),
+    sqlLocations,
+    vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('dbclient.sqlFolder') && sqlFiles.relocate(sqlRoot())),
     manager,
     tree,
     bindings,
     runner,
+    catalog,
     redisRunner,
     natsConsoles,
     vscode.window.createTreeView('dbclient.connections', {
@@ -52,7 +94,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       dragAndDropController: dragAndDrop,
     }),
     vscode.window.registerWebviewViewProvider(RESULTS_VIEW_ID, results, { webviewOptions: { retainContextWhenHidden: true } }),
-    vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings), '.', ' '),
+    vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings, catalog), '.', ' '),
     vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager)),
     vscode.languages.registerCompletionItemProvider(redisDocs, new RedisCompletionProvider(manager, bindings), ' ', ':'),
   );
@@ -165,7 +207,10 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       }
     }
   });
-  command('dbclient.refresh', () => tree.refresh());
+  command('dbclient.refresh', () => {
+    catalog.invalidate();
+    tree.refresh();
+  });
 
   command('dbclient.editConnection', async (item?: ConnectionItem) => {
     const id = await connectionOf(item);
@@ -188,15 +233,378 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }
     const config = manager.config(id);
     const remove = vscode.l10n.t('Delete');
+    const saved = sqlFiles.list(id).length;
+    const external = sqlLocations.of(id).filter((l) => l.kind !== 'internal').length;
     const answer = await vscode.window.showWarningMessage(
-      vscode.l10n.t('Delete connection "{0}"? Its saved password is removed too.', config.name),
-      { modal: true },
+      saved
+        ? vscode.l10n.t('Delete connection "{0}"? Its saved password and its {1} saved SQL files are removed too.', config.name, saved)
+        : vscode.l10n.t('Delete connection "{0}"? Its saved password is removed too.', config.name),
+      {
+        modal: true,
+        detail: external ? vscode.l10n.t('Linked folders and other save locations are not touched.') : undefined,
+      },
       remove,
     );
     if (answer === remove) {
       await manager.disconnect(id);
       await store.delete(id, manager.factoryOf(config).fields);
+      sqlFiles.deleteAll(id);
+      history.clear(id);
     }
+  });
+
+  // ---------- export / import ----------
+
+  const fieldsOf = (type: string) => allDrivers().find((d) => d.type === type)?.fields;
+
+  // `target` lets tests skip the save dialog.
+  command('dbclient.exportConnections', async (item?: FolderItem, target?: vscode.Uri) => {
+    const folderId = item instanceof FolderItem ? item.folderId : undefined;
+    const data = store.exportData((type) => (fieldsOf(type) ?? []).filter((f) => f.secret).map((f) => f.key), folderId);
+    if (!data.connections.length && !data.folders.length) {
+      vscode.window.showInformationMessage(vscode.l10n.t('There are no connections to export.'));
+      return;
+    }
+    const name = folderId ? store.getFolder(folderId)!.name : 'dbclient-connections';
+    target ??= await vscode.window.showSaveDialog({
+      defaultUri: vscode.Uri.file(path.join(os.homedir(), `${name.replace(/[\\/:*?"<>|]+/g, '-')}.json`)),
+      filters: { JSON: ['json'] },
+      title: vscode.l10n.t('Export Connections'),
+    });
+    if (!target) {
+      return;
+    }
+    await vscode.workspace.fs.writeFile(target, Buffer.from(JSON.stringify(data, null, 2) + '\n', 'utf8'));
+    vscode.window.showInformationMessage(
+      vscode.l10n.t('Exported {0} connections to {1}. Passwords and other secrets are not included.', data.connections.length, target.fsPath),
+    );
+  });
+
+  // `source` and `mode` let tests skip the dialogs.
+  command('dbclient.importConnections', async (source?: vscode.Uri, mode?: ImportMode) => {
+    source ??= (
+      await vscode.window.showOpenDialog({ canSelectMany: false, filters: { JSON: ['json'] }, title: vscode.l10n.t('Import Connections') })
+    )?.[0];
+    if (!source) {
+      return;
+    }
+    const data = parseExport(Buffer.from(await vscode.workspace.fs.readFile(source)).toString('utf8'));
+    if (!mode) {
+      const picked = await vscode.window.showQuickPick(
+        [
+          { label: vscode.l10n.t('Merge'), detail: vscode.l10n.t('Add the connections; existing ones are kept and identical ones skipped.'), mode: 'merge' as const },
+          { label: vscode.l10n.t('Replace'), detail: vscode.l10n.t('Make the list exactly the file: connections not in it are deleted.'), mode: 'replace' as const },
+        ],
+        { title: vscode.l10n.t('Import {0} connections', data.connections.length) },
+      );
+      if (!picked) {
+        return;
+      }
+      mode = picked.mode;
+      if (mode === 'replace') {
+        const keep = new Set(data.connections.map((c) => c.id));
+        const removed = store.list().filter((c) => !keep.has(c.id));
+        if (removed.length) {
+          const replace = vscode.l10n.t('Replace');
+          const answer = await vscode.window.showWarningMessage(
+            vscode.l10n.t('Delete {0} connections that are not in the file?', removed.length),
+            {
+              modal: true,
+              detail: `${removed.map((c) => c.name).join(', ')}\n\n${vscode.l10n.t('Their saved passwords and saved SQL files are deleted too; linked folders are not touched.')}`,
+            },
+            replace,
+          );
+          if (answer !== replace) {
+            return;
+          }
+        }
+      }
+    }
+    if (mode === 'replace') {
+      const keep = new Set(data.connections.map((c) => c.id));
+      await Promise.all(store.list().filter((c) => !keep.has(c.id)).map((c) => manager.disconnect(c.id)));
+    }
+    const result = await store.importData(data, mode, fieldsOf);
+    for (const id of result.removed) {
+      sqlFiles.deleteAll(id);
+      history.clear(id);
+    }
+    const parts = [vscode.l10n.t('{0} imported', result.added.length + result.renamed.length)];
+    if (result.renamed.length) {
+      parts.push(vscode.l10n.t('{0} as copies ({1})', result.renamed.length, result.renamed.join(', ')));
+    }
+    if (result.skipped.length) {
+      parts.push(vscode.l10n.t('{0} already present', result.skipped.length));
+    }
+    if (result.removed.length) {
+      parts.push(vscode.l10n.t('{0} deleted', result.removed.length));
+    }
+    if (result.invalid.length) {
+      parts.push(vscode.l10n.t('{0} ignored (unknown engine): {1}', result.invalid.length, result.invalid.join(', ')));
+    }
+    vscode.window.showInformationMessage(
+      `${parts.join(' · ')}. ${vscode.l10n.t('Passwords are not part of the file: enter them with Edit Connection where needed.')}`,
+    );
+  });
+
+  // ---------- SQL files and their locations ----------
+
+  type SqlItem = ConnectionItem | NodeItem | SqlFolderItem | SqlLocationItem | SqlDirItem;
+
+  /** SQL connection from a tree item, or asked. */
+  const sqlConnectionOf = async (item?: SqlItem): Promise<string | undefined> => {
+    if (item) {
+      return item.connectionId;
+    }
+    const picked = await vscode.window.showQuickPick(
+      store
+        .list()
+        .filter((c) => manager.factoryOf(c).category === 'sql')
+        .map((c) => ({ label: c.name, description: manager.factoryOf(c).label, id: c.id })),
+      { placeHolder: vscode.l10n.t('SQL connection') },
+    );
+    return picked?.id;
+  };
+
+  /**
+   * Folder for a new file: the clicked location/subfolder, else the save location; when the
+   * connection has several locations the user may pick another one (the save location first).
+   */
+  const targetDir = async (connectionId: string, item?: SqlItem): Promise<string | undefined> => {
+    if (item instanceof SqlLocationItem || item instanceof SqlDirItem) {
+      return item.dir;
+    }
+    const locations = sqlLocations.of(connectionId).filter((l) => l.path);
+    if (locations.length < 2) {
+      return sqlLocations.saveDir(connectionId);
+    }
+    const env = sqlLocations.env();
+    const items = locations
+      .sort((a, b) => Number(b.isSave) - Number(a.isSave))
+      .map((l) => ({
+        label: `${l.isSave ? '$(star-full) ' : ''}${l.kind === 'internal' ? vscode.l10n.t('Saved (extension storage)') : l.label}`,
+        description: l.raw ? displayPath(l.raw, env) : undefined,
+        dir: l.path!,
+      }));
+    return (await vscode.window.showQuickPick(items, { placeHolder: vscode.l10n.t('Where to save the file') }))?.dir;
+  };
+
+  const askFileName = (dir: string, value?: string) =>
+    vscode.window.showInputBox({
+      prompt: vscode.l10n.t('SQL file name'),
+      value: value ?? sqlFiles.nextNameIn(dir),
+      validateInput: (v) => {
+        try {
+          sqlFileName(v);
+          return undefined;
+        } catch {
+          return vscode.l10n.t('Enter a valid file name.');
+        }
+      },
+    });
+
+  /** Opens a file created for a connection and binds it explicitly (its folder may be shared or unlinked). */
+  const openBound = async (file: string, connectionId: string, database?: string) => {
+    const doc = await vscode.workspace.openTextDocument(file);
+    await bindings.set(doc, { connectionId, database });
+    await vscode.window.showTextDocument(doc);
+  };
+
+  command('dbclient.newSqlFile', async (item?: SqlItem) => {
+    const id = await sqlConnectionOf(item);
+    const dir = id && (await targetDir(id, item));
+    if (!id || !dir) {
+      return;
+    }
+    const name = await askFileName(dir);
+    if (name) {
+      await openBound(sqlFiles.createIn(dir, name), id, item instanceof NodeItem ? item.node.database : undefined);
+    }
+  });
+
+  // Saves the active SQL editor (usually an untitled query) into a location of its connection.
+  command('dbclient.saveToSqlFolder', async () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || editor.document.languageId !== 'sql') {
+      vscode.window.showWarningMessage(vscode.l10n.t('Open a SQL editor first.'));
+      return;
+    }
+    const doc = editor.document;
+    const binding = bindings.get(doc) ?? (await bindings.pick(doc));
+    if (!binding) {
+      return;
+    }
+    if (!doc.isUntitled && sqlLocations.owners(doc.uri.fsPath).includes(binding.connectionId)) {
+      await doc.save();
+      return;
+    }
+    const dir = await targetDir(binding.connectionId);
+    if (!dir) {
+      return;
+    }
+    const name = await askFileName(dir, doc.isUntitled ? undefined : path.basename(doc.uri.fsPath, '.sql'));
+    if (!name) {
+      return;
+    }
+    const file = sqlFiles.createIn(dir, name, doc.getText());
+    if (doc.isUntitled) {
+      // Close the untitled original without the "save changes?" prompt.
+      await vscode.window.showTextDocument(doc);
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+    }
+    await openBound(file, binding.connectionId, binding.database);
+  });
+
+  command('dbclient.renameSqlFile', async (item?: SqlFileItem) => {
+    if (!item) {
+      return;
+    }
+    const name = await askFileName(path.dirname(item.file), path.basename(item.file, '.sql'));
+    if (!name) {
+      return;
+    }
+    const open = vscode.workspace.textDocuments.find((d) => d.uri.fsPath === item.file);
+    if (open?.isDirty) {
+      await open.save();
+    }
+    const target = sqlFiles.rename(item.file, name);
+    if (open) {
+      // Reopen under the new name in place of the old tab.
+      await vscode.window.showTextDocument(open);
+      await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+      await vscode.window.showTextDocument(vscode.Uri.file(target));
+    }
+  });
+
+  command('dbclient.deleteSqlFile', async (item?: SqlFileItem) => {
+    if (!item) {
+      return;
+    }
+    const remove = vscode.l10n.t('Delete');
+    const answer = await vscode.window.showWarningMessage(
+      vscode.l10n.t('Delete "{0}"?', path.basename(item.file)),
+      { modal: true, detail: item.file },
+      remove,
+    );
+    if (answer === remove) {
+      const open = vscode.workspace.textDocuments.find((d) => d.uri.fsPath === item.file);
+      if (open) {
+        await vscode.window.showTextDocument(open);
+        await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+      }
+      sqlFiles.delete(item.file);
+    }
+  });
+
+  command('dbclient.revealSqlFolder', async (item?: SqlItem) => {
+    const id = await sqlConnectionOf(item);
+    if (!id) {
+      return;
+    }
+    const dir = item instanceof SqlLocationItem || item instanceof SqlDirItem ? item.dir : sqlLocations.saveDir(id);
+    if (dir) {
+      fs.mkdirSync(dir, { recursive: true });
+      await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(dir));
+    }
+  });
+
+  /**
+   * Stored form of a picked folder: `${workspaceFolder}/…` when the user wants it relative to
+   * the open project, else the absolute path. Undefined when the user cancels.
+   */
+  const storedPath = async (folder: string): Promise<string | undefined> => {
+    const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!ws || !isInside(folder, ws)) {
+      return folder;
+    }
+    const relative = path.relative(ws, folder).split(path.sep).join('/');
+    const asVariable = relative ? `\${workspaceFolder}/${relative}` : '${workspaceFolder}';
+    const choice = await vscode.window.showQuickPick(
+      [
+        { label: asVariable, description: vscode.l10n.t('Relative to whichever project is open'), value: asVariable },
+        { label: folder, description: vscode.l10n.t('This exact folder'), value: folder },
+      ],
+      { placeHolder: vscode.l10n.t('The folder is inside the open project. How should it be stored?') },
+    );
+    return choice?.value;
+  };
+
+  command('dbclient.addSqlFolder', async (item?: SqlItem) => {
+    const id = await sqlConnectionOf(item);
+    if (!id) {
+      return;
+    }
+    const picked = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: true,
+      openLabel: vscode.l10n.t('Link Folder'),
+      defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
+    });
+    if (!picked?.length) {
+      return;
+    }
+    const current = manager.config(id).sqlLocations ?? [];
+    const env = sqlLocations.env();
+    const next = [...current];
+    for (const uri of picked) {
+      const stored = await storedPath(uri.fsPath);
+      if (stored && !next.some((l) => expandPath(l.path, env) === expandPath(stored, env))) {
+        next.push({ path: stored });
+      }
+    }
+    store.patch(id, { sqlLocations: next });
+  });
+
+  command('dbclient.removeSqlFolder', async (item?: SqlLocationItem) => {
+    if (!(item instanceof SqlLocationItem) || item.location.kind === 'internal') {
+      return;
+    }
+    const config = manager.config(item.connectionId);
+    const raw = item.location.raw!;
+    if (item.location.kind === 'save') {
+      // An unlinked save location: "removing" it means saving to the internal folder again.
+      store.patch(item.connectionId, { sqlSaveLocation: undefined });
+      return;
+    }
+    store.patch(item.connectionId, {
+      sqlLocations: (config.sqlLocations ?? []).filter((l) => l.path !== raw),
+      sqlSaveLocation: config.sqlSaveLocation === raw ? undefined : config.sqlSaveLocation,
+    });
+    vscode.window.setStatusBarMessage(vscode.l10n.t('Unlinked {0}; its files were not touched.', item.location.label), 4000);
+  });
+
+  command('dbclient.setSaveLocation', async (item?: SqlItem) => {
+    const id = await sqlConnectionOf(item);
+    if (!id) {
+      return;
+    }
+    if (item instanceof SqlLocationItem) {
+      store.patch(id, { sqlSaveLocation: item.location.kind === 'internal' ? undefined : item.location.raw });
+      return;
+    }
+    const env = sqlLocations.env();
+    const options = [
+      ...sqlLocations.of(id).map((l) => ({
+        label: `${l.isSave ? '$(star-full) ' : ''}${l.kind === 'internal' ? vscode.l10n.t('Saved (extension storage)') : l.label}`,
+        description: l.raw ? displayPath(l.raw, env) : undefined,
+        raw: l.kind === 'internal' ? null : l.raw!,
+      })),
+      { label: `$(folder-opened) ${vscode.l10n.t('Other folder…')}`, description: undefined, raw: undefined as string | null | undefined },
+    ];
+    const choice = await vscode.window.showQuickPick(options, { placeHolder: vscode.l10n.t('Where new SQL files of this connection are saved') });
+    if (!choice) {
+      return;
+    }
+    let raw = choice.raw;
+    if (raw === undefined) {
+      const picked = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, openLabel: vscode.l10n.t('Save Here') });
+      raw = picked?.[0] ? await storedPath(picked[0].fsPath) : undefined;
+      if (!raw) {
+        return;
+      }
+    }
+    store.patch(id, { sqlSaveLocation: raw ?? undefined });
   });
 
   command('dbclient.testConnection', async (item?: ConnectionItem) => {
@@ -255,6 +663,17 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     editor.selection = new vscode.Selection(end, end);
   });
 
+  // ---------- tables and views ----------
+
+  command('dbclient.openData', (item: NodeItem) => tableActions.openData(item));
+  command('dbclient.showStructure', (item: NodeItem) => tableActions.showStructure(item));
+  command('dbclient.showDdl', (item: NodeItem) => tableActions.showDdl(item));
+  for (const kind of ['select', 'insert', 'update', 'delete'] as TemplateKind[]) {
+    command(`dbclient.generate${kind[0].toUpperCase()}${kind.slice(1)}`, (item: NodeItem) => tableActions.generate(item, kind));
+  }
+
+  command('dbclient.showHistory', (item?: ConnectionItem) => historyPicker.show(item?.connectionId));
+
   command('dbclient.openConsole', async (item?: ConnectionItem | NodeItem) => {
     const id = await connectionOf(item);
     if (id) {
@@ -297,7 +716,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   });
   command('dbclient.cancelQuery', () => runner.cancel(vscode.window.activeTextEditor));
 
-  return { store, manager, tree, dragAndDrop, bindings };
+  return { store, manager, tree, dragAndDrop, bindings, sqlFiles, sqlLocations, history, catalog, results };
 }
 
 export function deactivate(): void {

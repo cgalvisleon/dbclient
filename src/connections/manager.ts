@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { getDriver } from '../drivers/registry';
+import { connectDriver } from '../drivers/sshTunnel';
 import {
   ConnectionConfig,
   ConnectionSecrets,
@@ -53,13 +54,13 @@ export class ConnectionManager implements vscode.Disposable {
       pending = (async () => {
         const config = this.config(id);
         const factory = this.factoryOf(config);
-        const driver = factory.create(config, await this.store.getSecrets(id, factory.fields));
-        try {
-          await driver.connect();
-        } catch (err) {
-          await driver.disconnect().catch(() => undefined);
-          throw err;
-        }
+        let driver: Driver | undefined;
+        // An SSH tunnel that drops on its own leaves the driver useless: mark it disconnected.
+        driver = await connectDriver(factory, config, await this.store.getSecrets(id, factory.fields), () => {
+          if (driver && this.active.get(id) === driver) {
+            void this.disconnect(id);
+          }
+        });
         this.active.set(id, driver);
         driver.onDidChange?.(() => this.active.get(id) === driver && this.contentChanged.fire(id));
         this.changed.fire(id);
@@ -111,12 +112,8 @@ export class ConnectionManager implements vscode.Disposable {
 
   /** Connects a throwaway driver with the given values; used by "Test Connection" and the form. */
   async test(config: ConnectionConfig, secrets: ConnectionSecrets): Promise<void> {
-    const driver = getDriver(config.type).create(config, secrets);
-    try {
-      await driver.connect();
-    } finally {
-      await driver.disconnect().catch(() => undefined);
-    }
+    const driver = await connectDriver(getDriver(config.type), config, secrets);
+    await driver.disconnect().catch(() => undefined);
   }
 
   dispose(): void {

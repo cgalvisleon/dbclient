@@ -1,14 +1,21 @@
 import oracledb from 'oracledb';
+import { bindTemporal, checkCount } from './params';
+import { sslFields, tlsOptions } from './tls';
+import { sshFields } from './sshTunnel';
 import {
+  Catalog,
   ConnectionConfig,
   ConnectionSecrets,
   DbNode,
   DriverFactory,
   NodeKind,
+  ParamStatement,
   QueryOptions,
   SqlDriver,
   StatementError,
   StatementResult,
+  TableInfo,
+  TableRef,
 } from './types';
 
 const FOLDERS: { name: string; kind: NodeKind; type: string }[] = [
@@ -55,11 +62,28 @@ export class OracleDriver implements SqlDriver {
 
   private get connectString(): string {
     const o = this.config.options;
-    return `${o.host || 'localhost'}:${o.port || 1521}/${o.service || 'FREEPDB1'}`;
+    const address = `${o.host || 'localhost'}:${o.port || 1521}/${o.service || 'FREEPDB1'}`;
+    return tlsOptions(o, this.secrets) ? `tcps://${address}` : address;
   }
 
-  private get credentials() {
-    return { user: String(this.config.options.user || ''), password: this.secrets.password, connectString: this.connectString };
+  private get credentials(): oracledb.ConnectionAttributes {
+    const o = this.config.options;
+    const credentials: oracledb.ConnectionAttributes = { user: String(o.user || ''), password: this.secrets.password, connectString: this.connectString };
+    const tls = tlsOptions(o, this.secrets);
+    if (tls) {
+      // Thin mode reads one PEM "wallet" as certificate, key and CA at once, so a CA file only
+      // works together with a client certificate and key; without any, the system CAs are used.
+      if (tls.ca && !(tls.cert && tls.key)) {
+        throw new Error('Oracle (thin mode) uses a CA file only together with a client certificate and key. Leave all three empty to use the system CAs.');
+      }
+      const pem = [tls.cert, tls.ca, tls.key].filter(Boolean).map(String).join('\n');
+      if (pem) {
+        credentials.walletContent = pem;
+        credentials.walletPassword = tls.passphrase;
+      }
+      credentials.sslServerDNMatch = o.ssl === 'verify-full';
+    }
+    return credentials;
   }
 
   private get autoCommit(): boolean {
@@ -155,6 +179,7 @@ export class OracleDriver implements SqlDriver {
         return rows.map((r) => ({
           ...this.leaf(spec.kind, schema, folder, r.NAME, r.STATUS === 'INVALID' ? 'invalid' : undefined),
           expandable: spec.kind === 'table' || spec.kind === 'view',
+          meta: spec.kind === 'table' || spec.kind === 'view' ? { schema, name: r.NAME } : undefined,
         }));
       }
       case 'table':
@@ -188,6 +213,136 @@ export class OracleDriver implements SqlDriver {
 
   private leaf(kind: NodeKind, schema: string, folder: string, label: string, description?: string): DbNode {
     return { kind, label, path: makePath(schema, folder, label), expandable: false, database: schema, description };
+  }
+
+  private ownerOf(ref: { database?: string; schema?: string }): string {
+    return ref.schema || ref.database || this.user || String(this.config.options.user || '').toUpperCase();
+  }
+
+  async catalog(database?: string): Promise<Catalog> {
+    const owner = this.ownerOf({ database });
+    const rows = await this.query<{ NAME: string; TYPE: string }>(
+      `select object_name as name, object_type as type from all_objects
+        where owner = :1 and object_type in ('TABLE', 'VIEW') and object_name not like 'BIN$%'
+        order by object_name`,
+      [owner],
+    );
+    return { defaultSchema: owner, tables: rows.map((r) => ({ schema: owner, name: r.NAME, kind: r.TYPE === 'VIEW' ? ('view' as const) : ('table' as const) })) };
+  }
+
+  /** Owner and name as stored: exact first, then upper case (unquoted identifiers). */
+  private async locate(ref: TableRef): Promise<{ owner: string; name: string; type: string } | undefined> {
+    const owner = this.ownerOf(ref);
+    const rows = await this.query<{ OWNER: string; NAME: string; TYPE: string }>(
+      `select owner, object_name as name, object_type as type from all_objects
+        where owner in (:o, upper(:o)) and object_name in (:n, upper(:n)) and object_type in ('TABLE', 'VIEW')
+        order by case when owner = :o then 0 else 1 end, case when object_name = :n then 0 else 1 end`,
+      { o: owner, n: ref.name },
+    );
+    return rows[0] && { owner: rows[0].OWNER, name: rows[0].NAME, type: rows[0].TYPE };
+  }
+
+  async describe(ref: TableRef): Promise<TableInfo | undefined> {
+    const found = await this.locate(ref);
+    if (!found) {
+      return undefined;
+    }
+    const { owner, name, type } = found;
+    const [columns, keyColumns, indexRows] = await Promise.all([
+      this.query<{ NAME: string; TYPE: string; NULLABLE: string; DEF: string | null }>(
+        `select column_name as name,
+                data_type || case when data_type in ('VARCHAR2', 'NVARCHAR2', 'CHAR', 'NCHAR', 'RAW') then '(' || char_length || ')'
+                                  when data_type = 'NUMBER' and data_precision is not null then '(' || data_precision || ',' || data_scale || ')'
+                                  else '' end as type,
+                nullable, data_default as def
+           from all_tab_columns where owner = :1 and table_name = :2 order by column_id`,
+        [owner, name],
+      ),
+      this.query<{ COL: string; IDX: string }>(
+        `select kc.column_name as col, k.index_name as idx from all_constraints k
+           join all_cons_columns kc on kc.owner = k.owner and kc.constraint_name = k.constraint_name
+          where k.owner = :1 and k.table_name = :2 and k.constraint_type = 'P' order by kc.position`,
+        [owner, name],
+      ),
+      this.query<{ NAME: string; COL: string; UNIQ: string }>(
+        `select i.index_name as name, c.column_name as col, i.uniqueness as uniq from all_indexes i
+           join all_ind_columns c on c.index_owner = i.owner and c.index_name = i.index_name
+          where i.table_owner = :1 and i.table_name = :2 order by i.index_name, c.column_position`,
+        [owner, name],
+      ),
+    ]);
+    const primaryKey = keyColumns.map((k) => k.COL);
+    const pkIndex = keyColumns[0]?.IDX;
+    const indexes = new Map<string, { name: string; columns: string[]; unique: boolean; primary: boolean }>();
+    for (const r of indexRows) {
+      const index = indexes.get(r.NAME) ?? { name: r.NAME, columns: [], unique: r.UNIQ === 'UNIQUE', primary: r.NAME === pkIndex };
+      index.columns.push(r.COL);
+      indexes.set(r.NAME, index);
+    }
+    return {
+      ref: { database: ref.database, schema: owner, name },
+      kind: type === 'VIEW' ? 'view' : 'table',
+      columns: columns.map((c) => ({
+        name: c.NAME,
+        type: c.TYPE,
+        nullable: c.NULLABLE === 'Y',
+        primaryKey: primaryKey.includes(c.NAME),
+        default: c.DEF?.trim() || undefined,
+      })),
+      primaryKey,
+      indexes: [...indexes.values()].sort((a, b) => Number(b.primary) - Number(a.primary)),
+    };
+  }
+
+  async ddl(ref: TableRef): Promise<string> {
+    const info = await this.describe(ref);
+    if (!info) {
+      throw new Error(`${ref.name} not found.`);
+    }
+    const connection = await (await this.metadata()).getConnection();
+    const get = async (kind: string, name: string) => {
+      const result = await connection.execute<{ DDL: string }>(
+        'select dbms_metadata.get_ddl(:1, :2, :3) as ddl from dual',
+        [kind, name, info.ref.schema!],
+        { outFormat: oracledb.OUT_FORMAT_OBJECT, fetchInfo: { DDL: { type: oracledb.STRING } } },
+      );
+      return `${(result.rows?.[0]?.DDL ?? '').trim()};`;
+    };
+    try {
+      const parts = [await get(info.kind === 'view' ? 'VIEW' : 'TABLE', info.ref.name)];
+      for (const index of info.indexes.filter((i) => !i.primary)) {
+        parts.push(await get('INDEX', index.name));
+      }
+      return parts.join('\n\n');
+    } finally {
+      await connection.close();
+    }
+  }
+
+  async transaction(_database: string | undefined, statements: ParamStatement[]): Promise<number[]> {
+    // Statements are qualified with the owner, so the connection's default schema does not matter.
+    const connection = await oracledb.getConnection(this.credentials);
+    const counts: number[] = [];
+    try {
+      for (const s of statements) {
+        let count: number;
+        try {
+          const binds = s.params.map((v, i) => bindTemporal(v, s.types?.[i]));
+          count = (await connection.execute(s.sql, binds as oracledb.BindParameters, { autoCommit: false })).rowsAffected ?? 0;
+        } catch (err) {
+          throw toStatementError(err);
+        }
+        checkCount(s, count);
+        counts.push(count);
+      }
+      await connection.commit();
+      return counts;
+    } catch (err) {
+      await connection.rollback().catch(() => undefined);
+      throw err;
+    } finally {
+      await connection.close().catch(() => undefined);
+    }
   }
 
   async execute(text: string, options: QueryOptions): Promise<StatementResult[]> {
@@ -268,6 +423,8 @@ export const oracleFactory: DriverFactory = {
     { key: 'user', label: 'User', kind: 'text', required: true },
     { key: 'password', label: 'Password', kind: 'password', secret: true },
     { key: 'autoCommit', label: 'Auto-commit', kind: 'checkbox', default: true },
+    ...sslFields(),
+    ...sshFields(),
   ],
   create: (config, secrets) => new OracleDriver(config, secrets),
 };

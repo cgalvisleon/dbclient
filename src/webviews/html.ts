@@ -4,6 +4,8 @@ import * as vscode from 'vscode';
 /** HTML shell for a webview that loads `media/<name>.js` and `media/<name>.css` under a strict CSP. */
 export function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, name: string, title: string): string {
   const nonce = randomBytes(16).toString('base64');
+  // The active language's translations (none for English), safe inside a <script> element.
+  const l10n = JSON.stringify(vscode.l10n.bundle ?? {}).replace(/</g, '\\u003c');
   const media = (file: string) => webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', file));
   return `<!DOCTYPE html>
 <html lang="${vscode.env.language}">
@@ -16,6 +18,8 @@ export function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, n
 </head>
 <body>
 <div id="app"></div>
+<script type="application/json" id="dbclient-l10n">${l10n}</script>
+<script nonce="${nonce}" src="${media('l10n.js')}"></script>
 <script nonce="${nonce}" src="${media(`${name}.js`)}"></script>
 </body>
 </html>`;

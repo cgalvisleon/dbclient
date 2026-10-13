@@ -11,13 +11,15 @@ interface FormValue {
   type: string;
   options: ConnectionConfig['options'];
   folderId?: string;
+  sqlLocations?: ConnectionConfig['sqlLocations'];
+  sqlSaveLocation?: string;
 }
 
 type FromWebview =
   | { type: 'ready' }
   | { type: 'test' | 'save'; value: FormValue; secrets: ConnectionSecrets }
   | { type: 'cancel' }
-  | { type: 'browse'; field: string };
+  | { type: 'browse'; field: string; folder?: boolean; append?: boolean };
 
 const panels = new Map<string, vscode.WebviewPanel>();
 
@@ -67,7 +69,7 @@ export async function openConnectionForm(
     }
     const applies = (f: FieldSpec) => !f.showWhen || f.showWhen.values.includes(value.options[f.showWhen.field] as string | boolean);
     const missing = getDriver(value.type).fields.filter((f) => f.required && !f.secret && applies(f) && (value.options[f.key] ?? '') === '');
-    return missing.length ? vscode.l10n.t('Required: {0}', missing.map((f) => f.label).join(', ')) : undefined;
+    return missing.length ? vscode.l10n.t('Required: {0}', missing.map((f) => vscode.l10n.t(f.label)).join(', ')) : undefined;
   };
 
   panel.webview.onDidReceiveMessage(async (message: FromWebview) => {
@@ -75,8 +77,17 @@ export async function openConnectionForm(
       case 'ready':
         post({
           type: 'init',
-          drivers: allDrivers().map((d) => ({ type: d.type, label: d.label, fields: d.fields })),
-          value: config ? { name: config.name, type: config.type, options: config.options, folderId: config.folderId } : undefined,
+          drivers: allDrivers().map((d) => ({ type: d.type, label: d.label, category: d.category, fields: d.fields })),
+          value: config
+            ? {
+                name: config.name,
+                type: config.type,
+                options: config.options,
+                folderId: config.folderId,
+                sqlLocations: config.sqlLocations,
+                sqlSaveLocation: config.sqlSaveLocation,
+              }
+            : undefined,
           folderId,
           folders: manager.store
             .listFolders()
@@ -93,6 +104,12 @@ export async function openConnectionForm(
             testing: vscode.l10n.t('Testing…'),
             browse: vscode.l10n.t('Browse…'),
             folder: vscode.l10n.t('Folder'),
+            sqlFiles: vscode.l10n.t('SQL files'),
+            sqlSave: vscode.l10n.t('Save new files in'),
+            sqlSaveDefault: vscode.l10n.t('Extension storage (default)'),
+            sqlLinked: vscode.l10n.t('Linked folders'),
+            sqlAddFolder: vscode.l10n.t('Add folder…'),
+            sqlHint: vscode.l10n.t('One folder per line. Paths may start with ~ or ${workspaceFolder}. Unlinking never deletes files.'),
             noFolder: vscode.l10n.t('(none)'),
           },
         });
@@ -101,9 +118,14 @@ export async function openConnectionForm(
         panel.dispose();
         return;
       case 'browse': {
-        const picked = await vscode.window.showOpenDialog({ canSelectMany: false, openLabel: vscode.l10n.t('Select') });
+        const picked = await vscode.window.showOpenDialog({
+          canSelectMany: false,
+          canSelectFiles: !message.folder,
+          canSelectFolders: Boolean(message.folder),
+          openLabel: vscode.l10n.t('Select'),
+        });
         if (picked?.[0]) {
-          post({ type: 'browsed', field: message.field, path: picked[0].fsPath });
+          post({ type: 'browsed', field: message.field, path: picked[0].fsPath, append: message.append });
         }
         return;
       }
@@ -137,7 +159,14 @@ export async function openConnectionForm(
             await manager.disconnect(config.id);
           }
           await manager.store.save(
-            { id: config?.id, ...message.value, name: message.value.name.trim(), folderId: message.value.folderId || undefined },
+            {
+              id: config?.id,
+              ...message.value,
+              name: message.value.name.trim(),
+              folderId: message.value.folderId || undefined,
+              sqlLocations: message.value.sqlLocations?.length ? message.value.sqlLocations : undefined,
+              sqlSaveLocation: message.value.sqlSaveLocation || undefined,
+            },
             update,
           );
           panel.dispose();

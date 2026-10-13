@@ -1,13 +1,18 @@
 import type { DatabaseSync, StatementSync } from 'node:sqlite';
+import { checkCount } from './params';
 import {
+  Catalog,
   ConnectionConfig,
   DbNode,
   DriverFactory,
   NodeKind,
+  ParamStatement,
   QueryOptions,
   SqlDriver,
   StatementError,
   StatementResult,
+  TableInfo,
+  TableRef,
 } from './types';
 
 const FOLDERS: { name: string; kind: NodeKind; type: string }[] = [
@@ -88,6 +93,7 @@ export class SqliteDriver implements SqlDriver {
         path: makePath(folder, r.name),
         expandable: spec.kind === 'table' || spec.kind === 'view',
         description: spec.kind === 'index' || spec.kind === 'trigger' ? r.tbl : undefined,
+        meta: spec.kind === 'table' || spec.kind === 'view' ? { name: r.name } : undefined,
       }));
     }
     if (parent.kind === 'table' || parent.kind === 'view') {
@@ -104,6 +110,92 @@ export class SqliteDriver implements SqlDriver {
       }));
     }
     return [];
+  }
+
+  async catalog(): Promise<Catalog> {
+    const rows = this.all<{ name: string; type: 'table' | 'view' }>(
+      "select name, type from sqlite_schema where type in ('table', 'view') and name not like 'sqlite\\_%' escape '\\' order by name",
+    );
+    return { tables: rows.map((r) => ({ name: r.name, kind: r.type })) };
+  }
+
+  async describe(ref: TableRef): Promise<TableInfo | undefined> {
+    const found = this.all<{ name: string; type: string }>(
+      "select name, type from sqlite_schema where type in ('table', 'view') and name = ? collate nocase",
+      ref.name,
+    )[0];
+    if (!found) {
+      return undefined;
+    }
+    const columns = this.all<{ name: string; type: string; notnull: number; dflt_value: string | null; pk: number }>(
+      'select name, type, "notnull", dflt_value, pk from pragma_table_info(?) order by cid',
+      found.name,
+    );
+    const primaryKey = columns.filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+    const indexes = this.all<{ name: string; unique: number; origin: string }>('select name, "unique", origin from pragma_index_list(?)', found.name).map((i) => ({
+      name: i.name,
+      columns: this.all<{ name: string }>('select name from pragma_index_info(?) order by seqno', i.name).map((c) => c.name),
+      unique: Boolean(i.unique),
+      primary: i.origin === 'pk',
+    }));
+    return {
+      ref: { name: found.name },
+      kind: found.type === 'view' ? 'view' : 'table',
+      columns: columns.map((c) => ({
+        name: c.name,
+        type: c.type || 'any',
+        nullable: !c.notnull && c.pk === 0,
+        primaryKey: c.pk > 0,
+        default: c.dflt_value ?? undefined,
+      })),
+      primaryKey,
+      indexes: indexes.sort((a, b) => Number(b.primary) - Number(a.primary) || a.name.localeCompare(b.name)),
+    };
+  }
+
+  async ddl(ref: TableRef): Promise<string> {
+    const rows = this.all<{ sql: string }>(
+      `select sql from sqlite_schema
+        where (name = ? collate nocase and type in ('table', 'view')) or (tbl_name = ? collate nocase and type in ('index', 'trigger') and sql is not null)
+        order by case type when 'table' then 0 when 'view' then 0 when 'index' then 1 else 2 end, name`,
+      ref.name,
+      ref.name,
+    );
+    if (!rows.length) {
+      throw new Error(`${ref.name} not found.`);
+    }
+    return rows.map((r) => `${r.sql};`).join('\n\n');
+  }
+
+  async transaction(_database: string | undefined, statements: ParamStatement[]): Promise<number[]> {
+    // A connection of its own, so an open transaction in the editor's session is not mixed in.
+    const { DatabaseSync } = loadSqlite();
+    const db = new DatabaseSync(this.file);
+    const counts: number[] = [];
+    try {
+      db.exec('begin immediate');
+      for (const s of statements) {
+        let count: number;
+        try {
+          count = Number(db.prepare(s.sql).run(...(s.params as (string | number | null)[])).changes);
+        } catch (err) {
+          throw new StatementError((err as Error).message);
+        }
+        checkCount(s, count);
+        counts.push(count);
+      }
+      db.exec('commit');
+      return counts;
+    } catch (err) {
+      try {
+        db.exec('rollback');
+      } catch {
+        // Not in a transaction (begin failed).
+      }
+      throw err;
+    } finally {
+      db.close();
+    }
   }
 
   async execute(sql: string, options: QueryOptions): Promise<StatementResult[]> {

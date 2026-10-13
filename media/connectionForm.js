@@ -49,7 +49,10 @@
     const options = {};
     const secrets = {};
     for (const f of driver().fields) {
-      if (!f.secret) options[f.key] = readInput(f);
+      if (f.secret) continue;
+      // A field that is not on screen yet (just became visible) keeps its value or default.
+      const read = readInput(f);
+      options[f.key] = read !== undefined ? read : value.options[f.key] !== undefined ? value.options[f.key] : f.default;
     }
     for (const f of driver().fields) {
       if (!visible(f, options)) {
@@ -61,7 +64,24 @@
     const name = /** @type {HTMLInputElement} */ (document.getElementById('f-name')).value;
     const folder = /** @type {HTMLSelectElement} */ (document.getElementById('f-folder'));
     const folderId = folder ? folder.value || undefined : value.folderId;
-    return { value: { name, type: value.type, options, folderId }, secrets };
+    const result = { name, type: value.type, options, folderId };
+    if (driver().category === 'sql') {
+      const save = /** @type {HTMLInputElement} */ (document.getElementById('f-sqlSave'));
+      const links = /** @type {HTMLTextAreaElement} */ (document.getElementById('f-sqlLocations'));
+      result.sqlSaveLocation = save ? save.value.trim() || undefined : value.sqlSaveLocation;
+      if (links) {
+        // Keep labels of folders that are still listed.
+        const labels = new Map((value.sqlLocations || []).map((l) => [l.path, l.label]));
+        result.sqlLocations = links.value
+          .split('\n')
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .map((p) => (labels.get(p) ? { path: p, label: labels.get(p) } : { path: p }));
+      } else {
+        result.sqlLocations = value.sqlLocations;
+      }
+    }
+    return { value: result, secrets };
   }
 
   function setStatus(text, ok) {
@@ -78,36 +98,88 @@
       input = el(
         'select',
         { id, on: { change: rerender } },
-        ...(f.choices || []).map((c) => el('option', { value: c, selected: c === current }, c)),
+        ...(f.choices || []).map((c) => el('option', { value: c, selected: c === current }, t(c))),
       );
     } else if (f.kind === 'file') {
       input = el(
         'div',
         { class: 'file' },
-        el('input', { id, type: 'text', value: current ?? '', placeholder: f.placeholder || '', required: f.required, autocomplete: 'off' }),
+        el('input', { id, type: 'text', value: current ?? '', placeholder: f.placeholder ? t(f.placeholder) : '', required: f.required, autocomplete: 'off' }),
         el('button', { type: 'button', class: 'secondary', on: { click: () => vscode.postMessage({ type: 'browse', field: f.key }) } }, init.labels.browse),
       );
     } else if (f.kind === 'checkbox') {
-      input = el('input', { id, type: 'checkbox', checked: Boolean(current) });
+      input = el('input', { id, type: 'checkbox', checked: Boolean(current), on: { change: rerender } });
     } else {
       const saved = f.secret && !value.isNew && init.savedSecrets[f.key];
       input = el('input', {
         id,
         type: f.kind === 'password' ? 'password' : f.kind === 'number' ? 'number' : 'text',
         value: f.secret ? '' : current ?? '',
-        placeholder: saved ? `•••••• (${init.labels.saved})` : f.placeholder || '',
+        placeholder: saved ? `•••••• (${init.labels.saved})` : f.placeholder ? t(f.placeholder) : '',
         required: f.required && !f.secret,
         autocomplete: 'off',
       });
     }
-    const row = el('div', { class: 'row' }, el('label', { for: id }, f.label + (f.required && !f.secret ? ' *' : '')), input);
-    return f.hint ? [row, el('div', { class: 'hint' }, f.hint)] : [row];
+    const row = el('div', { class: 'row' }, el('label', { for: id }, t(f.label) + (f.required && !f.secret ? ' *' : '')), input);
+    return f.hint ? [row, el('div', { class: 'hint' }, t(f.hint))] : [row];
+  }
+
+  /** Visible fields: those without a section first, then one heading per section. */
+  function fieldRows() {
+    const fields = driver().fields;
+    const plain = fields.filter((f) => !f.section && visible(f, value.options)).flatMap(fieldRow);
+    const sections = [...new Set(fields.map((f) => f.section).filter(Boolean))];
+    return [
+      ...plain,
+      ...sections.flatMap((name) => {
+        const rows = fields.filter((f) => f.section === name && visible(f, value.options)).flatMap(fieldRow);
+        return rows.length ? [el('h4', { class: 'section' }, t(name)), ...rows] : [];
+      }),
+    ];
+  }
+
+  /** Where this connection's .sql files are saved and which folders are linked to it. */
+  function sqlFilesSection() {
+    const l = init.labels;
+    return [
+      el('h4', { class: 'section' }, l.sqlFiles),
+      el(
+        'div',
+        { class: 'row' },
+        el('label', { for: 'f-sqlSave' }, l.sqlSave),
+        el(
+          'div',
+          { class: 'file' },
+          el('input', { id: 'f-sqlSave', type: 'text', value: value.sqlSaveLocation || '', placeholder: l.sqlSaveDefault, autocomplete: 'off' }),
+          el('button', { type: 'button', class: 'secondary', on: { click: () => vscode.postMessage({ type: 'browse', field: 'sqlSave', folder: true }) } }, l.browse),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'row top' },
+        el('label', { for: 'f-sqlLocations' }, l.sqlLinked),
+        el(
+          'div',
+          { class: 'stack' },
+          el('textarea', { id: 'f-sqlLocations', rows: '3', spellcheck: 'false', placeholder: '${workspaceFolder}/sql\n~/projects/reports' }, (value.sqlLocations || []).map((x) => x.path).join('\n')),
+          el('button', { type: 'button', class: 'secondary', on: { click: () => vscode.postMessage({ type: 'browse', field: 'sqlLocations', folder: true, append: true }) } }, l.sqlAddFolder),
+        ),
+      ),
+      el('div', { class: 'hint' }, l.sqlHint),
+    ];
   }
 
   /** Re-renders keeping what was typed, so `showWhen` fields follow select changes. */
   function rerender() {
     const { value: current, secrets } = collect();
-    value = { ...value, name: current.name, folderId: current.folderId, options: { ...value.options, ...current.options } };
+    value = {
+      ...value,
+      name: current.name,
+      folderId: current.folderId,
+      sqlSaveLocation: current.sqlSaveLocation ?? value.sqlSaveLocation,
+      sqlLocations: current.sqlLocations ?? value.sqlLocations,
+      options: { ...value.options, ...current.options },
+    };
     render();
     for (const [k, v] of Object.entries(secrets)) {
       const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${k}`));
@@ -155,9 +227,8 @@
               ),
             )
           : '',
-        ...driver()
-          .fields.filter((f) => visible(f, value.options))
-          .flatMap(fieldRow),
+        ...fieldRows(),
+        ...(driver().category === 'sql' ? sqlFilesSection() : []),
         el(
           'div',
           { class: 'actions' },
@@ -181,7 +252,13 @@
       setStatus(msg.message, msg.ok);
     } else if (msg.type === 'browsed') {
       const input = /** @type {HTMLInputElement} */ (document.getElementById(`f-${msg.field}`));
-      if (input) input.value = msg.path;
+      if (input && msg.append) {
+        const lines = input.value.split('\n').map((x) => x.trim()).filter(Boolean);
+        if (!lines.includes(msg.path)) lines.push(msg.path);
+        input.value = lines.join('\n');
+      } else if (input) {
+        input.value = msg.path;
+      }
     }
   });
   vscode.postMessage({ type: 'ready' });

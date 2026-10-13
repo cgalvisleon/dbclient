@@ -50,6 +50,11 @@ describe.skipIf(!enabled)('PostgresDriver (integration)', () => {
     expect(select.truncated).toBe(false);
   });
 
+  it('returns dates and times as the server prints them (no time zone shift)', async () => {
+    const r = await run("select date '2026-01-02' as d, timestamp '2026-01-02 10:30:00.123456' as ts, time '08:15' as t");
+    expect(r.rows[0]).toEqual(['2026-01-02', '2026-01-02 10:30:00.123456', '08:15:00']);
+  });
+
   it('truncates at maxRows', async () => {
     const r = await run(`select * from ${schema}.items`, 10);
     expect(r.rows).toHaveLength(10);

@@ -10,8 +10,18 @@ const ctx = await esbuild.context({
   platform: 'node',
   target: 'node18',
   outfile: 'dist/extension.js',
-  // vscode is provided by the host; pg-native is an optional pg backend we never load.
-  external: ['vscode', 'pg-native'],
+  // vscode is provided by the host; pg-native is an optional pg backend we never load;
+  // cpu-features and *.node are ssh2's optional native speedups (loaded in try/catch, pure-JS
+  // fallback), never shipped so the extension stays free of native modules.
+  external: ['vscode', 'pg-native', 'cpu-features'],
+  plugins: [
+    {
+      name: 'skip-native-addons',
+      setup(build) {
+        build.onResolve({ filter: /\.node$/ }, (args) => ({ path: args.path, external: true }));
+      },
+    },
+  ],
   sourcemap: !production,
   minify: production,
   logLevel: 'info',

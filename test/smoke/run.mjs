@@ -19,5 +19,7 @@ try {
   });
 } catch (err) {
   console.error(err);
-  process.exit(1);
+  process.exitCode = 1;
+} finally {
+  fs.rmSync(userData, { recursive: true, force: true });
 }

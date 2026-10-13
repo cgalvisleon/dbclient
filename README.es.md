@@ -21,20 +21,40 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Conexiones | Un solo árbol para todos los motores; crear, editar, duplicar, eliminar, probar, conectar y desconectar desde un formulario. |
 | Carpetas | Agrupar conexiones en carpetas anidadas; crear, renombrar, eliminar (el contenido sube un nivel), mover con **Move to Folder…** o arrastrando y soltando. |
 | Almacenamiento | `connections.json` a nivel de usuario; secretos en el almacenamiento seguro del editor. |
+| SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis y NATS: **desactivado**, **requerido** (cifrado) o **verificar todo** (certificado y nombre del host), con archivo de CA, certificado y clave del cliente (con frase). SQL Server: **Cifrar** confiando o no en el certificado, y un archivo de CA. |
+| Túnel SSH | Todos los motores menos SQLite pueden conectarse a través de un servidor SSH, con contraseña o clave privada (con frase) y una huella opcional de la llave del host. |
+| Idiomas | Inglés y español, según el idioma de la interfaz del editor. |
+| Exportar / importar | **Export Connections…** guarda todas las conexiones (o una carpeta) en un archivo JSON sin contraseñas; **Import Connections…** lo fusiona (conserva las existentes y omite las idénticas) o reemplaza la lista. |
 | Explorador (SQL) | Bases/esquemas → tablas, vistas, funciones, procedimientos, triggers, índices (Oracle: paquetes, secuencias) → columnas con tipo, PK y NOT NULL. |
 | Editor SQL | Selector de conexión en la barra de estado y en la barra del editor; ejecutar la sentencia bajo el cursor, la selección o el archivo completo; ▶ Run sobre cada sentencia; cancelar. |
+| Archivos SQL guardados | Cada conexión SQL tiene un nodo **SQL** con sus propios archivos `.sql`; al abrir uno queda vinculado a la conexión. Crear, renombrar, eliminar y guardar ahí la consulta actual. |
+| Ubicaciones SQL | Vincular a una conexión carpetas existentes con archivos `.sql` (por ejemplo la carpeta `sql/` de un repositorio) y recorrerlas con sus subcarpetas; elegir dónde se guardan los archivos nuevos. Las rutas aceptan `~` y `${workspaceFolder}`; desvincular nunca borra archivos. |
 | División de sentencias | `;` en todos los motores, más `GO` (SQL Server), `DELIMITER` (MySQL), `/` y bloques PL/SQL (Oracle), cuerpos `$$` (PostgreSQL) y triggers (SQLite). |
-| Resultados | Panel inferior con una pestaña por conjunto de resultados, opción de conservar pestañas, paginación, orden, selección de filas, copiar como TSV y exportar a CSV/JSON. |
+| Resultados | Panel inferior con una pestaña por conjunto de resultados, opción de conservar pestañas, paginación, orden, selección de filas, copiar como TSV y exportar a CSV, JSON o Excel (`.xlsx`, con números y fechas como valores de Excel). |
 | Salida SQL | Cada sentencia queda registrada con su tiempo, filas traídas/afectadas y errores; los errores llevan a la línea y columna del editor y quedan subrayados. |
-| Autocompletado SQL | Palabras clave, tipos y funciones del dialecto de la conexión. |
+| Historial de consultas | **Query History…** lista lo que se ejecutó en cada conexión SQL o Redis, lo más reciente primero, con base, hora, duración y filas o error; se puede buscar, insertar una sentencia en el editor o abrirla en uno nuevo. |
+| Acciones sobre tablas | En una tabla o vista: **Open Data**, **Show Structure** (columnas e índices), **Show DDL** y **Generate SQL** → SELECT, INSERT, UPDATE, DELETE en un editor nuevo. |
+| Edición en la grilla | Los resultados de una sola tabla con clave primaria se pueden editar: celdas, agregar y eliminar filas, poner NULL, y luego **Commit** (una transacción, por clave primaria) o **Cancel**. |
+| Autocompletado SQL | Palabras clave, tipos y funciones del dialecto de la conexión; con la conexión abierta, sus esquemas, tablas, vistas y columnas, resolviendo los alias de la consulta. |
 | Explorador Redis | Bases con su número de llaves → llaves agrupadas por separador (`:`) con su tipo, usando `SCAN`. |
 | Editor Redis | Archivos `.redis`, un comando por línea; autocompletado de comandos, opciones y llaves existentes; pide confirmación antes de `FLUSHDB`/`FLUSHALL`. |
 | Valores Redis | Visor/editor de string, hash, list, set, sorted set y stream; TTL, renombrar y eliminar. |
-| NATS | Publicar con headers, request/reply, suscribirse con comodines `*`/`>` y grupos de cola, lista de mensajes en vivo; streams y consumers de JetStream en el árbol. |
+| NATS | Conexión sin autenticación o con usuario/clave, token, seed NKey o archivo `.creds`. Publicar con headers, request/reply, suscribirse con comodines `*`/`>` y grupos de cola, lista de mensajes en vivo; streams y consumers de JetStream en el árbol. |
 
 ## Uso
 
+Con el editor en español, los comandos y menús aparecen traducidos; en esta guía se nombran en inglés, como en la versión original.
+
 **Agregar una conexión.** Abre la vista **DB Client** en la barra de actividad, pulsa **+**, elige el tipo, completa el formulario, pulsa **Test** y luego **Save**. Expande la conexión para explorarla.
+
+**Conectar de forma segura.** En el formulario de la conexión, la sección **SSL / TLS** define el modo y los archivos PEM; **verificar todo** comprueba el certificado contra el archivo de CA (o las CA del sistema) y el nombre del host. La sección **Túnel SSH** llega a una base que solo se ve desde un servidor intermedio (bastión): completa el host SSH, el usuario y una contraseña o clave privada, y deja **Host** y **Puerto** como los ve la base desde ese servidor. Pega la huella `SHA256:` del servidor (`ssh-keygen -lf` sobre su llave pública de host) para rechazar cualquier otro servidor.
+
+```text
+Host: db.internal   Puerto: 5432   SSL: verificar todo   Certificado de la CA: ~/certs/ca.pem
+Túnel SSH: clave privada   Host SSH: bastion.example.com   Usuario SSH: deploy   Clave privada: ~/.ssh/id_ed25519
+```
+
+**Llevar las conexiones a otra máquina.** En el menú **…** de la vista elige **Export Connections…** (o **Export Connections…** sobre una carpeta para exportar solo esa carpeta) y guarda el archivo `.json`; contiene carpetas, conexiones y ubicaciones SQL, nunca contraseñas. En la otra máquina elige **Import Connections…**, selecciona el archivo y **Merge** o **Replace**, y luego ingresa las contraseñas con **Edit Connection**. Al restaurar una copia en la misma máquina se conserva el id de cada conexión, así que su contraseña guardada y sus archivos SQL vuelven a funcionar.
 
 **Organizar con carpetas.** Pulsa el botón **New Folder** en el título de la vista (o **New Folder** sobre una carpeta para crear una subcarpeta). Arrastra conexiones o carpetas sobre una carpeta, o usa **Move to Folder…**; suéltalas en un espacio vacío para devolverlas al nivel superior. **Add Connection** sobre una carpeta crea la conexión dentro de ella, y el campo **Folder** del formulario permite cambiarla después.
 
@@ -45,7 +65,31 @@ select id, name from customers where created_at > now() - interval '7 days';
 update customers set active = false where id = 42;
 ```
 
-Cada consulta abre una pestaña en **DB Client → Results**; la pestaña **Output** lista cada sentencia con su tiempo y número de filas.
+Cada consulta abre una pestaña en **DB Client → Results**; la pestaña **Output** lista cada sentencia con su tiempo y número de filas. **CSV**, **JSON** y **Excel** en la barra de la pestaña exportan todas sus filas en el orden actual.
+
+**Guardar consultas por conexión.** Expande una conexión SQL y usa **New SQL File** sobre su nodo **SQL**, o pulsa **Save to Connection's SQL Folder** en la barra del editor para conservar la consulta actual. Los archivos se abren ya vinculados a su conexión. Se guardan en el almacenamiento de la extensión, una carpeta por conexión; configura `dbclient.sqlFolder` para guardarlos en otro lugar, como una carpeta sincronizada o versionada.
+
+**Vincular carpetas de archivos SQL.** Usa **Link SQL Folder…** sobre una conexión o su nodo **SQL** y elige una o varias carpetas. Si la carpeta está dentro del proyecto abierto puedes guardarla como `${workspaceFolder}/…`, así la misma conexión muestra la carpeta `sql/` del proyecto que tengas abierto. Cada carpeta vinculada aparece bajo **SQL** con sus subcarpetas (se omiten las ocultas, `.git` y `node_modules`). Los archivos abiertos desde una carpeta vinculada se ejecutan contra esa conexión; si dos conexiones vinculan la misma carpeta, gana la carpeta más específica y en caso de empate se pregunta una vez. **Set Save Location for SQL Files…** elige dónde escriben **New SQL File** y **Save to Connection's SQL Folder**. La sección **SQL files** del formulario de conexión edita lo mismo:
+
+```text
+Save new files in:  ${workspaceFolder}/sql
+Linked folders:     ${workspaceFolder}/sql
+                    ~/projects/reports
+```
+
+**Trabajar con una tabla.** Haz clic derecho sobre una tabla del árbol. **Open Data** ejecuta `SELECT * FROM` la tabla; **Show Structure** lista sus columnas e índices en el panel Results; **Show DDL** y **Generate SQL** abren la sentencia en un editor nuevo vinculado a la conexión.
+
+**Editar datos en la grilla.** En un resultado que lee una sola tabla e incluye su clave primaria, haz doble clic en una celda (o pulsa `F2`), escribe y pulsa `Enter`; `Tab` pasa a la columna siguiente y `Escape` descarta. **+ Row** agrega una fila (las celdas sin tocar conservan su DEFAULT), **Delete** marca las filas seleccionadas y **NULL** vacía la celda enfocada. **Commit** guarda todo en una transacción y recarga las filas; si una fila cambió mientras tanto, no se guarda nada. Los resultados de vistas, joins o sin la clave muestran una etiqueta **read-only** con el motivo.
+
+**Completar nombres de tablas y columnas.** Con la conexión abierta, escribe `select * from ` para ver sus tablas, o un alias y un punto para ver las columnas de esa tabla:
+
+```sql
+select o.id, o.total, c.name
+from orders o join customers c on c.id = o.customer_id
+where o.   -- sugiere las columnas de orders
+```
+
+**Reutilizar una consulta anterior.** Haz clic derecho sobre una conexión SQL o Redis, o usa el menú **…** de la barra del editor, y elige **Query History…**. Escribe para filtrar, por ejemplo `orders`. Enter inserta la sentencia en el editor activo cuando este corre sobre la misma conexión; si no, la abre en un editor nuevo vinculado a su conexión y base. Los botones de cada elemento la abren en un editor nuevo o la copian. Configura `dbclient.historySize` en `0` para apagar el historial.
 
 **Ejecutar un lote de SQL Server o un bloque de Oracle.** Separa los lotes con `GO` y los bloques PL/SQL con `/`:
 
@@ -77,6 +121,8 @@ Haz clic en una llave del árbol para abrir su visor de valores y editarla.
 | `dbclient.maxRows` | 5000 | Filas traídas por sentencia; los resultados más grandes se truncan. |
 | `dbclient.pageSize` | 100 | Filas por página en la grilla de resultados. |
 | `dbclient.codeLens` | true | Mostrar ▶ Run sobre cada sentencia SQL. |
+| `dbclient.sqlFolder` | (vacío) | Carpeta de los archivos `.sql` guardados, una subcarpeta por conexión; vacío usa el almacenamiento de la extensión. |
+| `dbclient.historySize` | 500 | Entradas que se guardan en el historial de cada conexión; `0` lo apaga. Los comandos que pueden llevar credenciales (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) nunca se registran. |
 
 ## Desarrollo
 
@@ -87,5 +133,9 @@ npm test             # pruebas unitarias; las de integración corren si hay vari
 npm run test:smoke   # ejecuta la extensión dentro de un VS Code descargado
 npm run package      # genera el .vsix
 ```
+
+Para probar SSL y SSH, `eval "$(scripts/tls-fixture.sh start)"` y `eval "$(scripts/ssh-fixture.sh start)"` levantan servidores temporales con Docker (certificados y llaves nuevos) y exportan sus variables `DBCLIENT_TLS_*` / `DBCLIENT_SSH_*`; `stop` los elimina. Con todos los servidores arriba, ejecuta `npm run test:integration` (los archivos de prueba de uno en uno). Las traducciones están en `l10n/bundle.l10n.es.json` y `package.nls.es.json`; `npx tsx test/unit/l10nKeys.ts l10n/bundle.l10n.es.json` lista los textos que falten.
+
+Para probar las autenticaciones de NATS, `eval "$(scripts/nats-auth-fixture.sh start)"` levanta servidores temporales (usuario/clave, NKey, token y `.creds`, con Docker) y exporta sus variables `DBCLIENT_NATS_AUTH_*`; `scripts/nats-auth-fixture.sh stop` los elimina.
 
 Pulsa **F5** en esta carpeta para abrir un Extension Development Host. Los requisitos y el avance están en [spec.md](spec.md).
