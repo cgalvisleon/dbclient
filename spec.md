@@ -219,3 +219,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-16 | Panel de configuración y acerca de con las rutas de la persistencia, la configuración actual, el entorno y los enlaces de GitHub del autor (nuevo C7, 1 pt; total 116; v0.10.0) | 0,9 % |
 | 2026-10-16 | Correcciones de `spec.md`: fila de i18n duplicada y desactualizada, `ssh2` ya en uso, autenticaciones NATS ya verificadas; Oracle TCPS verificado contra una Autonomous Database real. Sin cambio de puntaje | 0,9 % |
 | 2026-10-16 | Icono y color por conexión (nuevo C8, 1 pt; total 117) y exportar/importar individual o dentro de una carpeta (C5, sin cambio de puntaje); v0.11.0 | 0,9 % |
+| 2026-10-16 | Nueva versión empaquetada (v0.11.1) sin cambios funcionales | 0,9 % |
