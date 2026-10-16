@@ -51,5 +51,6 @@
   "config.dbclient.historySize.description": "Statements and Redis commands kept in each connection's query history (Query History…). 0 turns the history off. AUTH, HELLO, ACL, MIGRATE and CONFIG commands are never recorded.",
   "viewsWelcome.dbclient.connections": "No connections yet.\n[Add Connection](command:dbclient.addConnection)",
   "extension.description": "Database client for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS.",
-  "command.showSettings": "Settings and About"
+  "command.showSettings": "Settings and About",
+  "command.setFolderColor": "Change Color…"
 }

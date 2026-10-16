@@ -17,10 +17,10 @@ describe('connection icons', () => {
     const shapes = listOf('CONNECTION_SHAPES');
     const colors = listOf('CONNECTION_COLORS');
     expect(colors.filter((c) => c !== 'blue').sort()).toEqual(Object.keys(COLORS).sort());
-    expect(shapes.every((s) => COLOR_ICONS.includes(s))).toBe(true);
+    expect([...shapes, 'explorer'].every((s) => COLOR_ICONS.includes(s))).toBe(true);
     for (const color of colors) {
       for (const variant of ['', 'light']) {
-        for (const icon of [...shapes, 'database-connect', 'server-connect']) {
+        for (const icon of [...shapes, 'database-connect', 'server-connect', 'explorer']) {
           const file = path.join(root, 'media/icons', color === 'blue' ? '' : `colors/${color}`, variant, `${icon}.png`);
           assert.ok(fs.existsSync(file), file);
         }

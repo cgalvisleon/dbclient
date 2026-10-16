@@ -60,7 +60,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pe
 | C5 | Exportar e importar la configuración (sin secretos): todo, una carpeta o las conexiones seleccionadas; importar dentro de una carpeta; importar fusionando (conserva lo existente, omite lo idéntico, copia renombrada si hay conflicto) o reemplazando (con confirmación); los ids se conservan para que una copia restaurada recupere sus claves y archivos SQL | 2 | 1 |
 | C6 | SSL/TLS (desactivado / requerido / verificar todo; CA, certificado y clave del cliente con frase) y túnel SSH (contraseña o clave privada con frase, huella de la llave del host) en todos los motores de red | 4 | 1 |
 | C7 | Panel **Configuración y acerca de** (botón ⚙ en el título de la vista): rutas de la persistencia (almacenamiento, `connections.json`, historial, archivos SQL) con copiar y abrir carpeta, dónde están los secretos, configuración `dbclient.*` actual frente al valor por defecto, entorno, y acerca de con la versión y los enlaces de GitHub del autor | 1 | 1 |
-| C8 | Apariencia de cada conexión: icono (6 formas) y color (azul y 6 más: verde, rojo, naranja, morado, amarillo, gris) elegidos en el formulario con vista previa, en temas claro y oscuro; se exportan e importan con la conexión | 1 | 1 |
+| C8 | Apariencia de cada conexión: icono (6 formas) y color (azul y 6 más: verde, rojo, naranja, morado, amarillo, gris) elegidos en el formulario con vista previa, en temas claro y oscuro; las carpetas de conexiones también tienen color (**Cambiar color…**); se exportan e importan con la conexión o la carpeta | 1 | 1 |
 
 ### D — Drivers SQL (16)
 
@@ -134,6 +134,10 @@ brecha  = (total − avance) / total × 100 %
 3. ✅ **Redis (+11):** R1–R3.
 4. ✅ **NATS (+11):** N1–N4.
 5. ◐ **Cierre (+8):** ✅ C5 (2), ✅ C6 (4), ◐ F3 (1 de 2: falta verla en el editor).
+
+### Verificación (v0.12.0)
+
+- Color de carpetas (C8): `explorer.png` generado en los 6 colores (revisado en una vista previa clara y oscura); comando **Change Color…** sobre la carpeta (selector con el color actual marcado; azul quita el color). Pruebas unitarias (persistencia, volver al predeterminado, carpeta inexistente, el color viaja al exportar e importar; archivos de cada color y tema) y de humo (el árbol usa `colors/orange/explorer.png` y su variante clara, azul limpia el color). Sin verificar a mano: el selector y el árbol en Cursor.
 
 ### Verificación (v0.11.0)
 
@@ -220,3 +224,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-16 | Correcciones de `spec.md`: fila de i18n duplicada y desactualizada, `ssh2` ya en uso, autenticaciones NATS ya verificadas; Oracle TCPS verificado contra una Autonomous Database real. Sin cambio de puntaje | 0,9 % |
 | 2026-10-16 | Icono y color por conexión (nuevo C8, 1 pt; total 117) y exportar/importar individual o dentro de una carpeta (C5, sin cambio de puntaje); v0.11.0 | 0,9 % |
 | 2026-10-16 | Nueva versión empaquetada (v0.11.1) sin cambios funcionales | 0,9 % |
+| 2026-10-16 | Color del icono de las carpetas de conexiones (C8, sin cambio de puntaje); v0.12.0 | 0,9 % |

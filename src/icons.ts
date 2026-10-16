@@ -38,6 +38,21 @@ export const DEFAULT_SHAPES: Record<DriverCategory, ConnectionShape> = {
   pubsub: 'cloud-database',
 };
 
+const COLOR_LABELS: Record<ConnectionColor, () => string> = {
+  blue: () => vscode.l10n.t('Blue'),
+  green: () => vscode.l10n.t('Green'),
+  red: () => vscode.l10n.t('Red'),
+  orange: () => vscode.l10n.t('Orange'),
+  purple: () => vscode.l10n.t('Purple'),
+  yellow: () => vscode.l10n.t('Yellow'),
+  gray: () => vscode.l10n.t('Gray'),
+};
+
+/** Translated name of a color. */
+export function colorLabel(color: ConnectionColor): string {
+  return COLOR_LABELS[color]();
+}
+
 /** Shapes with a "connected" variant; the others keep their image (the tree also shows ●). */
 const CONNECTED: Partial<Record<ConnectionShape, IconName>> = { database: 'database-connect', server: 'server-connect' };
 
@@ -53,6 +68,15 @@ export function connectionIconPath(shape: unknown, color: unknown, connected: bo
   const name = connected ? (CONNECTED[base] ?? base) : base;
   const dir = isColor(color) && color !== 'blue' ? `colors/${color}/` : '';
   return `${dir}${light ? 'light/' : ''}${name}.png`;
+}
+
+/** Connection folder icon in a color (blue/unknown: the original). */
+export function folderIcon(color: unknown): { light: vscode.Uri; dark: vscode.Uri } {
+  if (!base) {
+    throw new Error('initIcons() was not called');
+  }
+  const dir = isColor(color) && color !== 'blue' ? `colors/${color}/` : '';
+  return { light: vscode.Uri.joinPath(base, `${dir}light/explorer.png`), dark: vscode.Uri.joinPath(base, `${dir}explorer.png`) };
 }
 
 export function connectionIcon(shape: unknown, color: unknown, connected: boolean, fallback: ConnectionShape): { light: vscode.Uri; dark: vscode.Uri } {

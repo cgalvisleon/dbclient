@@ -211,6 +211,20 @@ describe('ConnectionStore', () => {
       expect(store.exportData(secretKeys, undefined, [a.id, b.id]).connections).toHaveLength(2);
     });
 
+    it('keeps folder colors, also through export and import', async () => {
+      const { prod, eu } = await seed();
+      store.setFolderColor(prod.id, 'red');
+      expect(new ConnectionStore(file, secrets).getFolder(prod.id)?.color).toBe('red'); // persisted
+      store.setFolderColor(eu.id, 'green');
+      store.setFolderColor(eu.id, undefined);
+      expect(store.getFolder(eu.id)).not.toHaveProperty('color');
+      expect(() => store.setFolderColor('nope', 'red')).toThrow(/not found/);
+      const exported = parseExport(JSON.stringify(store.exportData(secretKeys, prod.id)));
+      const other = new ConnectionStore(path.join(path.dirname(file), 'other.json'), new MemorySecrets());
+      await other.importData(exported, 'merge', fieldsOf);
+      expect(other.listFolders().map((f) => [f.name, f.color]).sort()).toEqual([['EU', undefined], ['Prod', 'red']]);
+    });
+
     it('imports into a folder: top-level folders and connections go inside it', async () => {
       const { prod, a } = await seed();
       const exported = parseExport(JSON.stringify(store.exportData(secretKeys)));

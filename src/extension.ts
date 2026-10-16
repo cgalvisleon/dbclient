@@ -13,7 +13,7 @@ import { HistoryPicker } from './editor/historyPicker';
 import { RedisRunner } from './editor/redisRunner';
 import { SqlRunner } from './editor/sqlRunner';
 import { TableActions, TemplateKind } from './editor/tableActions';
-import { initIcons } from './icons';
+import { colorLabel, CONNECTION_COLORS, ConnectionColor, initIcons } from './icons';
 import { allDrivers } from './drivers/registry';
 import { ConnectionStore, ImportMode, parseExport } from './store/connectionStore';
 import { QueryHistory } from './store/queryHistory';
@@ -188,6 +188,27 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     );
     if (answer === remove) {
       store.deleteFolder(folder.id);
+    }
+  });
+
+  const COLOR_DOTS: Record<ConnectionColor, string> = { blue: '🔵', green: '🟢', red: '🔴', orange: '🟠', purple: '🟣', yellow: '🟡', gray: '⚪' };
+
+  // `color` lets tests skip the picker.
+  command('dbclient.setFolderColor', async (item?: FolderItem, color?: ConnectionColor) => {
+    const folder = item instanceof FolderItem ? store.getFolder(item.folderId) : undefined;
+    if (!folder) {
+      return;
+    }
+    if (!color) {
+      const current = folder.color ?? 'blue';
+      const picked = await vscode.window.showQuickPick(
+        CONNECTION_COLORS.map((c) => ({ label: `${COLOR_DOTS[c]} ${colorLabel(c)}`, description: c === current ? vscode.l10n.t('current') : undefined, color: c })),
+        { placeHolder: vscode.l10n.t('Icon color for "{0}"', folder.name) },
+      );
+      color = picked?.color;
+    }
+    if (color && CONNECTION_COLORS.includes(color)) {
+      store.setFolderColor(folder.id, color === 'blue' ? undefined : color);
     }
   });
 

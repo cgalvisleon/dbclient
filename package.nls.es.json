@@ -51,5 +51,6 @@
   "config.dbclient.historySize.description": "Sentencias y comandos Redis que se guardan en el historial de cada conexión (Historial de consultas…). 0 apaga el historial. Los comandos AUTH, HELLO, ACL, MIGRATE y CONFIG nunca se registran.",
   "viewsWelcome.dbclient.connections": "Aún no hay conexiones.\n[Agregar conexión](command:dbclient.addConnection)",
   "extension.description": "Cliente de bases de datos para PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis y NATS.",
-  "command.showSettings": "Configuración y acerca de"
+  "command.showSettings": "Configuración y acerca de",
+  "command.setFolderColor": "Cambiar color…"
 }

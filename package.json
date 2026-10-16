@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client",
   "description": "%extension.description%",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -262,6 +262,11 @@
         "category": "DB Client"
       },
       {
+        "command": "dbclient.setFolderColor",
+        "title": "%command.setFolderColor%",
+        "category": "DB Client"
+      },
+      {
         "command": "dbclient.newSqlFile",
         "title": "%command.newSqlFile%",
         "category": "DB Client",
@@ -486,14 +491,19 @@
           "group": "3_edit@1"
         },
         {
-          "command": "dbclient.moveToFolder",
+          "command": "dbclient.setFolderColor",
           "when": "view == dbclient.connections && viewItem == connectionFolder",
           "group": "3_edit@2"
         },
         {
-          "command": "dbclient.deleteFolder",
+          "command": "dbclient.moveToFolder",
           "when": "view == dbclient.connections && viewItem == connectionFolder",
           "group": "3_edit@3"
+        },
+        {
+          "command": "dbclient.deleteFolder",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "3_edit@4"
         },
         {
           "command": "dbclient.moveToFolder",
@@ -702,6 +712,10 @@
         },
         {
           "command": "dbclient.moveToFolder",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.setFolderColor",
           "when": "false"
         },
         {

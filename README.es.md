@@ -26,7 +26,7 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Túnel SSH | Todos los motores menos SQLite pueden conectarse a través de un servidor SSH, con contraseña o clave privada (con frase) y una huella opcional de la llave del host. |
 | Idiomas | Inglés y español, según el idioma de la interfaz del editor. |
 | Exportar / importar | **Export Connections…** guarda todas las conexiones, una carpeta (sobre la carpeta) o las conexiones seleccionadas (sobre una conexión) en un archivo JSON sin contraseñas; **Import Connections…** lo fusiona (conserva las existentes y omite las idénticas) o reemplaza la lista, y sobre una carpeta importa dentro de ella. |
-| Iconos y colores | Cada conexión puede elegir su icono en el árbol (base de datos, servidor, nube, con engranaje o con lupa) y uno de 7 colores (azul, verde, rojo, naranja, morado, amarillo, gris) en la sección **Apariencia** del formulario; por ejemplo, rojo para producción. |
+| Iconos y colores | Cada conexión puede elegir su icono en el árbol (base de datos, servidor, nube, con engranaje o con lupa) y uno de 7 colores (azul, verde, rojo, naranja, morado, amarillo, gris) en la sección **Apariencia** del formulario; por ejemplo, rojo para producción. Las carpetas también cambian de color con **Change Color…** (**Cambiar color…**). |
 | Explorador (SQL) | Bases/esquemas → tablas, vistas, funciones, procedimientos, triggers, índices (Oracle: paquetes, secuencias) → columnas con tipo, PK y NOT NULL. |
 | Editor SQL | Selector de conexión en la barra de estado y en la barra del editor; ejecutar la sentencia bajo el cursor, la selección o el archivo completo; ▶ Run sobre cada sentencia; cancelar. |
 | Archivos SQL guardados | Cada conexión SQL tiene un nodo **SQL** con sus propios archivos `.sql`; al abrir uno queda vinculado a la conexión. Crear, renombrar, eliminar y guardar ahí la consulta actual. |
@@ -63,7 +63,7 @@ Túnel SSH: clave privada   Host SSH: bastion.example.com   Usuario SSH: deploy 
 
 **Compartir una conexión o llenar una carpeta.** Clic derecho sobre una conexión (o varias seleccionadas) → **Export Connections…** para guardar solo esas, sin carpetas ni contraseñas. Clic derecho sobre una carpeta → **Import Connections…** para fusionar un archivo dentro de esa carpeta: sus conexiones y carpetas quedan adentro.
 
-**Distinguir las conexiones.** En el formulario de conexión, **Apariencia** muestra las formas y los colores del icono con vista previa; elige, por ejemplo, la base de datos con engranaje en rojo para producción y la verde para desarrollo. **Automático** conserva el icono del motor.
+**Distinguir las conexiones.** En el formulario de conexión, **Apariencia** muestra las formas y los colores del icono con vista previa; elige, por ejemplo, la base de datos con engranaje en rojo para producción y la verde para desarrollo. **Automático** conserva el icono del motor. Para colorear una carpeta, clic derecho sobre ella → **Change Color…** (**Cambiar color…**).
 
 **Organizar con carpetas.** Pulsa el botón **New Folder** en el título de la vista (o **New Folder** sobre una carpeta para crear una subcarpeta). Arrastra conexiones o carpetas sobre una carpeta, o usa **Move to Folder…**; suéltalas en un espacio vacío para devolverlas al nivel superior. **Add Connection** sobre una carpeta crea la conexión dentro de ella, y el campo **Folder** del formulario permite cambiarla después.
 

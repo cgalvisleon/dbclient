@@ -27,6 +27,8 @@ export interface ConnectionFolder {
   id: string;
   name: string;
   parentId?: string;
+  /** Tree icon color (`CONNECTION_COLORS` in src/icons.ts); blue when missing. */
+  color?: string;
 }
 
 /** Secret values keyed by `FieldSpec.key`; kept out of the JSON store. */

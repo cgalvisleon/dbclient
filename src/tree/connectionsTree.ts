@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
 import { DbNode, NodeKind } from '../drivers/types';
-import { connectionIcon, DEFAULT_SHAPES, icon, IconName } from '../icons';
+import { connectionIcon, DEFAULT_SHAPES, folderIcon, icon, IconName } from '../icons';
 import { SqlLocations } from '../connections/sqlLocations';
 import { displayPath, listDir, SqlLocation } from '../store/sqlLocations';
 
@@ -92,10 +92,11 @@ export class FolderItem extends vscode.TreeItem {
     readonly folderId: string,
     name: string,
     count: number,
+    color?: string,
   ) {
     super(name, vscode.TreeItemCollapsibleState.Expanded);
     this.id = `folder:${folderId}`;
-    this.iconPath = icon('explorer');
+    this.iconPath = folderIcon(color);
     this.description = count ? String(count) : undefined;
     this.contextValue = 'connectionFolder';
   }
@@ -314,7 +315,7 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
       return [
         ...folders.map((f) => {
           const inside = store.childrenOf(f.id);
-          return new FolderItem(f.id, f.name, inside.connections.length + inside.folders.length);
+          return new FolderItem(f.id, f.name, inside.connections.length + inside.folders.length, f.color);
         }),
         ...connections.map((c) => {
           const item = new ConnectionItem(c.id, this.manager);

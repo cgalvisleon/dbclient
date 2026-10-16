@@ -107,6 +107,7 @@
   "Host and port above are then resolved from the SSH server.": "El host y el puerto de arriba se resuelven entonces desde el servidor SSH.",
   "Host key fingerprint": "Huella de la llave del host",
   "Icon": "Icono",
+  "Icon color for \"{0}\"": "Color del icono de \"{0}\"",
   "Import Connections": "Importar conexiones",
   "Import Connections into \"{0}\"": "Importar conexiones en \"{0}\"",
   "Import {0} connections": "Importar {0} conexiones",

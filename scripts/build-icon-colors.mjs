@@ -32,6 +32,7 @@ export const COLOR_ICONS = [
   'database-settings',
   'server-settings',
   'search-database',
+  'explorer', // connection folders
 ];
 
 function toHsl(r, g, b) {

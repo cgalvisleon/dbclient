@@ -3,7 +3,7 @@ import { ConnectionManager } from '../connections/manager';
 import { allDrivers, getDriver } from '../drivers/registry';
 import { ConnectionConfig, ConnectionSecrets, FieldSpec } from '../drivers/types';
 import { SecretUpdate } from '../store/connectionStore';
-import { CONNECTION_COLORS, CONNECTION_SHAPES, ConnectionColor, ConnectionShape, DEFAULT_SHAPES, icon } from '../icons';
+import { colorLabel, CONNECTION_COLORS, CONNECTION_SHAPES, ConnectionColor, ConnectionShape, DEFAULT_SHAPES, icon } from '../icons';
 import { mediaRoots, webviewHtml } from './html';
 
 interface FormValue {
@@ -26,15 +26,6 @@ const SHAPE_LABELS: Record<ConnectionShape, () => string> = {
   'search-database': () => vscode.l10n.t('Database with magnifier'),
 };
 
-const COLOR_LABELS: Record<ConnectionColor, () => string> = {
-  blue: () => vscode.l10n.t('Blue'),
-  green: () => vscode.l10n.t('Green'),
-  red: () => vscode.l10n.t('Red'),
-  orange: () => vscode.l10n.t('Orange'),
-  purple: () => vscode.l10n.t('Purple'),
-  yellow: () => vscode.l10n.t('Yellow'),
-  gray: () => vscode.l10n.t('Gray'),
-};
 
 type FromWebview =
   | { type: 'ready' }
@@ -128,7 +119,7 @@ export async function openConnectionForm(
           appearance: {
             iconsBase: panel.webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'icons')).toString(),
             shapes: CONNECTION_SHAPES.map((id) => ({ id, label: SHAPE_LABELS[id]() })),
-            colors: CONNECTION_COLORS.map((id) => ({ id, label: COLOR_LABELS[id]() })),
+            colors: CONNECTION_COLORS.map((id) => ({ id, label: colorLabel(id) })),
             defaults: Object.fromEntries(allDrivers().map((d) => [d.type, DEFAULT_SHAPES[d.category]])),
           },
           folderId,

@@ -143,7 +143,14 @@ exports.run = async function () {
     assert.deepStrictEqual(singleData.folders, [], 'single export has no folders');
     assert.deepStrictEqual(singleData.connections.map((c) => [c.id, c.folderId, c.color]), [[a.id, undefined, 'purple']], 'single export');
     const into = api.store.createFolder(`smoke-into-${run}`);
-    const intoItem = (await api.tree.getChildren()).find((r) => r.folderId === into.id);
+    let intoItem = (await api.tree.getChildren()).find((r) => r.folderId === into.id);
+    await vscode.commands.executeCommand('dbclient.setFolderColor', intoItem, 'orange');
+    assert.strictEqual(api.store.getFolder(into.id).color, 'orange', 'folder color saved');
+    intoItem = (await api.tree.getChildren()).find((r) => r.folderId === into.id);
+    assert.ok(/colors\/orange\/explorer\.png$/.test(intoItem.iconPath.dark.path), `folder icon: ${intoItem.iconPath.dark.path}`);
+    assert.ok(/colors\/orange\/light\/explorer\.png$/.test(intoItem.iconPath.light.path), 'folder light icon');
+    await vscode.commands.executeCommand('dbclient.setFolderColor', intoItem, 'blue');
+    assert.ok(!('color' in api.store.getFolder(into.id)), 'blue clears the color');
     await vscode.commands.executeCommand('dbclient.importConnections', intoItem, undefined, onlyFolder);
     const copy = api.store.list().find((c) => c.id !== a.id && c.name.startsWith(`smoke-export-a-${run}`));
     assert.ok(copy, 'imported as a copy next to the original');

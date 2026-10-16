@@ -248,6 +248,17 @@ export class ConnectionStore {
     this.commit();
   }
 
+  /** Sets the folder's icon color; `undefined` goes back to the default. */
+  setFolderColor(id: string, color: string | undefined): void {
+    const folder = this.requireFolder(id);
+    if (color) {
+      folder.color = color;
+    } else {
+      delete folder.color;
+    }
+    this.commit();
+  }
+
   /** Moves a folder under another one (or to the top level); refuses to create cycles. */
   moveFolder(id: string, parentId: string | undefined): void {
     const folder = this.requireFolder(id);
@@ -390,7 +401,7 @@ export class ConnectionStore {
         const existing = this.folders.find((x) => x.name === f.name && x.parentId === parentId);
         const id = existing?.id ?? (this.getFolder(f.id) ? randomUUID() : f.id);
         if (!existing) {
-          this.folders.push({ id, name: f.name.trim(), parentId });
+          this.folders.push({ id, name: f.name.trim(), parentId, ...(typeof f.color === 'string' ? { color: f.color } : {}) });
         }
         folderIds.set(f.id, id);
         pending.splice(pending.indexOf(f), 1);
