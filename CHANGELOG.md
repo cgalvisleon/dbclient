@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.1 — 2026-10-16
+
+- Repackaged, no functional changes.
+
 ## 0.12.0 — 2026-10-16
 
 - Connection folders can change their icon color: palette button on the folder, **Change Folder Color…** in its context menu or the Command Palette.

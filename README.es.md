@@ -152,7 +152,7 @@ Para probar las autenticaciones de NATS, `eval "$(scripts/nats-auth-fixture.sh s
 Sube `version` en `package.json`, agrega su sección en `CHANGELOG.md`, haz commit y empuja un tag con la misma versión:
 
 ```bash
-git tag v0.12.0 && git push origin main v0.12.0
+git tag v0.12.1 && git push origin main v0.12.1
 ```
 
 El workflow **Release** (`.github/workflows/release.yml`) corre las pruebas, genera el `.vsix`, lo adjunta a un GitHub Release con las notas del changelog y lo publica en Open VSX y en el VS Code Marketplace cuando existen los secretos del repositorio `OVSX_PAT` y `VSCE_PAT`. Desde esta máquina: `OVSX_PAT=… npm run publish:ovsx` y `VSCE_PAT=… npm run publish:vsce`.

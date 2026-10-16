@@ -135,7 +135,7 @@ brecha  = (total − avance) / total × 100 %
 4. ✅ **NATS (+11):** N1–N4.
 5. ◐ **Cierre (+8):** ✅ C5 (2), ✅ C6 (4), ◐ F3 (1 de 2: falta verla en el editor).
 
-### Verificación (v0.12.0)
+### Verificación (v0.12.1)
 
 - Color de carpetas (C8): `explorer.png` generado en los 6 colores (revisado en una vista previa clara y oscura); comando **Change Color…** sobre la carpeta (selector con el color actual marcado; azul quita el color). Pruebas unitarias (persistencia, volver al predeterminado, carpeta inexistente, el color viaja al exportar e importar; archivos de cada color y tema) y de humo (el árbol usa `colors/orange/explorer.png` y su variante clara, azul limpia el color). Sin verificar a mano: el selector y el árbol en Cursor.
 
@@ -226,3 +226,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-16 | Nueva versión empaquetada (v0.11.1) sin cambios funcionales | 0,9 % |
 | 2026-10-16 | Color del icono de las carpetas de conexiones (C8, sin cambio de puntaje); v0.12.0 | 0,9 % |
 | 2026-10-16 | Color de carpeta visible (botón en la fila y comando en la paleta); preparación para publicar: licencia MIT, `CHANGELOG.md`, categorías y palabras clave, scripts `publish:ovsx`/`publish:vsce` y workflow de release en GitHub (sin cambio de puntaje) | 0,9 % |
+| 2026-10-16 | Nueva versión empaquetada (v0.12.1) sin cambios funcionales | 0,9 % |

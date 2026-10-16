@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client",
   "description": "%extension.description%",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
