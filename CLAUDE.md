@@ -17,6 +17,7 @@ npx vitest run test/unit/statements.test.ts -t "oracle"   # single file / test
 npm run test:smoke         # builds, downloads VS Code into .vscode-test/, runs test/smoke/suite inside it
 npm run package            # typecheck + production build + vsce → dbclient-<version>.vsix
 npm run publish:ovsx       # package + publish to Open VSX (needs OVSX_PAT); publish:vsce → VS Code Marketplace (VSCE_PAT)
+./deploy.sh -b | -d | -m  # -b: package the .vsix; -d: publish to Open VSX (OVSX_PAT); -m: to the VS Code Marketplace (VSCE_PAT); builds if missing
 npm run icons              # regenerate media/icons/ and media/icon.png from img/ (macOS: uses sips), then the colored set
 node scripts/build-icon-colors.mjs   # only media/icons/colors/<color>/ (hue shift of the connection icons, no sips)
 ```
