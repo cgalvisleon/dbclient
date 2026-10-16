@@ -33,6 +33,7 @@ import {
 import { openConnectionForm } from './webviews/connectionForm';
 import { NatsConsoles } from './webviews/natsConsole';
 import { openValueViewer } from './webviews/redisValue';
+import { openSettingsPanel } from './webviews/settings';
 import { RESULTS_VIEW_ID, ResultsView } from './webviews/resultsView';
 
 /** Returned from activate() so the smoke test can drive the extension; not a public API. */
@@ -207,6 +208,22 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       }
     }
   });
+  command('dbclient.showSettings', () =>
+    openSettingsPanel(context, {
+      paths: () => {
+        const custom = vscode.workspace.getConfiguration('dbclient').get<string>('sqlFolder', '').trim();
+        return {
+          globalStorage: context.globalStorageUri.fsPath,
+          connectionsFile: vscode.Uri.joinPath(context.globalStorageUri, 'connections.json').fsPath,
+          historyDir: vscode.Uri.joinPath(context.globalStorageUri, 'history').fsPath,
+          sqlFolder: sqlRoot(),
+          sqlFolderCustom: !!custom,
+        };
+      },
+      counts: () => ({ connections: store.list().length, folders: store.listFolders().length }),
+    }),
+  );
+
   command('dbclient.refresh', () => {
     catalog.invalidate();
     tree.refresh();

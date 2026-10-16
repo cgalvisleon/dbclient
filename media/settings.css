@@ -1,0 +1,142 @@
+body {
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  padding: 12px 16px 32px;
+}
+
+#app {
+  max-width: 900px;
+}
+
+h1 {
+  font-size: 1.5em;
+  font-weight: 600;
+  margin: 0 0 16px;
+}
+
+h2 {
+  font-size: 1.15em;
+  font-weight: 600;
+  margin: 0 0 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, transparent));
+}
+
+section {
+  margin-bottom: 24px;
+}
+
+code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: var(--vscode-editor-font-size);
+  word-break: break-all;
+}
+
+a {
+  color: var(--vscode-textLink-foreground);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--vscode-textLink-activeForeground);
+  text-decoration: underline;
+}
+
+button {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 2px;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.path {
+  display: grid;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--vscode-widget-border, transparent);
+}
+
+.label {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.value {
+  padding: 3px 6px;
+  border-radius: 2px;
+  background: var(--vscode-textCodeBlock-background);
+}
+
+.hint {
+  opacity: 0.75;
+}
+
+.secret {
+  margin-top: 10px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tag {
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 10px;
+  font-size: 0.85em;
+  font-weight: normal;
+  color: var(--vscode-badge-foreground);
+  background: var(--vscode-badge-background);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+}
+
+th,
+td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--vscode-widget-border, transparent);
+}
+
+thead th {
+  opacity: 0.8;
+}
+
+.key {
+  opacity: 0.7;
+  font-size: 0.9em;
+}
+
+table.pairs th {
+  width: 180px;
+  font-weight: 600;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  font-size: 1.1em;
+}
+
+.links {
+  padding-left: 18px;
+  line-height: 1.8;
+}

@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client",
   "description": "%extension.description%",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -330,6 +330,15 @@
         }
       },
       {
+        "command": "dbclient.showSettings",
+        "title": "%command.showSettings%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/settings.png",
+          "dark": "media/icons/settings.png"
+        }
+      },
+      {
         "command": "dbclient.exportConnections",
         "title": "%command.exportConnections%",
         "category": "DB Client",
@@ -358,6 +367,11 @@
           "command": "dbclient.refresh",
           "when": "view == dbclient.connections",
           "group": "navigation@3"
+        },
+        {
+          "command": "dbclient.showSettings",
+          "when": "view == dbclient.connections",
+          "group": "navigation@4"
         },
         {
           "command": "dbclient.importConnections",

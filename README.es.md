@@ -21,6 +21,7 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Conexiones | Un solo árbol para todos los motores; crear, editar, duplicar, eliminar, probar, conectar y desconectar desde un formulario. |
 | Carpetas | Agrupar conexiones en carpetas anidadas; crear, renombrar, eliminar (el contenido sube un nivel), mover con **Move to Folder…** o arrastrando y soltando. |
 | Almacenamiento | `connections.json` a nivel de usuario; secretos en el almacenamiento seguro del editor. |
+| Configuración y acerca de | El botón ⚙ del título de la vista abre un panel con dónde guarda la extensión sus datos (carpeta de almacenamiento, `connections.json`, historial de consultas, archivos SQL guardados) con **Copiar** y **Abrir carpeta**, la configuración `dbclient.*` actual frente a sus valores por defecto, el entorno (editor, Node.js, soporte de SQLite) y los enlaces de GitHub del autor. |
 | SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis y NATS: **desactivado**, **requerido** (cifrado) o **verificar todo** (certificado y nombre del host), con archivo de CA, certificado y clave del cliente (con frase). SQL Server: **Cifrar** confiando o no en el certificado, y un archivo de CA. |
 | Túnel SSH | Todos los motores menos SQLite pueden conectarse a través de un servidor SSH, con contraseña o clave privada (con frase) y una huella opcional de la llave del host. |
 | Idiomas | Inglés y español, según el idioma de la interfaz del editor. |
@@ -56,6 +57,8 @@ Túnel SSH: clave privada   Host SSH: bastion.example.com   Usuario SSH: deploy 
 ```
 
 **Llevar las conexiones a otra máquina.** En el menú **…** de la vista elige **Export Connections…** (o **Export Connections…** sobre una carpeta para exportar solo esa carpeta) y guarda el archivo `.json`; contiene carpetas, conexiones y ubicaciones SQL, nunca contraseñas. En la otra máquina elige **Import Connections…**, selecciona el archivo y **Merge** o **Replace**, y luego ingresa las contraseñas con **Edit Connection**. Al restaurar una copia en la misma máquina se conserva el id de cada conexión, así que su contraseña guardada y sus archivos SQL vuelven a funcionar.
+
+**Ver dónde están tus datos.** Pulsa **⚙ Settings and About** (**Configuración y acerca de**) en el título de la vista. **Persistencia** lista la carpeta de almacenamiento, el archivo de conexiones, el historial de consultas y la carpeta de los archivos SQL guardados, cada una con **Copiar** y **Abrir carpeta**; las contraseñas no están ahí sino en el almacén de secretos del editor. **Configuración** muestra cada valor `dbclient.*`, dónde está definido y su valor por defecto (**Abrir en Configuración** para cambiarlos), y **Acerca de** tiene la versión y el perfil de GitHub, el repositorio y los reportes de problemas del autor.
 
 **Organizar con carpetas.** Pulsa el botón **New Folder** en el título de la vista (o **New Folder** sobre una carpeta para crear una subcarpeta). Arrastra conexiones o carpetas sobre una carpeta, o usa **Move to Folder…**; suéltalas en un espacio vacío para devolverlas al nivel superior. **Add Connection** sobre una carpeta crea la conexión dentro de ella, y el campo **Folder** del formulario permite cambiarla después.
 

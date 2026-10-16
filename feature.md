@@ -25,3 +25,4 @@
 - cada conexión sql puede vincular carpetas existentes que tienen archivos .sql (por ejemplo la carpeta sql de un repositorio), mostrarlas con sus subcarpetas en el árbol y ejecutar sus archivos, y definir dónde se guardan los archivos sql nuevos; las rutas aceptan ~ y ${workspaceFolder}, y desvincular una carpeta nunca borra sus archivos
 - en el formulario de conexión, los campos de contraseña tienen un botón para ver u ocultar lo que se escribe
 - la conexión de oracle se puede configurar con una url jdbc (servicio, sid, tcps, descriptor o alias de tnsnames) en vez de host y servicio
+- un botón de configuración en el panel muestra los parámetros de la extensión: dónde está la persistencia (carpeta de almacenamiento, archivo de conexiones, historial y archivos sql), la configuración actual y el entorno, e incluye un acerca de con los datos de la cuenta de github del autor

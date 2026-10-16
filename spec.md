@@ -8,7 +8,7 @@ Extensión de VS Code (y editores compatibles como Cursor) llamada `dbclient`: u
 
 ## 2. Arquitectura
 
-Estado: ✅ implementado · ⏳ pendiente.
+Estado: ✅ implementado · ◐ parcial.
 
 | Capa | Responsabilidad | Estado |
 |---|---|---|
@@ -34,13 +34,12 @@ Estado: ✅ implementado · ⏳ pendiente.
 | `src/store/sqlLocations.ts` + `src/connections/sqlLocations.ts` | Ubicaciones por conexión (interna, vinculadas, de guardado), expansión de `~`/`${workspaceFolder}`, dueño de un archivo por la ruta más específica, listado con límites. | ✅ |
 | `src/export/xlsx.ts` | Escritor `.xlsx` sin dependencias (ZIP + SpreadsheetML): encabezado en negrita y congelado, filtro, números y fechas tipados sin perder precisión. | ✅ |
 | `scripts/build-icons.mjs` | Recorta los iconos de `img/` (quita la etiqueta y el halo oscuro) y genera `media/icons/` (variantes clara y oscura) y `media/icon.png`. | ✅ |
-| i18n | Las cadenas en tiempo de ejecución ya usan `vscode.l10n.t`; faltan `package.nls*.json` y `l10n/bundle.l10n.es.json`. | ⏳ |
 
-Librerías: `pg`, `pg-cursor`, `mysql2`, `mssql`, `oracledb`, `ioredis`, `nats` (todas JavaScript puro) y `node:sqlite`. Previstas: `ssh2` para túneles. Build con `esbuild`, empaquetado con `@vscode/vsce`.
+Librerías: `pg`, `pg-cursor`, `mysql2`, `mssql`, `oracledb`, `ioredis`, `nats` y `ssh2` para túneles (todas JavaScript puro; `ssh2` sin sus módulos nativos opcionales), además de `node:sqlite`. Build con `esbuild`, empaquetado con `@vscode/vsce`.
 
 ## 3. Requisitos
 
-Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 115 (los pesos son puntos; la brecha se expresa en % del total, ver §4).
+Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 116 (los pesos son puntos; la brecha se expresa en % del total, ver §4).
 
 ### F — Fundación (10)
 
@@ -50,7 +49,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 115 (los pe
 | F2 | Interfaz común de drivers y registro; agregar un motor no exige tocar árbol, editor ni grilla | 4 | 1 |
 | F3 | Interfaz en español e inglés: textos de la extensión (`vscode.l10n`), manifiesto (`package.nls`), webviews y campos de los formularios; el idioma sigue al de VS Code/Cursor | 2 | 0.5 |
 
-### C — Conexiones y persistencia (26)
+### C — Conexiones y persistencia (27)
 
 | ID | Requisito | Peso | Estado |
 |---|---|---|---|
@@ -60,6 +59,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 115 (los pe
 | C4 | Carpetas para agrupar conexiones | 2 | 1 |
 | C5 | Exportar e importar la configuración (sin secretos): todo o una carpeta; importar fusionando (conserva lo existente, omite lo idéntico, copia renombrada si hay conflicto) o reemplazando (con confirmación); los ids se conservan para que una copia restaurada recupere sus claves y archivos SQL | 2 | 1 |
 | C6 | SSL/TLS (desactivado / requerido / verificar todo; CA, certificado y clave del cliente con frase) y túnel SSH (contraseña o clave privada con frase, huella de la llave del host) en todos los motores de red | 4 | 1 |
+| C7 | Panel **Configuración y acerca de** (botón ⚙ en el título de la vista): rutas de la persistencia (almacenamiento, `connections.json`, historial, archivos SQL) con copiar y abrir carpeta, dónde están los secretos, configuración `dbclient.*` actual frente al valor por defecto, entorno, y acerca de con la versión y los enlaces de GitHub del autor | 1 | 1 |
 
 ### D — Drivers SQL (16)
 
@@ -109,7 +109,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 ## 4. Cálculo de la brecha
 
 ```
-total   = Σ peso                      (hoy 115)
+total   = Σ peso                      (hoy 116)
 avance  = Σ (peso × estado)
 brecha  = (total − avance) / total × 100 %
 ```
@@ -117,14 +117,14 @@ brecha  = (total − avance) / total × 100 %
 | Bloque | Peso | Avance | Brecha (pts) |
 |---|---|---|---|
 | F — Fundación | 10 | 9 | 1 |
-| C — Conexiones y persistencia | 26 | 26 | 0 |
+| C — Conexiones y persistencia | 27 | 27 | 0 |
 | D — Drivers SQL | 16 | 16 | 0 |
 | S — Editor SQL | 41 | 41 | 0 |
 | R — Redis | 11 | 11 | 0 |
 | N — NATS | 11 | 11 | 0 |
-| **Total** | **115** | **114** | **1** |
+| **Total** | **116** | **115** | **1** |
 
-**Brecha actual: 0,9 % (1 de 115 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento).
+**Brecha actual: 0,9 % (1 de 116 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento).
 
 ## 5. Orden sugerido para cerrar la brecha
 
@@ -133,6 +133,11 @@ brecha  = (total − avance) / total × 100 %
 3. ✅ **Redis (+11):** R1–R3.
 4. ✅ **NATS (+11):** N1–N4.
 5. ◐ **Cierre (+8):** ✅ C5 (2), ✅ C6 (4), ◐ F3 (1 de 2: falta verla en el editor).
+
+### Verificación (v0.10.0)
+
+- Configuración y acerca de (C7): `src/webviews/settings.ts` + `media/settings.{js,css}`, comando `dbclient.showSettings` con el botón ⚙ en el título de la vista. Prueba unitaria en jsdom (`test/unit/settingsWebview.test.ts`: secciones, ruta aún no creada, valor vacío, origen del valor, autor y `@cgalvisleon`, mensajes de copiar, mostrar en carpeta, abrir configuración y enlace) y prueba de humo en VS Code 1.141 (el comando abre una sola pestaña aunque se llame dos veces). La extensión solo abre los enlaces y rutas que ella misma envió al panel. Sin verificar a mano: el aspecto del panel en Cursor.
+- Oracle TCPS contra un servidor real (C6, D5): conexión a una Oracle Autonomous Database 19c por endpoint privado (VPN) con `tcps://<ip>:1521/<servicio>` y SSL **require**, sin wallet ni archivos PEM (solo conectar y cerrar, sin SQL); también en el puerto 1522. Sin TLS el servidor cierra la conexión (`NJS-500`) y **verify-full** con una IP falla el handshake (`NJS-506`), porque el certificado es de `*.adb.oraclecloud.com`.
 
 ### Verificación (v0.9.0)
 
@@ -174,7 +179,7 @@ brecha  = (total − avance) / total × 100 %
 - Excel (S10): pruebas unitarias del escritor (ZIP verificado con CRC, celdas tipadas, precisión, fechas) y un archivo con resultados reales de PostgreSQL abierto en Microsoft Excel por AppleScript: sin reparación, números, fechas y booleanos como valores de Excel. Postgres ahora entrega `date`/`time`/`timestamp` como texto del servidor (antes `date` se corría de día por la zona horaria); prueba de integración incluida.
 - Carpetas (C4): pruebas unitarias del store (anidar, mover, ciclos, eliminar sube el contenido, carpeta inexistente, duplicar) y prueba de humo en VS Code (árbol anidado y arrastrar y soltar).
 - Documentación: `README.md` (inglés, incluido en el `.vsix`) y `README.es.md` (traducción): instalación, funcionalidades, ejemplos de uso, configuración y desarrollo.
-- Sin verificar de forma automática: el aspecto visual de los webviews, la edición de valores desde el visor de Redis, la consola NATS en uso interactivo y las autenticaciones de NATS con usuario/token/nkey/credenciales.
+- Sin verificar de forma automática: el aspecto visual de los webviews, la edición de valores desde el visor de Redis, la consola NATS en uso interactivo y las autenticaciones de NATS con usuario/token/nkey/credenciales (estas últimas verificadas en v0.6.0).
 
 ### Verificación del MVP
 
@@ -205,3 +210,5 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-12 | Interfaz en español: código, manifiesto, webviews y formularios traducidos y verificados por pruebas; falta verla en el editor (F3 en 0,5) | 0,9 % |
 | 2026-10-13 | Botón para ver u ocultar la contraseña en el formulario de conexión (C2, sin cambio de puntaje) | 0,9 % |
 | 2026-10-13 | Conexión Oracle por URL JDBC (D5, sin cambio de puntaje) | 0,9 % |
+| 2026-10-16 | Panel de configuración y acerca de con las rutas de la persistencia, la configuración actual, el entorno y los enlaces de GitHub del autor (nuevo C7, 1 pt; total 116; v0.10.0) | 0,9 % |
+| 2026-10-16 | Correcciones de `spec.md`: fila de i18n duplicada y desactualizada, `ssh2` ya en uso, autenticaciones NATS ya verificadas; Oracle TCPS verificado contra una Autonomous Database real. Sin cambio de puntaje | 0,9 % |

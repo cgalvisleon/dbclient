@@ -34,6 +34,13 @@ exports.run = async function () {
   }
   console.log(`✓ ${ext.packageJSON.contributes.commands.length} commands registered`);
 
+  // Settings and About panel opens once (a second call reveals the same tab).
+  await vscode.commands.executeCommand('dbclient.showSettings');
+  await vscode.commands.executeCommand('dbclient.showSettings');
+  await until(() => tabLabels().filter((l) => /DB Client/.test(l)).length === 1, 'settings panel tab');
+  await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+  console.log('✓ settings panel');
+
   const secrets = new Map();
   const realGetSecrets = api.store.getSecrets.bind(api.store);
   api.store.getSecrets = async (id, fields) => (secrets.has(id) ? secrets.get(id) : realGetSecrets(id, fields));

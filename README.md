@@ -21,6 +21,7 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | Connections | One tree for every engine; create, edit, duplicate, delete, test, connect and disconnect from a form. |
 | Folders | Group connections in nested folders; create, rename, delete (content moves up a level), move with **Move to Folder…** or by drag and drop. |
 | Storage | User-level `connections.json`; secrets in the editor's secret storage. |
+| Settings and About | The ⚙ button in the view title opens a panel with where the extension keeps its data (storage folder, `connections.json`, query history, saved SQL files) with **Copy** and **Open folder**, the current `dbclient.*` settings against their defaults, the environment (editor, Node.js, SQLite support) and the author's GitHub links. |
 | SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis and NATS: **disable**, **require** (encrypted) or **verify-full** (certificate and host name), with CA file, client certificate and key (with passphrase). SQL Server: **Encrypt** with or without trusting the certificate, and a CA file. |
 | SSH tunnel | Every engine but SQLite can connect through an SSH server, with password or private key (with passphrase) and an optional host key fingerprint. |
 | Languages | English and Spanish, following the editor's display language. |
@@ -54,6 +55,8 @@ SSH tunnel: private key   SSH host: bastion.example.com   SSH user: deploy   Pri
 ```
 
 **Move connections to another machine.** In the view's **…** menu choose **Export Connections…** (or **Export Connections…** on a folder for just that folder) and save the `.json` file; it holds folders, connections and SQL locations, never passwords. On the other machine choose **Import Connections…**, pick the file and **Merge** or **Replace**, then enter passwords with **Edit Connection**. Restoring a backup on the same machine keeps each connection's id, so its saved password and SQL files work again.
+
+**See where your data lives.** Press **⚙ Settings and About** in the view title. **Persistence** lists the storage folder, the connections file, the query history and the saved SQL files folder, each with **Copy** and **Open folder**; passwords are not there but in the editor's secret storage. **Settings** shows each `dbclient.*` value, where it is set and its default (**Open in Settings** to change them), and **About** has the version and the author's GitHub profile, repository and issues.
 
 **Organize with folders.** Press the **New Folder** button in the view title (or **New Folder** on a folder for a subfolder). Drag connections or folders onto a folder, or use **Move to Folder…**; drop them on empty space to return them to the top level. **Add Connection** on a folder creates the connection inside it, and the form's **Folder** field changes it later.
 

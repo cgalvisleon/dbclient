@@ -50,5 +50,6 @@
   "config.dbclient.sqlFolder.description": "Carpeta donde cada conexión SQL guarda sus archivos .sql (una subcarpeta por conexión). Vacío usa el almacenamiento global de la extensión; apúntala a una carpeta sincronizada o versionada para compartir los archivos.",
   "config.dbclient.historySize.description": "Sentencias y comandos Redis que se guardan en el historial de cada conexión (Historial de consultas…). 0 apaga el historial. Los comandos AUTH, HELLO, ACL, MIGRATE y CONFIG nunca se registran.",
   "viewsWelcome.dbclient.connections": "Aún no hay conexiones.\n[Agregar conexión](command:dbclient.addConnection)",
-  "extension.description": "Cliente de bases de datos para PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis y NATS."
+  "extension.description": "Cliente de bases de datos para PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis y NATS.",
+  "command.showSettings": "Configuración y acerca de"
 }
