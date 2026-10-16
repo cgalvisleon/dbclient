@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.4 — 2026-10-16
+
+- Sharper extension icon: redrawn as a vector and exported at 256 px for high-density screens.
+
 ## 0.12.1 — 2026-10-16
 
 - Repackaged, no functional changes.

@@ -2,6 +2,8 @@
 // sheet with the file name printed under the glyph, so this keeps only the glyph (the rows
 // above the first transparent gap), squares it with a small margin, and lets `sips` (macOS)
 // scale it. Run with `npm run icons` after changing img/.
+// media/icon.png (the store icon, 256×256) is not built here: it is img/db-client.svg exported
+// to PNG, because the raster glyph is too small and looks blurry on retina screens.
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -96,9 +98,6 @@ for (const file of fs.readdirSync(src).filter((f) => f.endsWith('.png') && !f.st
   const light = path.join(tmp, `light-${file}`);
   fs.writeFileSync(light, encode(withoutDarkFringe(squared)));
   execFileSync('sips', ['-z', String(SIZE), String(SIZE), light, '--out', path.join(out, 'light', file)], { stdio: 'ignore' });
-  if (file === 'db-client.png') {
-    execFileSync('sips', ['-z', '128', '128', full, '--out', path.join(root, 'media', 'icon.png')], { stdio: 'ignore' });
-  }
   console.log(`${file}: glyph ${squared.width}px → ${SIZE}px`);
 }
 fs.rmSync(tmp, { recursive: true, force: true });
