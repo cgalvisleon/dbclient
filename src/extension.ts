@@ -274,33 +274,58 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
 
   const fieldsOf = (type: string) => allDrivers().find((d) => d.type === type)?.fields;
 
-  // `target` lets tests skip the save dialog.
-  command('dbclient.exportConnections', async (item?: FolderItem, target?: vscode.Uri) => {
-    const folderId = item instanceof FolderItem ? item.folderId : undefined;
-    const data = store.exportData((type) => (fieldsOf(type) ?? []).filter((f) => f.secret).map((f) => f.key), folderId);
-    if (!data.connections.length && !data.folders.length) {
-      vscode.window.showInformationMessage(vscode.l10n.t('There are no connections to export.'));
-      return;
-    }
-    const name = folderId ? store.getFolder(folderId)!.name : 'dbclient-connections';
-    target ??= await vscode.window.showSaveDialog({
-      defaultUri: vscode.Uri.file(path.join(os.homedir(), `${name.replace(/[\\/:*?"<>|]+/g, '-')}.json`)),
-      filters: { JSON: ['json'] },
-      title: vscode.l10n.t('Export Connections'),
-    });
-    if (!target) {
-      return;
-    }
-    await vscode.workspace.fs.writeFile(target, Buffer.from(JSON.stringify(data, null, 2) + '\n', 'utf8'));
-    vscode.window.showInformationMessage(
-      vscode.l10n.t('Exported {0} connections to {1}. Passwords and other secrets are not included.', data.connections.length, target.fsPath),
-    );
-  });
+  // From the view title (everything), a folder (it and its subfolders) or connections (the
+  // selected ones, without folders). The tree passes the selection second; tests pass `target`
+  // (second or third) to skip the save dialog.
+  command(
+    'dbclient.exportConnections',
+    async (item?: FolderItem | ConnectionItem, second?: vscode.Uri | unknown[], third?: vscode.Uri) => {
+      let target = second instanceof vscode.Uri ? second : third;
+      const selected = Array.isArray(second) ? second : [];
+      const folderId = item instanceof FolderItem ? item.folderId : undefined;
+      const connectionIds =
+        item instanceof ConnectionItem
+          ? [...new Set([item, ...selected].filter((i): i is ConnectionItem => i instanceof ConnectionItem).map((i) => i.connectionId))]
+          : undefined;
+      const data = store.exportData((type) => (fieldsOf(type) ?? []).filter((f) => f.secret).map((f) => f.key), folderId, connectionIds);
+      if (!data.connections.length && !data.folders.length) {
+        vscode.window.showInformationMessage(vscode.l10n.t('There are no connections to export.'));
+        return;
+      }
+      const name = folderId
+        ? store.getFolder(folderId)!.name
+        : connectionIds?.length === 1
+          ? data.connections[0].name
+          : connectionIds
+            ? 'dbclient-selected-connections'
+            : 'dbclient-connections';
+      target ??= await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(path.join(os.homedir(), `${name.replace(/[\\/:*?"<>|]+/g, '-')}.json`)),
+        filters: { JSON: ['json'] },
+        title: vscode.l10n.t('Export Connections'),
+      });
+      if (!target) {
+        return;
+      }
+      await vscode.workspace.fs.writeFile(target, Buffer.from(JSON.stringify(data, null, 2) + '\n', 'utf8'));
+      vscode.window.showInformationMessage(
+        vscode.l10n.t('Exported {0} connections to {1}. Passwords and other secrets are not included.', data.connections.length, target.fsPath),
+      );
+    },
+  );
 
-  // `source` and `mode` let tests skip the dialogs.
-  command('dbclient.importConnections', async (source?: vscode.Uri, mode?: ImportMode) => {
+  // From the view title, or a folder to import into it (merge only). Tests pass the file and
+  // mode (`(uri, mode)`, or `(folder, undefined, uri)`) to skip the dialogs.
+  command('dbclient.importConnections', async (first?: vscode.Uri | FolderItem, second?: ImportMode | unknown, third?: vscode.Uri) => {
+    const folder = first instanceof FolderItem ? store.getFolder(first.folderId) : undefined;
+    let source = first instanceof vscode.Uri ? first : third;
+    let mode: ImportMode | undefined = folder ? 'merge' : second === 'merge' || second === 'replace' ? second : undefined;
     source ??= (
-      await vscode.window.showOpenDialog({ canSelectMany: false, filters: { JSON: ['json'] }, title: vscode.l10n.t('Import Connections') })
+      await vscode.window.showOpenDialog({
+        canSelectMany: false,
+        filters: { JSON: ['json'] },
+        title: folder ? vscode.l10n.t('Import Connections into "{0}"', folder.name) : vscode.l10n.t('Import Connections'),
+      })
     )?.[0];
     if (!source) {
       return;
@@ -341,12 +366,16 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       const keep = new Set(data.connections.map((c) => c.id));
       await Promise.all(store.list().filter((c) => !keep.has(c.id)).map((c) => manager.disconnect(c.id)));
     }
-    const result = await store.importData(data, mode, fieldsOf);
+    const result = await store.importData(data, mode, fieldsOf, folder?.id);
     for (const id of result.removed) {
       sqlFiles.deleteAll(id);
       history.clear(id);
     }
-    const parts = [vscode.l10n.t('{0} imported', result.added.length + result.renamed.length)];
+    const parts = [
+      folder
+        ? vscode.l10n.t('{0} imported into "{1}"', result.added.length + result.renamed.length, folder.name)
+        : vscode.l10n.t('{0} imported', result.added.length + result.renamed.length),
+    ];
     if (result.renamed.length) {
       parts.push(vscode.l10n.t('{0} as copies ({1})', result.renamed.length, result.renamed.join(', ')));
     }

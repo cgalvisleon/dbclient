@@ -16,6 +16,10 @@ export interface ConnectionConfig {
   sqlLocations?: { path: string; label?: string }[];
   /** Where new .sql files are saved; the connection's internal folder when missing. */
   sqlSaveLocation?: string;
+  /** Tree icon shape (`CONNECTION_SHAPES` in src/icons.ts); the engine's default when missing. */
+  icon?: string;
+  /** Tree icon color (`CONNECTION_COLORS`); blue when missing. */
+  color?: string;
 }
 
 /** A user-defined folder of connections; folders nest through `parentId`. */

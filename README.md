@@ -25,7 +25,8 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis and NATS: **disable**, **require** (encrypted) or **verify-full** (certificate and host name), with CA file, client certificate and key (with passphrase). SQL Server: **Encrypt** with or without trusting the certificate, and a CA file. |
 | SSH tunnel | Every engine but SQLite can connect through an SSH server, with password or private key (with passphrase) and an optional host key fingerprint. |
 | Languages | English and Spanish, following the editor's display language. |
-| Export / import | **Export Connections…** writes all connections (or one folder) to a JSON file without passwords; **Import Connections…** merges it (existing ones kept, identical ones skipped) or replaces the list. |
+| Export / import | **Export Connections…** writes all connections, one folder (on the folder) or the selected connections (on a connection) to a JSON file without passwords; **Import Connections…** merges it (existing ones kept, identical ones skipped) or replaces the list, and on a folder imports into that folder. |
+| Icons and colors | Each connection can pick its tree icon (database, server, cloud, with gear or magnifier) and one of 7 colors (blue, green, red, orange, purple, yellow, gray) in the form's **Appearance** section — e.g. red for production. |
 | Explorer (SQL) | Databases/schemas → tables, views, functions, procedures, triggers, indexes (Oracle: packages, sequences) → columns with type, PK and NOT NULL. |
 | SQL editor | Connection picker in the status bar and editor title; run the statement under the cursor, the selection or the whole file; ▶ Run above each statement; cancel. |
 | Saved SQL files | Each SQL connection has a **SQL** node with its own `.sql` files; opening one binds it to the connection. New, rename, delete, and save the current query there. |
@@ -57,6 +58,10 @@ SSH tunnel: private key   SSH host: bastion.example.com   SSH user: deploy   Pri
 **Move connections to another machine.** In the view's **…** menu choose **Export Connections…** (or **Export Connections…** on a folder for just that folder) and save the `.json` file; it holds folders, connections and SQL locations, never passwords. On the other machine choose **Import Connections…**, pick the file and **Merge** or **Replace**, then enter passwords with **Edit Connection**. Restoring a backup on the same machine keeps each connection's id, so its saved password and SQL files work again.
 
 **See where your data lives.** Press **⚙ Settings and About** in the view title. **Persistence** lists the storage folder, the connections file, the query history and the saved SQL files folder, each with **Copy** and **Open folder**; passwords are not there but in the editor's secret storage. **Settings** shows each `dbclient.*` value, where it is set and its default (**Open in Settings** to change them), and **About** has the version and the author's GitHub profile, repository and issues.
+
+**Share one connection or fill a folder.** Right-click a connection (or several selected) → **Export Connections…** to save just those, without folders or passwords. Right-click a folder → **Import Connections…** to merge a file into that folder: its connections and folders land inside it.
+
+**Tell connections apart.** In the connection form, **Appearance** shows the icon shapes and colors as a live preview; pick, for example, the gear database in red for production and the green one for development. **Automatic** keeps the engine's icon.
 
 **Organize with folders.** Press the **New Folder** button in the view title (or **New Folder** on a folder for a subfolder). Drag connections or folders onto a folder, or use **Move to Folder…**; drop them on empty space to return them to the top level. **Add Connection** on a folder creates the connection inside it, and the form's **Folder** field changes it later.
 

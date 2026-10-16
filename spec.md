@@ -39,7 +39,7 @@ Librerías: `pg`, `pg-cursor`, `mysql2`, `mssql`, `oracledb`, `ioredis`, `nats` 
 
 ## 3. Requisitos
 
-Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 116 (los pesos son puntos; la brecha se expresa en % del total, ver §4).
+Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pesos son puntos; la brecha se expresa en % del total, ver §4).
 
 ### F — Fundación (10)
 
@@ -49,7 +49,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 116 (los pe
 | F2 | Interfaz común de drivers y registro; agregar un motor no exige tocar árbol, editor ni grilla | 4 | 1 |
 | F3 | Interfaz en español e inglés: textos de la extensión (`vscode.l10n`), manifiesto (`package.nls`), webviews y campos de los formularios; el idioma sigue al de VS Code/Cursor | 2 | 0.5 |
 
-### C — Conexiones y persistencia (27)
+### C — Conexiones y persistencia (28)
 
 | ID | Requisito | Peso | Estado |
 |---|---|---|---|
@@ -57,9 +57,10 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 116 (los pe
 | C2 | Formulario de conexión: crear, editar, duplicar, eliminar, probar, conectar y desconectar; botón **Ver/Ocultar** en los campos de contraseña | 6 | 1 |
 | C3 | Persistencia centralizada a nivel usuario (`globalStorage`) con secretos en `SecretStorage` | 6 | 1 |
 | C4 | Carpetas para agrupar conexiones | 2 | 1 |
-| C5 | Exportar e importar la configuración (sin secretos): todo o una carpeta; importar fusionando (conserva lo existente, omite lo idéntico, copia renombrada si hay conflicto) o reemplazando (con confirmación); los ids se conservan para que una copia restaurada recupere sus claves y archivos SQL | 2 | 1 |
+| C5 | Exportar e importar la configuración (sin secretos): todo, una carpeta o las conexiones seleccionadas; importar dentro de una carpeta; importar fusionando (conserva lo existente, omite lo idéntico, copia renombrada si hay conflicto) o reemplazando (con confirmación); los ids se conservan para que una copia restaurada recupere sus claves y archivos SQL | 2 | 1 |
 | C6 | SSL/TLS (desactivado / requerido / verificar todo; CA, certificado y clave del cliente con frase) y túnel SSH (contraseña o clave privada con frase, huella de la llave del host) en todos los motores de red | 4 | 1 |
 | C7 | Panel **Configuración y acerca de** (botón ⚙ en el título de la vista): rutas de la persistencia (almacenamiento, `connections.json`, historial, archivos SQL) con copiar y abrir carpeta, dónde están los secretos, configuración `dbclient.*` actual frente al valor por defecto, entorno, y acerca de con la versión y los enlaces de GitHub del autor | 1 | 1 |
+| C8 | Apariencia de cada conexión: icono (6 formas) y color (azul y 6 más: verde, rojo, naranja, morado, amarillo, gris) elegidos en el formulario con vista previa, en temas claro y oscuro; se exportan e importan con la conexión | 1 | 1 |
 
 ### D — Drivers SQL (16)
 
@@ -109,7 +110,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 ## 4. Cálculo de la brecha
 
 ```
-total   = Σ peso                      (hoy 116)
+total   = Σ peso                      (hoy 117)
 avance  = Σ (peso × estado)
 brecha  = (total − avance) / total × 100 %
 ```
@@ -117,14 +118,14 @@ brecha  = (total − avance) / total × 100 %
 | Bloque | Peso | Avance | Brecha (pts) |
 |---|---|---|---|
 | F — Fundación | 10 | 9 | 1 |
-| C — Conexiones y persistencia | 27 | 27 | 0 |
+| C — Conexiones y persistencia | 28 | 28 | 0 |
 | D — Drivers SQL | 16 | 16 | 0 |
 | S — Editor SQL | 41 | 41 | 0 |
 | R — Redis | 11 | 11 | 0 |
 | N — NATS | 11 | 11 | 0 |
-| **Total** | **116** | **115** | **1** |
+| **Total** | **117** | **116** | **1** |
 
-**Brecha actual: 0,9 % (1 de 116 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento).
+**Brecha actual: 0,9 % (1 de 117 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento).
 
 ## 5. Orden sugerido para cerrar la brecha
 
@@ -133,6 +134,11 @@ brecha  = (total − avance) / total × 100 %
 3. ✅ **Redis (+11):** R1–R3.
 4. ✅ **NATS (+11):** N1–N4.
 5. ◐ **Cierre (+8):** ✅ C5 (2), ✅ C6 (4), ◐ F3 (1 de 2: falta verla en el editor).
+
+### Verificación (v0.11.0)
+
+- Iconos y colores (C8): `scripts/build-icon-colors.mjs` (con `scripts/png.mjs`) genera `media/icons/colors/<color>/` girando el tono del azul (≈212°) y conservando sombras, blancos y transparencia; revisados en una hoja de vista previa sobre fondo claro y oscuro. Pruebas: unitarias (cada forma × color × tema existe, recoloreado de un píxel azul, blanco, gris y transparente; sección **Apariencia** del formulario en jsdom: 7 formas y 7 colores con vista previa, conserva lo escrito al re-renderizar, envía `icon`/`color` al guardar y los limpia con Automático y azul) y de humo (el árbol usa `colors/purple/cloud-database.png` y su variante clara). Sin verificar a mano: el aspecto del formulario y del árbol en Cursor.
+- Exportar/importar individual (C5): exportar las conexiones elegidas sin carpetas (conservando icono y color) e importar dentro de una carpeta (sus carpetas y conexiones quedan adentro; **Replace** no se ofrece) con 2 pruebas unitarias del store y prueba de humo con los argumentos que pasa el árbol (elemento + selección y carpeta destino). Sin verificar a mano: los menús contextuales en Cursor.
 
 ### Verificación (v0.10.0)
 
@@ -212,3 +218,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-13 | Conexión Oracle por URL JDBC (D5, sin cambio de puntaje) | 0,9 % |
 | 2026-10-16 | Panel de configuración y acerca de con las rutas de la persistencia, la configuración actual, el entorno y los enlaces de GitHub del autor (nuevo C7, 1 pt; total 116; v0.10.0) | 0,9 % |
 | 2026-10-16 | Correcciones de `spec.md`: fila de i18n duplicada y desactualizada, `ssh2` ya en uso, autenticaciones NATS ya verificadas; Oracle TCPS verificado contra una Autonomous Database real. Sin cambio de puntaje | 0,9 % |
+| 2026-10-16 | Icono y color por conexión (nuevo C8, 1 pt; total 117) y exportar/importar individual o dentro de una carpeta (C5, sin cambio de puntaje); v0.11.0 | 0,9 % |

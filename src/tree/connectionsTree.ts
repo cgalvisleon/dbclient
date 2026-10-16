@@ -2,8 +2,8 @@ import { TREE_WORDS } from './words';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
-import { DbNode, DriverCategory, NodeKind } from '../drivers/types';
-import { icon, IconName } from '../icons';
+import { DbNode, NodeKind } from '../drivers/types';
+import { connectionIcon, DEFAULT_SHAPES, icon, IconName } from '../icons';
 import { SqlLocations } from '../connections/sqlLocations';
 import { displayPath, listDir, SqlLocation } from '../store/sqlLocations';
 
@@ -17,12 +17,6 @@ const IMAGES: Partial<Record<NodeKind, IconName>> = {
   key: 'authentication',
   stream: 'cloud-database',
   info: 'info',
-};
-
-const CONNECTION_IMAGES: Record<DriverCategory, [IconName, IconName]> = {
-  sql: ['database', 'database-connect'],
-  kv: ['server', 'server-connect'],
-  pubsub: ['cloud-database', 'cloud-database'],
 };
 
 const ICONS: Record<NodeKind, string> = {
@@ -59,7 +53,7 @@ export class ConnectionItem extends vscode.TreeItem {
     const target = o.file ? path.basename(String(o.file)) : o.servers ? String(o.servers) : o.jdbcUrl ? String(o.jdbcUrl).replace(/^jdbc:oracle:\w+:@?/i, '') : o.host ? `${o.host}${o.port ? `:${o.port}` : ''}` : '';
     this.description = [factory.label, target].filter(Boolean).join(' · ');
     this.tooltip = `${config.name}\n${factory.label} · ${o.file ?? o.servers ?? `${target}${o.database ? `/${o.database}` : ''}`}`;
-    this.iconPath = icon(CONNECTION_IMAGES[factory.category][connected ? 1 : 0]);
+    this.iconPath = connectionIcon(config.icon, config.color, connected, DEFAULT_SHAPES[factory.category]);
     if (connected) {
       this.description = `● ${this.description}`;
     }

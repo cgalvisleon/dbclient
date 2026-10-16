@@ -3,7 +3,7 @@ import { ConnectionManager } from '../connections/manager';
 import { allDrivers, getDriver } from '../drivers/registry';
 import { ConnectionConfig, ConnectionSecrets, FieldSpec } from '../drivers/types';
 import { SecretUpdate } from '../store/connectionStore';
-import { icon } from '../icons';
+import { CONNECTION_COLORS, CONNECTION_SHAPES, ConnectionColor, ConnectionShape, DEFAULT_SHAPES, icon } from '../icons';
 import { mediaRoots, webviewHtml } from './html';
 
 interface FormValue {
@@ -13,7 +13,28 @@ interface FormValue {
   folderId?: string;
   sqlLocations?: ConnectionConfig['sqlLocations'];
   sqlSaveLocation?: string;
+  icon?: string;
+  color?: string;
 }
+
+const SHAPE_LABELS: Record<ConnectionShape, () => string> = {
+  database: () => vscode.l10n.t('Database'),
+  server: () => vscode.l10n.t('Server'),
+  'cloud-database': () => vscode.l10n.t('Cloud'),
+  'database-settings': () => vscode.l10n.t('Database with gear'),
+  'server-settings': () => vscode.l10n.t('Server with gear'),
+  'search-database': () => vscode.l10n.t('Database with magnifier'),
+};
+
+const COLOR_LABELS: Record<ConnectionColor, () => string> = {
+  blue: () => vscode.l10n.t('Blue'),
+  green: () => vscode.l10n.t('Green'),
+  red: () => vscode.l10n.t('Red'),
+  orange: () => vscode.l10n.t('Orange'),
+  purple: () => vscode.l10n.t('Purple'),
+  yellow: () => vscode.l10n.t('Yellow'),
+  gray: () => vscode.l10n.t('Gray'),
+};
 
 type FromWebview =
   | { type: 'ready' }
@@ -100,8 +121,16 @@ export async function openConnectionForm(
                 folderId: config.folderId,
                 sqlLocations: config.sqlLocations,
                 sqlSaveLocation: config.sqlSaveLocation,
+                icon: config.icon,
+                color: config.color,
               }
             : undefined,
+          appearance: {
+            iconsBase: panel.webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'media', 'icons')).toString(),
+            shapes: CONNECTION_SHAPES.map((id) => ({ id, label: SHAPE_LABELS[id]() })),
+            colors: CONNECTION_COLORS.map((id) => ({ id, label: COLOR_LABELS[id]() })),
+            defaults: Object.fromEntries(allDrivers().map((d) => [d.type, DEFAULT_SHAPES[d.category]])),
+          },
           folderId,
           folders: manager.store
             .listFolders()
@@ -125,6 +154,10 @@ export async function openConnectionForm(
             sqlAddFolder: vscode.l10n.t('Add folder…'),
             sqlHint: vscode.l10n.t('One folder per line. Paths may start with ~ or ${workspaceFolder}. Unlinking never deletes files.'),
             noFolder: vscode.l10n.t('(none)'),
+            appearance: vscode.l10n.t('Appearance'),
+            icon: vscode.l10n.t('Icon'),
+            color: vscode.l10n.t('Color'),
+            automatic: vscode.l10n.t('Automatic (by engine)'),
           },
         });
         return;
@@ -180,6 +213,8 @@ export async function openConnectionForm(
               folderId: message.value.folderId || undefined,
               sqlLocations: message.value.sqlLocations?.length ? message.value.sqlLocations : undefined,
               sqlSaveLocation: message.value.sqlSaveLocation || undefined,
+              icon: CONNECTION_SHAPES.includes(message.value.icon as ConnectionShape) ? message.value.icon : undefined,
+              color: CONNECTION_COLORS.includes(message.value.color as ConnectionColor) && message.value.color !== 'blue' ? message.value.color : undefined,
             },
             update,
           );

@@ -11,7 +11,7 @@ export function webviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri, n
 <html lang="${vscode.env.language}">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; img-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="${media(`${name}.css`)}" rel="stylesheet">
 <title>${title}</title>

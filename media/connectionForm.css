@@ -125,3 +125,35 @@ button.secondary:hover {
 .reveal {
   min-width: 70px;
 }
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+button.icon-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 3px;
+  border: 1px solid var(--vscode-widget-border, transparent);
+  border-radius: 4px;
+  background: transparent;
+}
+
+button.icon-choice:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+button.icon-choice.selected {
+  border-color: var(--vscode-focusBorder);
+  background: var(--vscode-list-activeSelectionBackground, var(--vscode-toolbar-hoverBackground));
+}
+
+button.icon-choice img {
+  width: 26px;
+  height: 26px;
+}

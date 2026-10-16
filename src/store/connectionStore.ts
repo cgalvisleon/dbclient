@@ -301,13 +301,18 @@ export class ConnectionStore {
   // ---------- export / import ----------
 
   /**
-   * Connections and folders to export: everything, or one folder with its subfolders (that
-   * folder becomes top level). Secret option keys are dropped even if an old entry has them.
+   * Connections and folders to export: everything, one folder with its subfolders (that folder
+   * becomes top level), or some connections without folders. Secret option keys are dropped
+   * even if an old entry has them.
    */
-  exportData(secretKeysOf: (type: string) => string[], folderId?: string): ExportFile {
+  exportData(secretKeysOf: (type: string) => string[], folderId?: string, connectionIds?: string[]): ExportFile {
     let folders = this.folders;
     let connections = this.connections;
-    if (folderId) {
+    if (connectionIds) {
+      const ids = new Set(connectionIds);
+      folders = [];
+      connections = this.connections.filter((c) => ids.has(c.id)).map((c) => ({ ...c, folderId: undefined }));
+    } else if (folderId) {
       const ids = new Set([this.requireFolder(folderId).id]);
       for (let grew = true; grew; ) {
         grew = false;
@@ -338,12 +343,21 @@ export class ConnectionStore {
    * its saved passwords and SQL files again. Merge never loses anything: identical connections
    * are skipped and a different one with the same id or name is added as a renamed copy.
    * Replace also removes local connections missing from the file (and their secrets).
+   * `targetFolderId` (merge only) puts the file's top-level folders and connections inside
+   * that folder instead of the top level.
    */
   async importData(
     data: { folders: ConnectionFolder[]; connections: ConnectionConfig[] },
     mode: ImportMode,
     fieldsOf: (type: string) => FieldSpec[] | undefined,
+    targetFolderId?: string,
   ): Promise<ImportResult> {
+    if (targetFolderId) {
+      if (mode === 'replace') {
+        throw new Error('Replace imports the whole list; it cannot target a folder.');
+      }
+      this.requireFolder(targetFolderId);
+    }
     const result: ImportResult = { added: [], renamed: [], skipped: [], removed: [], invalid: [] };
     const valid = data.connections.filter((c) => {
       const ok = c && typeof c.name === 'string' && typeof c.type === 'string' && fieldsOf(c.type) && c.options && typeof c.options === 'object';
@@ -372,7 +386,7 @@ export class ConnectionStore {
         if (f.parentId && pending.some((p) => p.id === f.parentId)) {
           continue; // parent first
         }
-        const parentId = f.parentId ? folderIds.get(f.parentId) : undefined;
+        const parentId = f.parentId ? folderIds.get(f.parentId) : targetFolderId;
         const existing = this.folders.find((x) => x.name === f.name && x.parentId === parentId);
         const id = existing?.id ?? (this.getFolder(f.id) ? randomUUID() : f.id);
         if (!existing) {
@@ -393,7 +407,7 @@ export class ConnectionStore {
         ...source,
         id: source.id || randomUUID(),
         options: Object.fromEntries(Object.entries(source.options).filter(([k]) => !secret.has(k))),
-        folderId: source.folderId ? folderIds.get(source.folderId) : undefined,
+        folderId: (source.folderId && folderIds.get(source.folderId)) || targetFolderId,
       };
       if (!incoming.folderId) {
         delete incoming.folderId;

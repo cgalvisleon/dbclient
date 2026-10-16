@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client",
   "description": "%extension.description%",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -623,6 +623,16 @@
         {
           "command": "dbclient.exportConnections",
           "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "4_transfer@1"
+        },
+        {
+          "command": "dbclient.importConnections",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "4_transfer@2"
+        },
+        {
+          "command": "dbclient.exportConnections",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
           "group": "4_transfer@1"
         }
       ],

@@ -66,7 +66,7 @@
     const name = /** @type {HTMLInputElement} */ (document.getElementById('f-name')).value;
     const folder = /** @type {HTMLSelectElement} */ (document.getElementById('f-folder'));
     const folderId = folder ? folder.value || undefined : value.folderId;
-    const result = { name, type: value.type, options, folderId };
+    const result = { name, type: value.type, options, folderId, icon: value.icon, color: value.color };
     if (driver().category === 'sql') {
       const save = /** @type {HTMLInputElement} */ (document.getElementById('f-sqlSave'));
       const links = /** @type {HTMLTextAreaElement} */ (document.getElementById('f-sqlLocations'));
@@ -193,6 +193,62 @@
     ];
   }
 
+  /** Image of a connection icon; mirrors connectionIconPath in src/icons.ts. */
+  function iconSrc(shape, color) {
+    const a = init.appearance;
+    const light = document.body.classList.contains('vscode-light') || document.body.classList.contains('vscode-high-contrast-light');
+    const dir = color && color !== 'blue' ? `colors/${color}/` : '';
+    return `${a.iconsBase}/${dir}${light ? 'light/' : ''}${shape || a.defaults[value.type]}.png`;
+  }
+
+  /** Icon shape and color of the connection in the tree. */
+  function appearanceSection() {
+    const l = init.labels;
+    const a = init.appearance;
+    const pick = (key, v) => {
+      value = { ...value, [key]: v };
+      rerender();
+    };
+    const choice = (key, v, label, shape, color) =>
+      el(
+        'button',
+        {
+          type: 'button',
+          class: `icon-choice${(value[key] || undefined) === v ? ' selected' : ''}`,
+          title: label,
+          'aria-label': label,
+          'aria-pressed': String((value[key] || undefined) === v),
+          'data-value': v || '',
+          on: { click: () => pick(key, v) },
+        },
+        el('img', { src: iconSrc(shape, color), alt: '' }),
+      );
+    return [
+      el('h4', { class: 'section' }, l.appearance),
+      el(
+        'div',
+        { class: 'row' },
+        el('label', {}, l.icon),
+        el(
+          'div',
+          { class: 'choices', id: 'f-icon', role: 'group' },
+          choice('icon', undefined, l.automatic, undefined, value.color),
+          ...a.shapes.map((s) => choice('icon', s.id, s.label, s.id, value.color)),
+        ),
+      ),
+      el(
+        'div',
+        { class: 'row' },
+        el('label', {}, l.color),
+        el(
+          'div',
+          { class: 'choices', id: 'f-color', role: 'group' },
+          ...a.colors.map((c) => choice('color', c.id === 'blue' ? undefined : c.id, c.label, value.icon, c.id)),
+        ),
+      ),
+    ];
+  }
+
   /** Re-renders keeping what was typed, so `showWhen` fields follow select changes. */
   function rerender() {
     const { value: current, secrets } = collect();
@@ -253,6 +309,7 @@
           : '',
         ...fieldRows(),
         ...(driver().category === 'sql' ? sqlFilesSection() : []),
+        ...(init.appearance ? appearanceSection() : []),
         el(
           'div',
           { class: 'actions' },

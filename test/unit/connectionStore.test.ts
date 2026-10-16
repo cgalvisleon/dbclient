@@ -200,6 +200,38 @@ describe('ConnectionStore', () => {
       expect((await store.getSecrets(b.id, fields)).password).toBe('pw');
     });
 
+    it('exports chosen connections without folders, keeping icon and color', async () => {
+      const { a, b } = await seed();
+      store.patch(a.id, { icon: 'server', color: 'red' });
+      const one = store.exportData(secretKeys, undefined, [a.id]);
+      expect(one.folders).toEqual([]);
+      expect(one.connections.map((c) => [c.name, c.folderId, c.icon, c.color])).toEqual([['a', undefined, 'server', 'red']]);
+      expect(JSON.stringify(one)).not.toMatch(/s3cret|leaked|"password"/);
+      expect(store.get(a.id)?.folderId).toBeDefined(); // the store itself is untouched
+      expect(store.exportData(secretKeys, undefined, [a.id, b.id]).connections).toHaveLength(2);
+    });
+
+    it('imports into a folder: top-level folders and connections go inside it', async () => {
+      const { prod, a } = await seed();
+      const exported = parseExport(JSON.stringify(store.exportData(secretKeys)));
+      const other = new ConnectionStore(path.join(path.dirname(file), 'other.json'), new MemorySecrets());
+      const target = other.createFolder('Imported');
+      const result = await other.importData(exported, 'merge', fieldsOf, target.id);
+      expect(result.added.sort()).toEqual(['a', 'b']);
+      expect(other.folderPath(other.get(a.id)!.folderId!)).toBe('Imported / Prod / EU');
+      expect(other.list().find((c) => c.name === 'b')?.folderId).toBe(target.id);
+      expect(other.listFolders().find((f) => f.name === 'Prod')?.parentId).toBe(target.id);
+      // A single exported connection lands directly in the folder.
+      const single = parseExport(JSON.stringify(store.exportData(secretKeys, undefined, [a.id])));
+      const third = new ConnectionStore(path.join(path.dirname(file), 'third.json'), new MemorySecrets());
+      const folder = third.createFolder('Here');
+      await third.importData(single, 'merge', fieldsOf, folder.id);
+      expect(third.list().map((c) => [c.name, c.folderId])).toEqual([['a', folder.id]]);
+      await expect(third.importData(single, 'replace', fieldsOf, folder.id)).rejects.toThrow(/cannot target a folder/);
+      await expect(third.importData(single, 'merge', fieldsOf, 'nope')).rejects.toThrow(/not found/);
+      expect(prod).toBeDefined();
+    });
+
     it('rejects files that are not exports', () => {
       expect(() => parseExport('{')).toThrow(/Not a JSON file/);
       expect(() => parseExport('{"format":"other","connections":[]}')).toThrow(/Not a DB Client/);

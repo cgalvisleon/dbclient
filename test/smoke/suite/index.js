@@ -132,6 +132,26 @@ exports.run = async function () {
     await vscode.commands.executeCommand('dbclient.importConnections', all, 'merge');
     assert.strictEqual(api.store.list().length, count, 'identical import adds nothing');
 
+    // One connection (as the tree passes it: item + selection), imported into another folder.
+    api.store.patch(a.id, { icon: 'cloud-database', color: 'purple' });
+    const aItem = (await api.tree.getChildren(folderItem)).find((i) => i.connectionId === a.id);
+    assert.ok(/colors\/purple\/cloud-database\.png$/.test(aItem.iconPath.dark.path), `tree icon follows the choice: ${aItem.iconPath.dark.path}`);
+    assert.ok(/colors\/purple\/light\/cloud-database\.png$/.test(aItem.iconPath.light.path), 'light theme icon');
+    const single = vscode.Uri.file(path.join(dir, 'single.json'));
+    await vscode.commands.executeCommand('dbclient.exportConnections', aItem, [aItem], single);
+    const singleData = JSON.parse(fs.readFileSync(single.fsPath, 'utf8'));
+    assert.deepStrictEqual(singleData.folders, [], 'single export has no folders');
+    assert.deepStrictEqual(singleData.connections.map((c) => [c.id, c.folderId, c.color]), [[a.id, undefined, 'purple']], 'single export');
+    const into = api.store.createFolder(`smoke-into-${run}`);
+    const intoItem = (await api.tree.getChildren()).find((r) => r.folderId === into.id);
+    await vscode.commands.executeCommand('dbclient.importConnections', intoItem, undefined, onlyFolder);
+    const copy = api.store.list().find((c) => c.id !== a.id && c.name.startsWith(`smoke-export-a-${run}`));
+    assert.ok(copy, 'imported as a copy next to the original');
+    assert.strictEqual(api.store.folderPath(copy.folderId), `smoke-into-${run} / smoke-export-${run}`, 'import into a folder');
+    await api.store.delete(copy.id, []);
+    api.store.deleteFolder(into.id);
+    for (const f of api.store.listFolders().filter((f) => f.parentId === undefined && f.id !== folder.id)) api.store.deleteFolder(f.id);
+
     await vscode.commands.executeCommand('dbclient.importConnections', onlyFolder, 'replace');
     assert.deepStrictEqual(api.store.list().map((c) => c.id), [a.id], 'replace keeps only the file');
     assert.ok(!api.store.get(b.id), 'other connection deleted');
