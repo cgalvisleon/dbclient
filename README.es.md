@@ -6,7 +6,7 @@
 
 ## Instalación
 
-Descarga `dbclient-<versión>.vsix` (o genéralo con `npm install && npm run package`); luego, en VS Code o Cursor, abre la paleta de comandos (`Ctrl/Cmd+Shift+P`), ejecuta **Extensions: Install from VSIX…** y elige el archivo. Requiere VS Code 1.90 o superior; las conexiones SQLite requieren un editor con Node 22.13 o superior (Cursor, VS Code 1.101+). No necesita módulos nativos ni clientes de bases de datos.
+Busca **DB Client** (`cgalvisleon.dbclient`) en la vista de extensiones: Cursor, VSCodium y Windsurf la instalan desde Open VSX, y VS Code desde el Marketplace. También puedes descargar `dbclient-<versión>.vsix` de los [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) (o generarlo con `npm install && npm run package`); luego, en VS Code o Cursor, abre la paleta de comandos (`Ctrl/Cmd+Shift+P`), ejecuta **Extensions: Install from VSIX…** y elige el archivo. Requiere VS Code 1.90 o superior; las conexiones SQLite requieren un editor con Node 22.13 o superior (Cursor, VS Code 1.101+). No necesita módulos nativos ni clientes de bases de datos.
 
 ## Qué es
 
@@ -146,5 +146,15 @@ npm run package      # genera el .vsix
 Para probar SSL y SSH, `eval "$(scripts/tls-fixture.sh start)"` y `eval "$(scripts/ssh-fixture.sh start)"` levantan servidores temporales con Docker (certificados y llaves nuevos) y exportan sus variables `DBCLIENT_TLS_*` / `DBCLIENT_SSH_*`; `stop` los elimina. Con todos los servidores arriba, ejecuta `npm run test:integration` (los archivos de prueba de uno en uno). Las traducciones están en `l10n/bundle.l10n.es.json` y `package.nls.es.json`; `npx tsx test/unit/l10nKeys.ts l10n/bundle.l10n.es.json` lista los textos que falten.
 
 Para probar las autenticaciones de NATS, `eval "$(scripts/nats-auth-fixture.sh start)"` levanta servidores temporales (usuario/clave, NKey, token y `.creds`, con Docker) y exporta sus variables `DBCLIENT_NATS_AUTH_*`; `scripts/nats-auth-fixture.sh stop` los elimina.
+
+### Publicar
+
+Sube `version` en `package.json`, agrega su sección en `CHANGELOG.md`, haz commit y empuja un tag con la misma versión:
+
+```bash
+git tag v0.12.0 && git push origin main v0.12.0
+```
+
+El workflow **Release** (`.github/workflows/release.yml`) corre las pruebas, genera el `.vsix`, lo adjunta a un GitHub Release con las notas del changelog y lo publica en Open VSX y en el VS Code Marketplace cuando existen los secretos del repositorio `OVSX_PAT` y `VSCE_PAT`. Desde esta máquina: `OVSX_PAT=… npm run publish:ovsx` y `VSCE_PAT=… npm run publish:vsce`.
 
 Pulsa **F5** en esta carpeta para abrir un Extension Development Host. Los requisitos y el avance están en [spec.md](spec.md).

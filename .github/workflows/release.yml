@@ -1,0 +1,44 @@
+# Publishes a release when a version tag is pushed (git tag v0.12.0 && git push origin v0.12.0):
+# tests, builds the .vsix, attaches it to a GitHub Release and publishes it to Open VSX and the
+# VS Code Marketplace when their tokens exist (repository secrets OVSX_PAT and VSCE_PAT).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME does not match version $version"; exit 1; }
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - run: npm test
+      - run: npm run package
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes=$(awk -v v="$VERSION" '$0 ~ "^## "v" " {on=1; next} /^## / {on=0} on' CHANGELOG.md)
+          gh release create "$GITHUB_REF_NAME" "dbclient-$VERSION.vsix" --title "DB Client $VERSION" --notes "${notes:-DB Client $VERSION}"
+      - name: Open VSX
+        if: env.OVSX_PAT != ''
+        run: npx ovsx publish "dbclient-$VERSION.vsix"
+      - name: VS Code Marketplace
+        if: env.VSCE_PAT != ''
+        run: npx vsce publish --no-dependencies --packagePath "dbclient-$VERSION.vsix"

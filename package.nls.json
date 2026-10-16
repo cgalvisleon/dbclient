@@ -52,5 +52,5 @@
   "viewsWelcome.dbclient.connections": "No connections yet.\n[Add Connection](command:dbclient.addConnection)",
   "extension.description": "Database client for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS.",
   "command.showSettings": "Settings and About",
-  "command.setFolderColor": "Change Color…"
+  "command.setFolderColor": "Change Folder Color…"
 }

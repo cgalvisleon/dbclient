@@ -6,7 +6,7 @@
 
 ## Installation
 
-Download `dbclient-<version>.vsix` (or build it with `npm install && npm run package`), then in VS Code or Cursor open the Command Palette (`Ctrl/Cmd+Shift+P`), run **Extensions: Install from VSIX…** and pick the file. It needs VS Code 1.90 or newer; SQLite connections need an editor running Node 22.13 or newer (Cursor, VS Code 1.101+). No native modules or database clients are required.
+Search for **DB Client** (`cgalvisleon.dbclient`) in the Extensions view: Cursor, VSCodium and Windsurf install it from Open VSX, VS Code from the Marketplace. Or download `dbclient-<version>.vsix` from the [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) (or build it with `npm install && npm run package`), then in VS Code or Cursor open the Command Palette (`Ctrl/Cmd+Shift+P`), run **Extensions: Install from VSIX…** and pick the file. It needs VS Code 1.90 or newer; SQLite connections need an editor running Node 22.13 or newer (Cursor, VS Code 1.101+). No native modules or database clients are required.
 
 ## What it is
 
@@ -144,5 +144,15 @@ npm run package      # builds the .vsix
 To test SSL and SSH, `eval "$(scripts/tls-fixture.sh start)"` and `eval "$(scripts/ssh-fixture.sh start)"` start throwaway servers with Docker (fresh certificates and keys) and export their `DBCLIENT_TLS_*` / `DBCLIENT_SSH_*` variables; `stop` removes them. With every server up, run `npm run test:integration` (test files one at a time). Translations live in `l10n/bundle.l10n.es.json` and `package.nls.es.json`; `npx tsx test/unit/l10nKeys.ts l10n/bundle.l10n.es.json` lists the texts still missing.
 
 To test the NATS authentication modes, `eval "$(scripts/nats-auth-fixture.sh start)"` starts throwaway servers (user/password, NKey, token and `.creds`, with Docker) and exports their `DBCLIENT_NATS_AUTH_*` variables; `scripts/nats-auth-fixture.sh stop` removes them.
+
+### Publishing
+
+Bump `version` in `package.json`, add its section to `CHANGELOG.md`, commit, then push a tag with the same version:
+
+```bash
+git tag v0.12.0 && git push origin main v0.12.0
+```
+
+The **Release** workflow (`.github/workflows/release.yml`) runs the tests, builds the `.vsix`, attaches it to a GitHub Release with the changelog notes and publishes it to Open VSX and the VS Code Marketplace when the repository secrets `OVSX_PAT` and `VSCE_PAT` exist. From this machine: `OVSX_PAT=… npm run publish:ovsx` and `VSCE_PAT=… npm run publish:vsce`.
 
 Press **F5** in this folder to start an Extension Development Host. Requirements and progress are tracked in [spec.md](spec.md).

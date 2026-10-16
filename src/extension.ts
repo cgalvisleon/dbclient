@@ -74,6 +74,11 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   const redisRunner = new RedisRunner(manager, bindings, results, history);
   const natsConsoles = new NatsConsoles(context.extensionUri, manager);
 
+  // Shows "Change Folder Color…" in the Command Palette only when there is a folder.
+  const updateHasFolders = () => vscode.commands.executeCommand('setContext', 'dbclient.hasFolders', store.listFolders().length > 0);
+  updateHasFolders();
+  context.subscriptions.push(store.onDidChange(updateHasFolders));
+
   const sqlDocs: vscode.DocumentSelector = [{ language: 'sql' }];
   const redisDocs: vscode.DocumentSelector = [{ language: 'redis' }];
   context.subscriptions.push(
@@ -194,8 +199,20 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   const COLOR_DOTS: Record<ConnectionColor, string> = { blue: '🔵', green: '🟢', red: '🔴', orange: '🟠', purple: '🟣', yellow: '🟡', gray: '⚪' };
 
   // `color` lets tests skip the picker.
+  // From the tree (inline palette button or context menu) or the Command Palette, which asks
+  // for the folder first.
   command('dbclient.setFolderColor', async (item?: FolderItem, color?: ConnectionColor) => {
-    const folder = item instanceof FolderItem ? store.getFolder(item.folderId) : undefined;
+    let folder = item instanceof FolderItem ? store.getFolder(item.folderId) : undefined;
+    if (!folder && !item) {
+      const picked = await vscode.window.showQuickPick(
+        store
+          .listFolders()
+          .map((f) => ({ label: `$(folder) ${store.folderPath(f.id)}`, id: f.id }))
+          .sort((a, b) => a.label.localeCompare(b.label)),
+        { placeHolder: vscode.l10n.t('Folder to color') },
+      );
+      folder = picked && store.getFolder(picked.id);
+    }
     if (!folder) {
       return;
     }

@@ -93,6 +93,7 @@
   "Folder name": "Nombre de la carpeta",
   "Folder name is required.": "El nombre de la carpeta es obligatorio.",
   "Folder not found: {0}": "No se encontró la carpeta: {0}",
+  "Folder to color": "Carpeta a colorear",
   "Format JSON": "Formatear JSON",
   "Functions": "Funciones",
   "GitHub": "GitHub",

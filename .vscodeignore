@@ -3,6 +3,7 @@
 !media/**
 !package.json
 !README.md
+!LICENSE
 !CHANGELOG.md
 !syntaxes/**
 !package.nls.json

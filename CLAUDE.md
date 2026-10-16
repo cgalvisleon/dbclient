@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`dbclient` — a VS Code extension (TypeScript) that is a database client in the style of the "Database Client" extension (`cweijan.vscode-database-client2`), with the SQL editor modeled on NetBeans' SQL editor. Engines: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS — all in one connections tree, each with its own editor (`.sql` editor, `.redis` editor + value viewer, NATS console). The user tests it in Cursor (VS Code 1.128 base, Node 24); there is no VS Code or `code` CLI on this machine. Not a git repo yet; `package.json` already points at `github.com/cgalvisleon/dbclient` (other repos of this user use `git@github.com:cgalvisleon/<repo>.git` as `origin`).
+`dbclient` — a VS Code extension (TypeScript) that is a database client in the style of the "Database Client" extension (`cweijan.vscode-database-client2`), with the SQL editor modeled on NetBeans' SQL editor. Engines: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS — all in one connections tree, each with its own editor (`.sql` editor, `.redis` editor + value viewer, NATS console). The user tests it in Cursor (VS Code 1.128 base, Node 24); there is no VS Code or `code` CLI on this machine. Git repo with `origin` at `git@github.com:cgalvisleon/dbclient.git`; MIT license. Releases: bump `version`, add a `CHANGELOG.md` section, push tag `v<version>` → `.github/workflows/release.yml` tests, packages, creates the GitHub Release and publishes to Open VSX / Marketplace when secrets `OVSX_PAT` / `VSCE_PAT` exist. Cursor installs from Open VSX.
 
 ## Commands
 
@@ -16,6 +16,7 @@ npm run test:integration   # same, test files one at a time (use with every fixt
 npx vitest run test/unit/statements.test.ts -t "oracle"   # single file / test
 npm run test:smoke         # builds, downloads VS Code into .vscode-test/, runs test/smoke/suite inside it
 npm run package            # typecheck + production build + vsce → dbclient-<version>.vsix
+npm run publish:ovsx       # package + publish to Open VSX (needs OVSX_PAT); publish:vsce → VS Code Marketplace (VSCE_PAT)
 npm run icons              # regenerate media/icons/ and media/icon.png from img/ (macOS: uses sips), then the colored set
 node scripts/build-icon-colors.mjs   # only media/icons/colors/<color>/ (hue shift of the connection icons, no sips)
 ```

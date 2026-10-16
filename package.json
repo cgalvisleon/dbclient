@@ -8,14 +8,26 @@
     "vscode": "^1.90.0"
   },
   "categories": [
+    "Data Science",
     "Other"
   ],
   "keywords": [
     "database",
     "sql",
     "postgres",
+    "postgresql",
+    "mysql",
+    "sql server",
+    "mssql",
+    "oracle",
+    "sqlite",
     "redis",
-    "nats"
+    "nats",
+    "jetstream",
+    "sql editor",
+    "database client",
+    "excel",
+    "ssh tunnel"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -264,7 +276,8 @@
       {
         "command": "dbclient.setFolderColor",
         "title": "%command.setFolderColor%",
-        "category": "DB Client"
+        "category": "DB Client",
+        "icon": "$(symbol-color)"
       },
       {
         "command": "dbclient.newSqlFile",
@@ -493,6 +506,11 @@
         {
           "command": "dbclient.setFolderColor",
           "when": "view == dbclient.connections && viewItem == connectionFolder",
+          "group": "inline@3"
+        },
+        {
+          "command": "dbclient.setFolderColor",
+          "when": "view == dbclient.connections && viewItem == connectionFolder",
           "group": "3_edit@2"
         },
         {
@@ -716,7 +734,7 @@
         },
         {
           "command": "dbclient.setFolderColor",
-          "when": "false"
+          "when": "dbclient.hasFolders"
         },
         {
           "command": "dbclient.renameSqlFile",
@@ -866,9 +884,11 @@
     "test": "vitest run",
     "test:integration": "vitest run --no-file-parallelism",
     "test:smoke": "npm run build && node test/smoke/run.mjs",
-    "package": "npm run typecheck && node esbuild.mjs --production && vsce package --no-dependencies --skip-license",
+    "package": "npm run typecheck && node esbuild.mjs --production && vsce package --no-dependencies",
     "vscode:prepublish": "node esbuild.mjs --production",
-    "icons": "node scripts/build-icons.mjs"
+    "icons": "node scripts/build-icons.mjs",
+    "publish:ovsx": "npm run package && ovsx publish dbclient-$npm_package_version.vsix",
+    "publish:vsce": "npm run package && vsce publish --no-dependencies --packagePath dbclient-$npm_package_version.vsix"
   },
   "dependencies": {
     "ioredis": "^6.0.0",
@@ -893,10 +913,12 @@
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",
     "jsdom": "^24.1.3",
+    "ovsx": "^0.10.12",
     "typescript": "^5.9.0",
     "vitest": "^5.0.4"
   },
   "author": "Cesar Galvis Leon",
+  "license": "MIT",
   "icon": "media/icon.png",
   "repository": {
     "type": "git",

@@ -225,3 +225,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-16 | Icono y color por conexión (nuevo C8, 1 pt; total 117) y exportar/importar individual o dentro de una carpeta (C5, sin cambio de puntaje); v0.11.0 | 0,9 % |
 | 2026-10-16 | Nueva versión empaquetada (v0.11.1) sin cambios funcionales | 0,9 % |
 | 2026-10-16 | Color del icono de las carpetas de conexiones (C8, sin cambio de puntaje); v0.12.0 | 0,9 % |
+| 2026-10-16 | Color de carpeta visible (botón en la fila y comando en la paleta); preparación para publicar: licencia MIT, `CHANGELOG.md`, categorías y palabras clave, scripts `publish:ovsx`/`publish:vsce` y workflow de release en GitHub (sin cambio de puntaje) | 0,9 % |
