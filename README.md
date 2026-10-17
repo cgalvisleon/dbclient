@@ -4,13 +4,22 @@
 
 [Español](README.es.md)
 
+[![Open VSX version](https://img.shields.io/open-vsx/v/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![Open VSX downloads](https://img.shields.io/open-vsx/dt/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+A free, open source (MIT) database client for VS Code and Cursor: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS in one connections tree, with nothing else to install.
+
+<!-- GIF (overview, ~8 s): the tree with several engines, run a query, results tab. Save as img/screenshots/overview.gif and reference it as
+![DB Client](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/overview.gif) — absolute URL so it shows on Open VSX and the Marketplace. -->
+
 ## Installation
 
-Search for **DB Client** (`cgalvisleon.dbclient`) in the Extensions view: Cursor, VSCodium and Windsurf install it from Open VSX, VS Code from the Marketplace. Or download `dbclient-<version>.vsix` from the [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) (or build it with `npm install && npm run package`), then in VS Code or Cursor open the Command Palette (`Ctrl/Cmd+Shift+P`), run **Extensions: Install from VSIX…** and pick the file. It needs VS Code 1.90 or newer; SQLite connections need an editor running Node 22.13 or newer (Cursor, VS Code 1.101+). No native modules or database clients are required.
+Search for **DB Client** (`cgalvisleon.dbclient`) in the Extensions view of Cursor, VSCodium or Windsurf: they install it from [Open VSX](https://open-vsx.org/extension/cgalvisleon/dbclient). In VS Code, download `dbclient-<version>.vsix` from the [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) or from the Open VSX page (or build it with `npm install && npm run package`), then open the Command Palette (`Ctrl/Cmd+Shift+P`), run **Extensions: Install from VSIX…** and pick the file. It needs VS Code 1.90 or newer; SQLite connections need an editor running Node 22.13 or newer (Cursor, VS Code 1.101+). No native modules or database clients are required.
 
 ## What it is
 
 A database client inside the editor. PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS connections live in one tree, and each kind opens its own editor: a SQL editor modeled on NetBeans, a Redis command editor with a value viewer, and a NATS console.
+
+It is free with no paid tier and MIT licensed. Drivers are pure JavaScript, so no native modules, Oracle Instant Client or database CLI tools are needed. Redis and NATS (with JetStream) sit next to the SQL engines, and the interface is in English and Spanish.
 
 Connections are stored once per user, shared by every window and workspace. Passwords and tokens go to the editor's secret storage, never to the settings file. A **Show** button next to each password field reveals what you type.
 
@@ -72,6 +81,8 @@ select id, name from customers where created_at > now() - interval '7 days';
 update customers set active = false where id = 42;
 ```
 
+<!-- GIF (sql-editor.gif): Ctrl/Cmd+Enter on a statement, results tab, export to Excel. ![SQL editor](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/sql-editor.gif) -->
+
 Each query opens a tab in **DB Client → Results**; the **Output** tab lists every statement with its time and row count. **CSV**, **JSON** and **Excel** in the tab's toolbar export all its rows in the current sort order.
 
 **Keep queries per connection.** Expand a SQL connection and use **New SQL File** on its **SQL** node, or press **Save to Connection's SQL Folder** in the editor title to keep the current query. The files open already bound to their connection. They live in the extension's storage, one folder per connection; set `dbclient.sqlFolder` to keep them somewhere else, such as a synced or versioned folder.
@@ -87,6 +98,8 @@ Linked folders:     ${workspaceFolder}/sql
 **Work with a table.** Right-click a table in the tree. **Open Data** runs `SELECT * FROM` the table; **Show Structure** lists its columns and indexes in the Results panel; **Show DDL** and **Generate SQL** open the statement in a new editor bound to the connection.
 
 **Edit data in the grid.** In a result that reads one table and includes its primary key, double-click a cell (or press `F2`), type, and press `Enter`; `Tab` moves to the next column and `Escape` discards. **+ Row** adds a row (untouched cells keep their DEFAULT), **Delete** marks the selected rows, and **NULL** clears the focused cell. **Commit** saves everything in one transaction and reloads the rows; if a row changed meanwhile, nothing is saved. Results from views, joins or without the key show a **read-only** badge with the reason.
+
+<!-- GIF (grid-editing.gif): edit a cell, + Row, Commit. ![Grid editing](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/grid-editing.gif) -->
 
 **Complete table and column names.** With the connection open, type `select * from ` to get its tables, or an alias and a dot to get that table's columns:
 
@@ -119,7 +132,11 @@ EXPIRE user:1 3600
 
 Click a key in the tree to open its value viewer and edit it.
 
+<!-- GIF (redis.gif): run commands, open a hash in the value viewer. ![Redis](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/redis.gif) -->
+
 **Publish and subscribe with NATS.** Click **Open NATS Console** on a NATS connection. Subscribe to `orders.>` and publish to `orders.created` with a JSON payload and headers such as `X-Trace: abc`; incoming messages appear in the list, and selecting one shows its payload and headers.
+
+<!-- GIF (nats.gif): subscribe to orders.>, publish, message list. ![NATS](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/nats.gif) -->
 
 ## Settings
 

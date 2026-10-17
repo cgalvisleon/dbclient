@@ -4,13 +4,22 @@
 
 [English](README.md)
 
+[![Open VSX version](https://img.shields.io/open-vsx/v/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![Open VSX downloads](https://img.shields.io/open-vsx/dt/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+Un cliente de bases de datos gratuito y de código abierto (MIT) para VS Code y Cursor: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis y NATS en un solo árbol de conexiones, sin instalar nada más.
+
+<!-- GIF (vista general, ~8 s): el árbol con varios motores, ejecutar una consulta, pestaña de resultados. Guárdalo como img/screenshots/overview.gif y enlázalo como
+![DB Client](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/overview.gif) — URL absoluta para que se vea en Open VSX y en el Marketplace. -->
+
 ## Instalación
 
-Busca **DB Client** (`cgalvisleon.dbclient`) en la vista de extensiones: Cursor, VSCodium y Windsurf la instalan desde Open VSX, y VS Code desde el Marketplace. También puedes descargar `dbclient-<versión>.vsix` de los [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) (o generarlo con `npm install && npm run package`); luego, en VS Code o Cursor, abre la paleta de comandos (`Ctrl/Cmd+Shift+P`), ejecuta **Extensions: Install from VSIX…** y elige el archivo. Requiere VS Code 1.90 o superior; las conexiones SQLite requieren un editor con Node 22.13 o superior (Cursor, VS Code 1.101+). No necesita módulos nativos ni clientes de bases de datos.
+Busca **DB Client** (`cgalvisleon.dbclient`) en la vista de extensiones de Cursor, VSCodium o Windsurf: la instalan desde [Open VSX](https://open-vsx.org/extension/cgalvisleon/dbclient). En VS Code, descarga `dbclient-<versión>.vsix` de los [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) o de la página de Open VSX (o genéralo con `npm install && npm run package`); luego abre la paleta de comandos (`Ctrl/Cmd+Shift+P`), ejecuta **Extensions: Install from VSIX…** y elige el archivo. Requiere VS Code 1.90 o superior; las conexiones SQLite requieren un editor con Node 22.13 o superior (Cursor, VS Code 1.101+). No necesita módulos nativos ni clientes de bases de datos.
 
 ## Qué es
 
 Un cliente de bases de datos dentro del editor. Las conexiones a PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis y NATS están en un solo árbol, y cada tipo abre su propio editor: un editor SQL inspirado en el de NetBeans, un editor de comandos Redis con visor de valores y una consola NATS.
+
+Es gratuito, sin versión de pago, y tiene licencia MIT. Los drivers son JavaScript puro, así que no necesita módulos nativos, Oracle Instant Client ni herramientas de línea de comandos de las bases. Redis y NATS (con JetStream) están junto a los motores SQL, y la interfaz está en inglés y en español.
 
 Las conexiones se guardan una sola vez por usuario y se comparten entre todas las ventanas y espacios de trabajo. Las contraseñas y los tokens van al almacenamiento seguro del editor, nunca al archivo de configuración. El botón **Show** (**Ver**) junto a cada campo de contraseña muestra lo que escribes.
 
@@ -74,6 +83,8 @@ select id, name from customers where created_at > now() - interval '7 days';
 update customers set active = false where id = 42;
 ```
 
+<!-- GIF (sql-editor.gif): Ctrl/Cmd+Enter sobre una sentencia, pestaña de resultados, exportar a Excel. ![Editor SQL](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/sql-editor.gif) -->
+
 Cada consulta abre una pestaña en **DB Client → Results**; la pestaña **Output** lista cada sentencia con su tiempo y número de filas. **CSV**, **JSON** y **Excel** en la barra de la pestaña exportan todas sus filas en el orden actual.
 
 **Guardar consultas por conexión.** Expande una conexión SQL y usa **New SQL File** sobre su nodo **SQL**, o pulsa **Save to Connection's SQL Folder** en la barra del editor para conservar la consulta actual. Los archivos se abren ya vinculados a su conexión. Se guardan en el almacenamiento de la extensión, una carpeta por conexión; configura `dbclient.sqlFolder` para guardarlos en otro lugar, como una carpeta sincronizada o versionada.
@@ -89,6 +100,8 @@ Linked folders:     ${workspaceFolder}/sql
 **Trabajar con una tabla.** Haz clic derecho sobre una tabla del árbol. **Open Data** ejecuta `SELECT * FROM` la tabla; **Show Structure** lista sus columnas e índices en el panel Results; **Show DDL** y **Generate SQL** abren la sentencia en un editor nuevo vinculado a la conexión.
 
 **Editar datos en la grilla.** En un resultado que lee una sola tabla e incluye su clave primaria, haz doble clic en una celda (o pulsa `F2`), escribe y pulsa `Enter`; `Tab` pasa a la columna siguiente y `Escape` descarta. **+ Row** agrega una fila (las celdas sin tocar conservan su DEFAULT), **Delete** marca las filas seleccionadas y **NULL** vacía la celda enfocada. **Commit** guarda todo en una transacción y recarga las filas; si una fila cambió mientras tanto, no se guarda nada. Los resultados de vistas, joins o sin la clave muestran una etiqueta **read-only** con el motivo.
+
+<!-- GIF (grid-editing.gif): editar una celda, + Row, Commit. ![Edición en la grilla](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/grid-editing.gif) -->
 
 **Completar nombres de tablas y columnas.** Con la conexión abierta, escribe `select * from ` para ver sus tablas, o un alias y un punto para ver las columnas de esa tabla:
 
@@ -121,7 +134,11 @@ EXPIRE user:1 3600
 
 Haz clic en una llave del árbol para abrir su visor de valores y editarla.
 
+<!-- GIF (redis.gif): ejecutar comandos, abrir un hash en el visor de valores. ![Redis](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/redis.gif) -->
+
 **Publicar y suscribirse con NATS.** Pulsa **Open NATS Console** sobre una conexión NATS. Suscríbete a `orders.>` y publica en `orders.created` con un payload JSON y headers como `X-Trace: abc`; los mensajes recibidos aparecen en la lista y, al seleccionar uno, se ven su payload y sus headers.
+
+<!-- GIF (nats.gif): suscribirse a orders.>, publicar, lista de mensajes. ![NATS](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/nats.gif) -->
 
 ## Configuración
 

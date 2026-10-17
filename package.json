@@ -27,7 +27,18 @@
     "sql editor",
     "database client",
     "excel",
-    "ssh tunnel"
+    "ssh tunnel",
+    "pg",
+    "sqlserver",
+    "t-sql",
+    "plsql",
+    "jdbc",
+    "nats client",
+    "redis client",
+    "database explorer",
+    "query",
+    "cursor",
+    "open source"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [

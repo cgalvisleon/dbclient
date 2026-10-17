@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`dbclient` — a VS Code extension (TypeScript) that is a database client in the style of the "Database Client" extension (`cweijan.vscode-database-client2`), with the SQL editor modeled on NetBeans' SQL editor. Engines: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS — all in one connections tree, each with its own editor (`.sql` editor, `.redis` editor + value viewer, NATS console). The user tests it in Cursor (VS Code 1.128 base, Node 24); there is no VS Code or `code` CLI on this machine. Git repo with `origin` at `git@github.com:cgalvisleon/dbclient.git`; MIT license. Releases: bump `version`, add a `CHANGELOG.md` section, push tag `v<version>` → `.github/workflows/release.yml` tests, packages, creates the GitHub Release and publishes to Open VSX / Marketplace when secrets `OVSX_PAT` / `VSCE_PAT` exist. Cursor installs from Open VSX.
+`dbclient` — a VS Code extension (TypeScript) that is a database client in the style of the "Database Client" extension (`cweijan.vscode-database-client2`), with the SQL editor modeled on NetBeans' SQL editor. Engines: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS — all in one connections tree, each with its own editor (`.sql` editor, `.redis` editor + value viewer, NATS console). The user tests it in Cursor (VS Code 1.128 base, Node 24); there is no VS Code or `code` CLI on this machine. Git repo with `origin` at `git@github.com:cgalvisleon/dbclient.git`; MIT license. Releases: bump `version`, add a `CHANGELOG.md` section, push tag `v<version>` → `.github/workflows/release.yml` tests, packages, creates the GitHub Release and publishes to Open VSX / Marketplace when secrets `OVSX_PAT` / `VSCE_PAT` exist. Cursor installs from Open VSX. As of 0.12.4 it is only on Open VSX (not the VS Code Marketplace), so docs must not claim a Marketplace install.
 
 ## Commands
 
@@ -47,7 +47,8 @@ Integration and smoke tests read `DBCLIENT_PG_*`, `DBCLIENT_MYSQL_*`, `DBCLIENT_
 
 ## Documentation workflow
 
-- `README.md` (English) is the user-facing doc and ships in the `.vsix`; `README.es.md` is its Spanish translation. Keep them in sync section by section: installation first, then short paragraphs, the features table and usage examples. When a feature lands or changes, update the features table and examples in both.
+- `README.md` (English) is the user-facing doc and ships in the `.vsix` (it is the store page); `README.es.md` is its Spanish translation. Keep them in sync section by section: Open VSX/license badges and a one-line summary under the title, installation first, then short paragraphs, the features table and usage examples. When a feature lands or changes, update the features table and examples in both.
+- Screenshots/GIFs go in `img/screenshots/` (not packaged) and are referenced by absolute `raw.githubusercontent.com/.../main/img/screenshots/…` URLs so they render on Open VSX and the Marketplace. Until they exist, both READMEs keep them as HTML comments (`<!-- GIF (…) -->`) at the spot where each goes; uncomment when the file is committed.
 - `feature.md` is the user's feature definition (Spanish). When complementing it, append plain bullets in the same style — don't restructure or reformat it.
 - `spec.md` holds the requirements (ID, weight in points, status 0 / 0.5 / 1), the gap formula `brecha = (total − avance) / total`, and a history table.
 - After every change to the project, update `spec.md`: requirement statuses, the per-block table, the current gap %, and a new history row. Mark a requirement 1 only when it is verified; partial or unverified pieces are 0.5 with the reason.

@@ -229,3 +229,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-16 | Nueva versión empaquetada (v0.12.1) sin cambios funcionales | 0,9 % |
 | 2026-10-16 | `deploy.sh`: `--build` empaqueta el `.vsix` y `--deploy` lo publica en Open VSX con `OVSX_PAT` y `--marketplace` en el VS Code Marketplace con `VSCE_PAT` (sin cambio de puntaje) | 0,9 % |
 | 2026-10-16 | Icono de la tienda redibujado en SVG (`img/db-client.svg`) y exportado a 256 px (antes 128 px borroso); `version.sh` también actualiza `package.json` y lo confirma antes de etiquetar (sin cambio de puntaje) | 0,9 % |
+| 2026-10-16 | Página de la tienda: insignias de Open VSX y licencia, frase de resumen, párrafo con lo que distingue a la extensión (gratuita, MIT, sin módulos nativos, Redis y NATS) y lugares marcados para GIFs en ambos README; la instalación ya no dice que está en el VS Code Marketplace (solo está en Open VSX); 11 palabras clave más (sin cambio de puntaje) | 0,9 % |
