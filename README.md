@@ -170,7 +170,7 @@ To test the NATS authentication modes, `eval "$(scripts/nats-auth-fixture.sh sta
 Bump `version` in `package.json`, add its section to `CHANGELOG.md`, commit, then push a tag with the same version:
 
 ```bash
-git tag v0.13.1 && git push origin main v0.13.1
+git tag v0.13.2 && git push origin main v0.13.2
 ```
 
 The **Release** workflow (`.github/workflows/release.yml`) runs the tests, builds the `.vsix`, attaches it to a GitHub Release with the changelog notes and publishes it to Open VSX and the VS Code Marketplace when the repository secrets `OVSX_PAT` and `VSCE_PAT` exist. From this machine: `OVSX_PAT=… npm run publish:ovsx` and `VSCE_PAT=… npm run publish:vsce`.
