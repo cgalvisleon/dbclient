@@ -4,7 +4,7 @@
 
 [Español](README.es.md)
 
-[![Open VSX version](https://img.shields.io/open-vsx/v/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![Open VSX downloads](https://img.shields.io/open-vsx/dt/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/cgalvisleon.dbclient?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=cgalvisleon.dbclient) [![Open VSX version](https://img.shields.io/open-vsx/v/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![Open VSX downloads](https://img.shields.io/open-vsx/dt/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A free, open source (MIT) database client for VS Code and Cursor: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS in one connections tree, with nothing else to install.
 
@@ -13,7 +13,7 @@ A free, open source (MIT) database client for VS Code and Cursor: PostgreSQL, My
 
 ## Installation
 
-Search for **DB Client** (`cgalvisleon.dbclient`) in the Extensions view of Cursor, VSCodium or Windsurf: they install it from [Open VSX](https://open-vsx.org/extension/cgalvisleon/dbclient). In VS Code, download `dbclient-<version>.vsix` from the [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) or from the Open VSX page (or build it with `npm install && npm run package`), then open the Command Palette (`Ctrl/Cmd+Shift+P`), run **Extensions: Install from VSIX…** and pick the file. It needs VS Code 1.90 or newer; SQLite connections need an editor running Node 22.13 or newer (Cursor, VS Code 1.101+). No native modules or database clients are required.
+Search for **DB Client** (`cgalvisleon.dbclient`) in the Extensions view. VS Code installs it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=cgalvisleon.dbclient); Cursor, VSCodium and Windsurf from [Open VSX](https://open-vsx.org/extension/cgalvisleon/dbclient). To install offline, download `dbclient-<version>.vsix` from the [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) (or build it with `npm install && npm run package`), open the Command Palette (`Ctrl/Cmd+Shift+P`), run **Extensions: Install from VSIX…** and pick the file. It needs VS Code 1.90 or newer; SQLite connections need an editor running Node 22.13 or newer (Cursor, VS Code 1.101+). No native modules or database clients are required.
 
 ## What it is
 
