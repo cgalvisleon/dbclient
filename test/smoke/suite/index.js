@@ -340,7 +340,7 @@ exports.run = async function () {
         item = children.find((c) => c.label === label);
         assert.ok(item, `${name}: tree node ${label} (${children.map((c) => c.label).join(', ')})`);
       }
-      assert.strictEqual(item.contextValue, 'table sql', `${name}: table node`);
+      assert.match(item.contextValue, /^table sql \w+$/, `${name}: table node`);
       assert.strictEqual(item.node.meta.name, table, `${name}: node meta`);
 
       const editorText = () => vscode.window.activeTextEditor.document.getText();

@@ -29,3 +29,5 @@
 - en el formulario de conexión se puede elegir el icono de la conexión y su color (además del azul, al menos 5 colores más) para distinguirlas en el árbol
 - se puede exportar una conexión individual (o varias seleccionadas) desde el árbol, exportar una carpeta e importar un archivo dentro de una carpeta
 - las carpetas de conexiones también pueden cambiar el color de su icono
+- se puede actualizar una conexión o un nodo del árbol (base, esquema, carpeta, tabla) para ver los cambios de esquemas o tablas borradas hechos fuera de la extensión
+- desde el árbol se pueden borrar tablas, vistas y esquemas según lo que permita el driver de la conexión

@@ -103,6 +103,15 @@
         }
       },
       {
+        "command": "dbclient.refreshNode",
+        "title": "%command.refreshNode%",
+        "category": "DB Client",
+        "icon": {
+          "light": "media/icons/light/refresh.png",
+          "dark": "media/icons/refresh.png"
+        }
+      },
+      {
         "command": "dbclient.editConnection",
         "title": "%command.editConnection%",
         "category": "DB Client",
@@ -174,6 +183,11 @@
       {
         "command": "dbclient.showDdl",
         "title": "%command.showDdl%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.drop",
+        "title": "%command.drop%",
         "category": "DB Client"
       },
       {
@@ -673,6 +687,31 @@
           "command": "dbclient.exportConnections",
           "when": "view == dbclient.connections && viewItem =~ /^connection\\b/",
           "group": "4_transfer@1"
+        },
+        {
+          "command": "dbclient.refreshNode",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b.*\\bconnected\\b/",
+          "group": "inline@3"
+        },
+        {
+          "command": "dbclient.refreshNode",
+          "when": "view == dbclient.connections && viewItem =~ /^connection\\b.*\\bconnected\\b/",
+          "group": "2_state@0"
+        },
+        {
+          "command": "dbclient.refreshNode",
+          "when": "view == dbclient.connections && viewItem =~ /^(database|schema|folder|stream)\\b/",
+          "group": "inline@9"
+        },
+        {
+          "command": "dbclient.refreshNode",
+          "when": "view == dbclient.connections && viewItem =~ /^(database|schema|folder|table|view|stream)\\b/",
+          "group": "8_refresh@1"
+        },
+        {
+          "command": "dbclient.drop",
+          "when": "view == dbclient.connections && (viewItem =~ /^(table|view|schema) sql\\b/ || viewItem =~ /^database sql mysql\\b/)",
+          "group": "9_drop@1"
         }
       ],
       "editor/title": [
@@ -789,6 +828,14 @@
         },
         {
           "command": "dbclient.generateDelete",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.refreshNode",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.drop",
           "when": "false"
         }
       ],

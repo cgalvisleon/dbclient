@@ -218,7 +218,7 @@ export class PostgresDriver implements SqlDriver {
             r.relkind === 'm' ? 'materialized' : r.relkind === 'p' ? 'partitioned' : r.relkind === 'f' ? 'foreign' : undefined,
             true,
           ),
-          meta: { schema, name: r.relname },
+          meta: { schema, name: r.relname, ...(r.relkind === 'm' ? { materialized: '1' } : {}) },
         }));
       }
       case 'Functions':

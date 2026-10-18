@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { TableInfo } from '../../src/drivers/types';
 import { editMapping } from '../../src/sql/editable';
 import {
+  canCascade,
   createTableSql,
   deleteTemplate,
+  dropSql,
   gridStatements,
   insertTemplate,
   openDataSql,
@@ -203,5 +205,32 @@ describe('editMapping', () => {
     expect(editMapping(select('select * from items'), ['id'], { ...items, primaryKey: [] })).toEqual({ reason: 'public.items has no primary key.' });
     expect(editMapping(select('select * from items'), ['id'], { ...items, kind: 'view' })).toEqual({ reason: 'public.items is a view.' });
     expect(editMapping(select('select *, name from items'), ['id', 'name'], items)).toEqual({ reason: 'The result columns cannot be matched to the table.' });
+  });
+});
+
+describe('dropSql', () => {
+  it('drops tables and views qualified and quoted per dialect', () => {
+    expect(dropSql({ kind: 'table', schema: 'public', name: 'items' }, 'postgres')).toBe('DROP TABLE public.items');
+    expect(dropSql({ kind: 'table', schema: 'public', name: 'Items' }, 'postgres', true)).toBe('DROP TABLE public."Items" CASCADE');
+    expect(dropSql({ kind: 'materialized', schema: 'public', name: 'totals' }, 'postgres')).toBe('DROP MATERIALIZED VIEW public.totals');
+    expect(dropSql({ kind: 'view', schema: 'dbo', name: 'my view' }, 'mssql')).toBe('DROP VIEW dbo.[my view]');
+    expect(dropSql({ kind: 'table', name: 'items' }, 'mysql', true)).toBe('DROP TABLE items');
+    expect(dropSql({ kind: 'table', schema: 'JSQL', name: 'ITEMS' }, 'oracle', true)).toBe('DROP TABLE JSQL.ITEMS CASCADE CONSTRAINTS');
+    expect(dropSql({ kind: 'table', name: 'order' }, 'sqlite')).toBe('DROP TABLE "order"');
+  });
+
+  it('drops schemas with each engine\'s statement', () => {
+    expect(dropSql({ kind: 'schema', name: 'sales' }, 'postgres', true)).toBe('DROP SCHEMA sales CASCADE');
+    expect(dropSql({ kind: 'schema', name: 'sales' }, 'mssql', true)).toBe('DROP SCHEMA sales');
+    expect(dropSql({ kind: 'schema', name: 'shop-db' }, 'mysql')).toBe('DROP DATABASE `shop-db`');
+    expect(dropSql({ kind: 'schema', name: 'APP' }, 'oracle', true)).toBe('DROP USER APP CASCADE');
+    expect(() => dropSql({ kind: 'schema', name: 'main' }, 'sqlite')).toThrow();
+  });
+
+  it('offers CASCADE only where the engine has it', () => {
+    expect(canCascade({ kind: 'table', name: 't' }, 'postgres')).toBe(true);
+    expect(canCascade({ kind: 'table', name: 't' }, 'mysql')).toBe(false);
+    expect(canCascade({ kind: 'schema', name: 's' }, 'mssql')).toBe(false);
+    expect(canCascade({ kind: 'materialized', name: 'm' }, 'oracle')).toBe(false);
   });
 });

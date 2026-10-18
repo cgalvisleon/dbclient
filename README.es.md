@@ -45,6 +45,7 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Salida SQL | Cada sentencia queda registrada con su tiempo, filas traídas/afectadas y errores; los errores llevan a la línea y columna del editor y quedan subrayados. |
 | Historial de consultas | **Query History…** lista lo que se ejecutó en cada conexión SQL o Redis, lo más reciente primero, con base, hora, duración y filas o error; se puede buscar, insertar una sentencia en el editor o abrirla en uno nuevo. |
 | Acciones sobre tablas | En una tabla o vista: **Open Data**, **Show Structure** (columnas e índices), **Show DDL** y **Generate SQL** → SELECT, INSERT, UPDATE, DELETE en un editor nuevo. |
+| Actualizar y eliminar | **Refresh** sobre una conexión, base, esquema, carpeta o tabla la vuelve a leer, así aparecen los esquemas y tablas creados o borrados por fuera; el DDL ejecutado desde el editor actualiza la conexión solo. **Drop…** elimina una tabla o vista (CASCADE en PostgreSQL, CASCADE CONSTRAINTS en Oracle) y, donde el motor los tiene, un esquema: esquemas de PostgreSQL y SQL Server, bases de MySQL, usuarios de Oracle. |
 | Edición en la grilla | Los resultados de una sola tabla con clave primaria se pueden editar: celdas, agregar y eliminar filas, poner NULL, y luego **Commit** (una transacción, por clave primaria) o **Cancel**. |
 | Autocompletado SQL | Palabras clave, tipos y funciones del dialecto de la conexión; con la conexión abierta, sus esquemas, tablas, vistas y columnas, resolviendo los alias de la consulta. |
 | Explorador Redis | Bases con su número de llaves → llaves agrupadas por separador (`:`) con su tipo, usando `SCAN`. |
@@ -98,6 +99,8 @@ Linked folders:     ${workspaceFolder}/sql
 ```
 
 **Trabajar con una tabla.** Haz clic derecho sobre una tabla del árbol. **Open Data** ejecuta `SELECT * FROM` la tabla; **Show Structure** lista sus columnas e índices en el panel Results; **Show DDL** y **Generate SQL** abren la sentencia en un editor nuevo vinculado a la conexión.
+
+**Actualizar o eliminar objetos.** Si alguien cambió la base por fuera de la extensión, pulsa el botón de actualizar sobre la conexión, base, esquema o carpeta (o **Refresh** en su menú contextual) para leerla de nuevo. Para quitar una tabla, vista o esquema, clic derecho → **Drop…**: el diálogo muestra la sentencia `DROP` y, en PostgreSQL y Oracle, ofrece **Drop with CASCADE**; los esquemas además piden escribir su nombre. El árbol se actualiza después de eliminar.
 
 **Editar datos en la grilla.** En un resultado que lee una sola tabla e incluye su clave primaria, haz doble clic en una celda (o pulsa `F2`), escribe y pulsa `Enter`; `Tab` pasa a la columna siguiente y `Escape` descarta. **+ Row** agrega una fila (las celdas sin tocar conservan su DEFAULT), **Delete** marca las filas seleccionadas y **NULL** vacía la celda enfocada. **Commit** guarda todo en una transacción y recarga las filas; si una fila cambió mientras tanto, no se guarda nada. Los resultados de vistas, joins o sin la clave muestran una etiqueta **read-only** con el motivo.
 

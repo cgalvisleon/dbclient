@@ -69,6 +69,7 @@ export class NodeItem extends vscode.TreeItem {
     readonly connectionId: string,
     readonly node: DbNode,
     category: string,
+    dialect = '',
   ) {
     super(
       translated(node.label)!,
@@ -79,7 +80,8 @@ export class NodeItem extends vscode.TreeItem {
     this.tooltip = node.tooltip;
     const image = IMAGES[node.kind];
     this.iconPath = image ? icon(image) : new vscode.ThemeIcon(ICONS[node.kind]);
-    this.contextValue = `${node.kind} ${category}`;
+    // `<kind> <category> <dialect>`: menus match kinds and categories, drops also the engine.
+    this.contextValue = `${node.kind} ${category}${dialect ? ` ${dialect}` : ''}`;
     if (node.kind === 'key') {
       this.command = { command: 'dbclient.openValue', title: vscode.l10n.t('Open Value'), arguments: [this] };
     }
@@ -278,6 +280,11 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
     this.changed.fire(undefined);
   }
 
+  /** Re-reads one node (and its expanded descendants) from the database. */
+  refreshItem(item: ConnectionItem | NodeItem): void {
+    this.changed.fire(item instanceof ConnectionItem ? (this.roots.get(item.connectionId) ?? item) : item);
+  }
+
   private sqlSummary(connectionId: string): string {
     const locations = this.sqlLocations.of(connectionId);
     return locations.length === 1
@@ -343,7 +350,8 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
       return element.dir ? this.sqlEntries(element.connectionId, element.dir) : [];
     }
     const id = element.connectionId;
-    const category = this.manager.factoryOf(this.manager.config(id)).category;
+    const factory = this.manager.factoryOf(this.manager.config(id));
+    const category = factory.category;
     // SQL connections list their saved files first; they are available even when offline.
     const head: TreeNode[] = [];
     if (element instanceof ConnectionItem && category === 'sql') {
@@ -357,7 +365,7 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
       if (!nodes.length) {
         return [...head, new MessageItem(vscode.l10n.t('(empty)'), 'circle-slash')];
       }
-      return [...head, ...nodes.map((n) => new NodeItem(id, n, category))];
+      return [...head, ...nodes.map((n) => new NodeItem(id, n, category, factory.dialect))];
     } catch (err) {
       return [...head, new MessageItem((err as Error).message)];
     }

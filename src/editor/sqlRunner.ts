@@ -88,6 +88,7 @@ export class SqlRunner implements vscode.Disposable {
     const state: Running = { cancelled: false, cancel: async () => undefined };
     this.running.set(key, state);
     let failed = false;
+    let ddl = false;
     try {
       await vscode.window.withProgress(
         {
@@ -130,6 +131,7 @@ export class SqlRunner implements vscode.Disposable {
               if (/^\s*(create|alter|drop|rename|truncate|comment)\b/i.test(stmt.text)) {
                 // Tables or columns may have changed: completion and grid editing re-read them.
                 this.catalog.invalidate(binding.connectionId);
+                ddl = true;
               }
               const sets = results.filter((r) => r.columns.length);
               for (const result of results) {
@@ -170,6 +172,10 @@ export class SqlRunner implements vscode.Disposable {
       this.log(config.name, preview(statements[0].text, 200), false, (err as Error).message);
     } finally {
       this.running.delete(key);
+    }
+    if (ddl) {
+      // Created, altered or dropped objects show up in the tree without a manual refresh.
+      this.manager.contentChangedOf(binding.connectionId);
     }
     if (failed) {
       this.results.post({ type: 'focusLog' });

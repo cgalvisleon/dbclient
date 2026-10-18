@@ -164,3 +164,48 @@ export function gridStatements(info: TableInfo, dialect: string, changes: GridCh
 export function isTemporalType(type: string | undefined): boolean {
   return Boolean(type && TEMPORAL.test(type));
 }
+
+/** What a tree node can drop: a table, a (materialized) view or a whole schema. */
+export interface DropTarget {
+  kind: 'table' | 'view' | 'materialized' | 'schema';
+  /** Owner/namespace of a table or view. */
+  schema?: string;
+  name: string;
+}
+
+/** Whether the dialect can drop schemas (MySQL: its databases; Oracle: the owning user). */
+export function canDropSchema(dialect: string): boolean {
+  return ['postgres', 'mssql', 'mysql', 'oracle'].includes(dialect);
+}
+
+/** Whether DROP of this target has a CASCADE form in the dialect (dependents or constraints go too). */
+export function canCascade(target: DropTarget, dialect: string): boolean {
+  switch (dialect) {
+    case 'postgres':
+      return true;
+    case 'oracle':
+      return target.kind !== 'materialized';
+    default:
+      return false;
+  }
+}
+
+/** DROP statement for a table, view or schema, with CASCADE when asked and supported. */
+export function dropSql(target: DropTarget, dialect: string, cascade = false): string {
+  const name = qualifiedName({ schema: target.kind === 'schema' ? undefined : target.schema, name: target.name }, dialect);
+  const tail = cascade && canCascade(target, dialect) ? (dialect === 'oracle' && target.kind !== 'schema' ? ' CASCADE CONSTRAINTS' : ' CASCADE') : '';
+  switch (target.kind) {
+    case 'table':
+      return `DROP TABLE ${name}${tail}`;
+    case 'view':
+      return `DROP VIEW ${name}${tail}`;
+    case 'materialized':
+      return `DROP MATERIALIZED VIEW ${name}${tail}`;
+    case 'schema':
+      if (!canDropSchema(dialect)) {
+        throw new Error(`Schemas cannot be dropped in ${dialect}.`);
+      }
+      // MySQL calls schemas databases; an Oracle schema is its user.
+      return dialect === 'mysql' ? `DROP DATABASE ${name}` : dialect === 'oracle' ? `DROP USER ${name}${tail}` : `DROP SCHEMA ${name}${tail}`;
+  }
+}

@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { CatalogCache } from '../connections/catalog';
 import { ConnectionManager } from '../connections/manager';
 import { TableInfo, TableRef } from '../drivers/types';
-import { deleteTemplate, insertTemplate, openDataSql, selectTemplate, structureTables, updateTemplate } from '../sql/generate';
+import { canCascade, deleteTemplate, DropTarget, dropSql, insertTemplate, openDataSql, selectTemplate, structureTables, updateTemplate } from '../sql/generate';
+import { qualifiedName } from '../sql/identifiers';
 import { NodeItem } from '../tree/connectionsTree';
 import { ResultsView } from '../webviews/resultsView';
 import { DocumentBindings } from './bindings';
@@ -17,7 +18,7 @@ const TEMPLATES: Record<TemplateKind, (info: TableInfo, dialect: string) => stri
   delete: deleteTemplate,
 };
 
-/** NetBeans-style actions on table and view nodes: open data, structure, DDL and SQL templates. */
+/** NetBeans-style actions on table and view nodes: open data, structure, DDL, SQL templates and drop. */
 export class TableActions {
   constructor(
     private readonly manager: ConnectionManager,
@@ -90,5 +91,97 @@ export class TableActions {
   async generate(item: NodeItem, kind: TemplateKind): Promise<void> {
     const info = await this.info(item);
     await this.open(item, TEMPLATES[kind](info, this.dialectOf(item)));
+  }
+
+  /** Table, view or schema a node drops; undefined for nodes that cannot be dropped. */
+  private dropTarget(item: NodeItem): DropTarget | undefined {
+    const node = item.node;
+    switch (node.kind) {
+      case 'table':
+      case 'view':
+        return { kind: node.kind === 'view' && node.meta?.materialized ? 'materialized' : node.kind, schema: node.meta?.schema, name: node.meta?.name ?? node.label };
+      case 'schema':
+        return { kind: 'schema', name: node.label };
+      case 'database':
+        // MySQL databases are its schemas; other engines' databases are not dropped from the tree.
+        return this.dialectOf(item) === 'mysql' && node.database ? { kind: 'schema', name: node.database } : undefined;
+      default:
+        return undefined;
+    }
+  }
+
+  private dropQuestion(target: DropTarget, dialect: string): string {
+    const name = qualifiedName(target, dialect);
+    switch (target.kind) {
+      case 'table':
+        return vscode.l10n.t('Drop table {0}? Its data is lost.', name);
+      case 'view':
+        return vscode.l10n.t('Drop view {0}?', name);
+      case 'materialized':
+        return vscode.l10n.t('Drop materialized view {0}?', name);
+      case 'schema':
+        return dialect === 'mysql'
+          ? vscode.l10n.t('Drop database {0} with all its tables and data?', name)
+          : dialect === 'oracle'
+            ? vscode.l10n.t('Drop user {0} and its schema?', name)
+            : vscode.l10n.t('Drop schema {0}?', name);
+    }
+  }
+
+  /** Drops a table, view or schema after confirming (schemas also ask for their name), then refreshes the connection. */
+  async drop(item: NodeItem): Promise<void> {
+    const target = this.dropTarget(item);
+    if (!target) {
+      return;
+    }
+    const dialect = this.dialectOf(item);
+    const drop = vscode.l10n.t('Drop');
+    const cascade = vscode.l10n.t('Drop with CASCADE');
+    const cascades = canCascade(target, dialect);
+    const answer = await vscode.window.showWarningMessage(
+      this.dropQuestion(target, dialect),
+      {
+        modal: true,
+        detail: [
+          dropSql(target, dialect),
+          cascades ? vscode.l10n.t('CASCADE also drops the objects that depend on it.') : undefined,
+          vscode.l10n.t('This cannot be undone.'),
+        ].filter(Boolean).join('\n\n'),
+      },
+      ...(cascades ? [drop, cascade] : [drop]),
+    );
+    if (!answer) {
+      return;
+    }
+    if (target.kind === 'schema') {
+      const typed = await vscode.window.showInputBox({
+        title: this.dropQuestion(target, dialect),
+        prompt: vscode.l10n.t('Type {0} to confirm.', target.name),
+        validateInput: (value) => (value === target.name ? undefined : vscode.l10n.t('Type {0} to confirm.', target.name)),
+      });
+      if (typed !== target.name) {
+        return;
+      }
+    }
+    const sql = dropSql(target, dialect, answer === cascade);
+    const id = item.connectionId;
+    try {
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Dropping {0}…', target.name) },
+        async () => {
+          const driver = await this.manager.connectSql(id);
+          // A MySQL database is dropped from the connection's default one, not from inside itself.
+          const database = target.kind === 'schema' && dialect === 'mysql' ? undefined : item.node.database;
+          await driver.transaction(database, [{ sql, params: [] }]);
+        },
+      );
+    } catch (err) {
+      vscode.window.showErrorMessage(vscode.l10n.t('Could not drop {0}: {1}', target.name, (err as Error).message));
+      return;
+    } finally {
+      this.catalog.invalidate(id);
+      this.manager.contentChangedOf(id);
+    }
+    vscode.window.setStatusBarMessage(vscode.l10n.t('Dropped {0}.', qualifiedName(target, dialect)), 4000);
   }
 }

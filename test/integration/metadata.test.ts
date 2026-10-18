@@ -8,7 +8,7 @@ import { oracleFactory } from '../../src/drivers/oracle';
 import { postgresFactory } from '../../src/drivers/postgres';
 import { sqliteFactory } from '../../src/drivers/sqlite';
 import { ConnectionConfig, DriverFactory, SqlDriver, TableRef } from '../../src/drivers/types';
-import { gridStatements, openDataSql } from '../../src/sql/generate';
+import { dropSql, gridStatements, openDataSql } from '../../src/sql/generate';
 import { singleTableSelect } from '../../src/sql/parse';
 import { toCell } from '../../src/webviews/cells';
 
@@ -240,6 +240,21 @@ for (const c of cases) {
 
       await driver.transaction(c.database, gridStatements(info, c.name, [{ kind: 'delete', key: { [name('id')]: 2, [name('code')]: 'b' } }]));
       expect((await query(select)).rows).toHaveLength(1);
+    });
+
+    it('drops the view, the table and (where the tree offers it) the schema', async () => {
+      const names = async () => (await driver.catalog(c.database)).tables.filter((t) => !c.schema || t.schema === c.schema).map((t) => t.name);
+      await driver.transaction(c.database, [{ sql: dropSql({ kind: 'view', schema: c.schema, name: c.view }, c.name), params: [] }]);
+      await driver.transaction(c.database, [{ sql: dropSql({ kind: 'table', schema: c.schema, name: c.table }, c.name, true), params: [] }]);
+      expect(await names()).not.toContain(c.view);
+      expect(await names()).not.toContain(c.table);
+      if (c.name === 'postgres' || c.name === 'mysql') {
+        const schema = (c.name === 'mysql' ? c.database : c.schema)!;
+        await driver.transaction(c.name === 'mysql' ? undefined : c.database, [{ sql: dropSql({ kind: 'schema', name: schema }, c.name, true), params: [] }]);
+        const left = await driver.children();
+        const scope = c.name === 'mysql' ? left : await driver.children(left.find((n) => n.label === c.database));
+        expect(scope.map((n) => n.label)).not.toContain(schema);
+      }
     });
   });
 }

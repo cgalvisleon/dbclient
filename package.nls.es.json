@@ -1,6 +1,7 @@
 {
   "command.addConnection": "Agregar conexión",
   "command.refresh": "Actualizar",
+  "command.refreshNode": "Actualizar",
   "command.editConnection": "Editar conexión",
   "command.duplicateConnection": "Duplicar conexión",
   "command.deleteConnection": "Eliminar conexión",
@@ -12,6 +13,7 @@
   "command.openData": "Abrir datos",
   "command.showStructure": "Ver estructura",
   "command.showDdl": "Ver DDL",
+  "command.drop": "Eliminar…",
   "command.generateSelect": "SELECT",
   "command.generateInsert": "INSERT",
   "command.generateUpdate": "UPDATE",

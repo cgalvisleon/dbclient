@@ -267,6 +267,17 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     tree.refresh();
   });
 
+  // One connection or node: re-reads schemas, tables, columns… changed outside the tree.
+  command('dbclient.refreshNode', (item?: ConnectionItem | NodeItem) => {
+    if (!item) {
+      catalog.invalidate();
+      tree.refresh();
+      return;
+    }
+    catalog.invalidate(item.connectionId);
+    tree.refreshItem(item);
+  });
+
   command('dbclient.editConnection', async (item?: ConnectionItem) => {
     const id = await connectionOf(item);
     if (id) {
@@ -752,6 +763,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   command('dbclient.openData', (item: NodeItem) => tableActions.openData(item));
   command('dbclient.showStructure', (item: NodeItem) => tableActions.showStructure(item));
   command('dbclient.showDdl', (item: NodeItem) => tableActions.showDdl(item));
+  command('dbclient.drop', (item: NodeItem) => tableActions.drop(item));
   for (const kind of ['select', 'insert', 'update', 'delete'] as TemplateKind[]) {
     command(`dbclient.generate${kind[0].toUpperCase()}${kind.slice(1)}`, (item: NodeItem) => tableActions.generate(item, kind));
   }

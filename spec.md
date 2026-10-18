@@ -49,7 +49,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pe
 | F2 | Interfaz común de drivers y registro; agregar un motor no exige tocar árbol, editor ni grilla | 4 | 1 |
 | F3 | Interfaz en español e inglés: textos de la extensión (`vscode.l10n`), manifiesto (`package.nls`), webviews y campos de los formularios; el idioma sigue al de VS Code/Cursor | 2 | 0.5 |
 
-### C — Conexiones y persistencia (28)
+### C — Conexiones y persistencia (29)
 
 | ID | Requisito | Peso | Estado |
 |---|---|---|---|
@@ -61,6 +61,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pe
 | C6 | SSL/TLS (desactivado / requerido / verificar todo; CA, certificado y clave del cliente con frase) y túnel SSH (contraseña o clave privada con frase, huella de la llave del host) en todos los motores de red | 4 | 1 |
 | C7 | Panel **Configuración y acerca de** (botón ⚙ en el título de la vista): rutas de la persistencia (almacenamiento, `connections.json`, historial, archivos SQL) con copiar y abrir carpeta, dónde están los secretos, configuración `dbclient.*` actual frente al valor por defecto, entorno, y acerca de con la versión y los enlaces de GitHub del autor | 1 | 1 |
 | C8 | Apariencia de cada conexión: icono (6 formas) y color (azul y 6 más: verde, rojo, naranja, morado, amarillo, gris) elegidos en el formulario con vista previa, en temas claro y oscuro; las carpetas de conexiones también tienen color (**Cambiar color…**); se exportan e importan con la conexión o la carpeta | 1 | 1 |
+| C9 | Actualizar una conexión o un nodo (base, esquema, carpeta, tabla, vista) desde el árbol para ver los cambios hechos fuera (esquemas o tablas creados o borrados); tras ejecutar DDL en el editor, la conexión se actualiza sola | 1 | 0.5 |
 
 ### D — Drivers SQL (16)
 
@@ -72,7 +73,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pe
 | D4 | MSSQL | 3 | 1 |
 | D5 | Oracle (por host y servicio o por URL JDBC: servicio, SID, `tcps://`, descriptor o alias de tnsnames.ora) | 3 | 1 |
 
-### S — Editor SQL (41)
+### S — Editor SQL (43)
 
 Referencia funcional: el editor SQL de NetBeans (selector de conexión en el editor, ejecutar archivo o sentencia con atajos, resultados en pestañas bajo el editor, paginación de filas traídas, salida SQL con tiempos y errores navegables, edición de datos en la grilla).
 
@@ -89,6 +90,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 | S9 | Carpeta SQL por conexión: archivos `.sql` persistentes, vinculados a su conexión al abrirlos; crear, renombrar, eliminar, guardar la consulta actual; ubicación configurable | 3 | 1 |
 | S10 | Exportar resultados a Excel (`.xlsx`) con números y fechas como valores de Excel | 2 | 1 |
 | S11 | Ubicaciones SQL por conexión: vincular carpetas existentes con archivos `.sql` (subcarpetas, `~` y `${workspaceFolder}`), vínculo automático por la carpeta más específica (empate: se pregunta y se recuerda), ubicación de guardado configurable, vigilancia de cambios externos; desvincular nunca borra archivos | 3 | 1 |
+| S12 | Eliminar desde el árbol según el motor: tablas y vistas en todos los SQL (CASCADE en PostgreSQL, CASCADE CONSTRAINTS en Oracle; vistas materializadas en PostgreSQL) y esquemas en PostgreSQL y SQL Server, bases en MySQL y usuarios en Oracle; confirmación modal con el `DROP`, y para esquemas escribir el nombre | 2 | 0.5 |
 
 ### R — Redis (11)
 
@@ -110,7 +112,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 ## 4. Cálculo de la brecha
 
 ```
-total   = Σ peso                      (hoy 117)
+total   = Σ peso                      (hoy 120)
 avance  = Σ (peso × estado)
 brecha  = (total − avance) / total × 100 %
 ```
@@ -118,14 +120,14 @@ brecha  = (total − avance) / total × 100 %
 | Bloque | Peso | Avance | Brecha (pts) |
 |---|---|---|---|
 | F — Fundación | 10 | 9 | 1 |
-| C — Conexiones y persistencia | 28 | 28 | 0 |
+| C — Conexiones y persistencia | 29 | 28,5 | 0,5 |
 | D — Drivers SQL | 16 | 16 | 0 |
-| S — Editor SQL | 41 | 41 | 0 |
+| S — Editor SQL | 43 | 42 | 1 |
 | R — Redis | 11 | 11 | 0 |
 | N — NATS | 11 | 11 | 0 |
-| **Total** | **117** | **116** | **1** |
+| **Total** | **120** | **117,5** | **2,5** |
 
-**Brecha actual: 0,9 % (1 de 117 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento).
+**Brecha actual: 2,1 % (2,5 de 120 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento); probar en Cursor la actualización por nodo (C9) y el borrado desde el árbol, y verificar el `DROP` contra MySQL, SQL Server y Oracle (S12: verificado en PostgreSQL y SQLite).
 
 ## 5. Orden sugerido para cerrar la brecha
 
@@ -134,6 +136,10 @@ brecha  = (total − avance) / total × 100 %
 3. ✅ **Redis (+11):** R1–R3.
 4. ✅ **NATS (+11):** N1–N4.
 5. ◐ **Cierre (+8):** ✅ C5 (2), ✅ C6 (4), ◐ F3 (1 de 2: falta verla en el editor).
+
+### Verificación (actualizar y eliminar desde el árbol)
+
+- `dropSql`/`canCascade` (pruebas unitarias en los 5 dialectos). Integración (`metadata.test.ts`): eliminar vista, tabla con CASCADE y esquema por `driver.transaction`, verificado en PostgreSQL (incluido `DROP SCHEMA … CASCADE`) y SQLite; los casos de MySQL (`DROP DATABASE`), SQL Server y Oracle están escritos pero no se ejecutaron (contenedores apagados). Sin verificar a mano: botones y menús del árbol, confirmaciones y la actualización tras DDL en Cursor.
 
 ### Verificación (v0.12.1)
 
@@ -230,3 +236,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-16 | `deploy.sh`: `--build` empaqueta el `.vsix` y `--deploy` lo publica en Open VSX con `OVSX_PAT` y `--marketplace` en el VS Code Marketplace con `VSCE_PAT` (sin cambio de puntaje) | 0,9 % |
 | 2026-10-16 | Icono de la tienda redibujado en SVG (`img/db-client.svg`) y exportado a 256 px (antes 128 px borroso); `version.sh` también actualiza `package.json` y lo confirma antes de etiquetar (sin cambio de puntaje) | 0,9 % |
 | 2026-10-16 | Página de la tienda: insignias de Open VSX y licencia, frase de resumen, párrafo con lo que distingue a la extensión (gratuita, MIT, sin módulos nativos, Redis y NATS) y lugares marcados para GIFs en ambos README; la instalación ya no dice que está en el VS Code Marketplace (solo está en Open VSX); 11 palabras clave más (sin cambio de puntaje) | 0,9 % |
+| 2026-10-18 | Actualizar una conexión o un nodo del árbol y actualización automática tras DDL (nuevo C9, 1 pt, en 0,5); eliminar tablas, vistas y esquemas según el motor desde el árbol (nuevo S12, 2 pts, en 0,5: verificado en PostgreSQL y SQLite); total 117 → 120; v0.13.0 | 2,1 % |

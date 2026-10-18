@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.0 — 2026-10-18
+
+- **Refresh** on a connection, database, schema, folder, table or view re-reads it from the database, so schemas and tables created or dropped elsewhere show up. DDL run from the SQL editor refreshes the connection by itself.
+- **Drop…** in the tree removes tables and views on every SQL engine (CASCADE on PostgreSQL, CASCADE CONSTRAINTS on Oracle, materialized views on PostgreSQL) and schemas where the engine has them: PostgreSQL and SQL Server schemas, MySQL databases, Oracle users. The dialog shows the `DROP` statement; schemas also ask for their name.
+
 ## 0.12.4 — 2026-10-16
 
 - Sharper extension icon: redrawn as a vector and exported at 256 px for high-density screens.

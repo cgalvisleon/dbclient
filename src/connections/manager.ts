@@ -95,6 +95,13 @@ export class ConnectionManager implements vscode.Disposable {
     return driver;
   }
 
+  /** Tells the tree that a connection's objects changed (DDL, drops), so its subtree is re-read. */
+  contentChangedOf(id: string): void {
+    if (this.active.has(id)) {
+      this.contentChanged.fire(id);
+    }
+  }
+
   /** Live driver, without connecting. */
   driver(id: string): Driver | undefined {
     return this.active.get(id);

@@ -1,6 +1,7 @@
 {
   "command.addConnection": "Add Connection",
   "command.refresh": "Refresh",
+  "command.refreshNode": "Refresh",
   "command.editConnection": "Edit Connection",
   "command.duplicateConnection": "Duplicate Connection",
   "command.deleteConnection": "Delete Connection",
@@ -12,6 +13,7 @@
   "command.openData": "Open Data",
   "command.showStructure": "Show Structure",
   "command.showDdl": "Show DDL",
+  "command.drop": "Drop…",
   "command.generateSelect": "SELECT",
   "command.generateInsert": "INSERT",
   "command.generateUpdate": "UPDATE",

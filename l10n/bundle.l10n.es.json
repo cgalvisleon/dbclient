@@ -361,5 +361,19 @@
   "{0}: {1}": "{0}: {1}",
   "{0}: {1} rows affected": "{0}: {1} filas afectadas",
   "{0}–{1} of {2}": "{0}–{1} de {2}",
-  "~/.ssh/id_ed25519": "~/.ssh/id_ed25519"
+  "~/.ssh/id_ed25519": "~/.ssh/id_ed25519",
+  "CASCADE also drops the objects that depend on it.": "CASCADE también elimina los objetos que dependen de él.",
+  "Could not drop {0}: {1}": "No se pudo eliminar {0}: {1}",
+  "Drop": "Eliminar",
+  "Drop database {0} with all its tables and data?": "¿Eliminar la base de datos {0} con todas sus tablas y datos?",
+  "Drop materialized view {0}?": "¿Eliminar la vista materializada {0}?",
+  "Drop schema {0}?": "¿Eliminar el esquema {0}?",
+  "Drop table {0}? Its data is lost.": "¿Eliminar la tabla {0}? Sus datos se pierden.",
+  "Drop user {0} and its schema?": "¿Eliminar el usuario {0} y su esquema?",
+  "Drop view {0}?": "¿Eliminar la vista {0}?",
+  "Drop with CASCADE": "Eliminar con CASCADE",
+  "Dropped {0}.": "{0} eliminado.",
+  "Dropping {0}…": "Eliminando {0}…",
+  "This cannot be undone.": "No se puede deshacer.",
+  "Type {0} to confirm.": "Escribe {0} para confirmar."
 }
