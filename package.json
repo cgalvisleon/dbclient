@@ -1,6 +1,6 @@
 {
   "name": "dbclient",
-  "displayName": "DB Client",
+  "displayName": "DB Client: SQL, Redis & NATS",
   "description": "%extension.description%",
   "version": "0.13.0",
   "publisher": "cgalvisleon",

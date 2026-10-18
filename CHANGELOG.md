@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.1 — 2026-10-18
+
+- Store name changed to **DB Client: SQL, Redis & NATS** ("DB Client" is taken on the VS Code Marketplace); first release on the Marketplace. No functional changes.
+
 ## 0.13.0 — 2026-10-18
 
 - **Refresh** on a connection, database, schema, folder, table or view re-reads it from the database, so schemas and tables created or dropped elsewhere show up. DDL run from the SQL editor refreshes the connection by itself.
