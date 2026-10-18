@@ -72,14 +72,14 @@ update_version() {
   echo "Nueva versión: $NEW_VERSION"
   echo "Etiquetando con: $NEW_VERSION"
 
-  sed -i "" "s/$CURRENT_VERSION/$NEW_VERSION/g" README.md
+  sed -i "" "s/$CURRENT_VERSION/$NEW_VERSION/g" README.md README.es.md
 
   # Actualizar package.json (y package-lock.json) sin la 'v', y confirmarlo antes de etiquetar
   # para que la etiqueta apunte al commit con la versión nueva
   if [ -f package.json ]; then
     npm version "${NEW_VERSION#v}" --no-git-tag-version --allow-same-version >/dev/null
     echo "package.json actualizado a ${NEW_VERSION#v}"
-    git add package.json README.md
+    git add package.json README.md README.es.md
     [ -f package-lock.json ] && git add package-lock.json
     git commit -m "Versión ${NEW_VERSION#v}"
     git push origin HEAD
