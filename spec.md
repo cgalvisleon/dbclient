@@ -239,3 +239,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-18 | Actualizar una conexión o un nodo del árbol y actualización automática tras DDL (nuevo C9, 1 pt, en 0,5); eliminar tablas, vistas y esquemas según el motor desde el árbol (nuevo S12, 2 pts, en 0,5: verificado en PostgreSQL y SQLite); total 117 → 120; v0.13.0 | 2,1 % |
 | 2026-10-18 | Nombre visible **DB Client: SQL, Redis & NATS** ("DB Client" ya existe en el VS Code Marketplace) y primera publicación en el Marketplace; v0.13.1 (sin cambio de puntaje) | 2,1 % |
 | 2026-10-18 | Documentación: instalación desde el VS Code Marketplace (VS Code) y Open VSX (Cursor, VSCodium, Windsurf) e insignia del Marketplace en ambos README (sin cambio de puntaje) | 2,1 % |
+| 2026-10-18 | v0.13.2: la página de ambas tiendas muestra la instalación corregida (sin cambios funcionales ni de puntaje) | 2,1 % |

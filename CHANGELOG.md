@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.2 — 2026-10-18
+
+- Store page: installation from the VS Code Marketplace (VS Code) and Open VSX (Cursor, VSCodium, Windsurf), with the Marketplace badge. No functional changes.
+
 ## 0.13.1 — 2026-10-18
 
 - Store name changed to **DB Client: SQL, Redis & NATS** ("DB Client" is taken on the VS Code Marketplace); first release on the Marketplace. No functional changes.
