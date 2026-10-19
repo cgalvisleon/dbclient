@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.0 — 2026-10-19
+
+- **Open SQL** on tables and views: opens the same `SELECT * FROM` as **Open Data** in a new editor bound to the connection, without running it.
+
 ## 0.13.2 — 2026-10-18
 
 - Store page: installation from the VS Code Marketplace (VS Code) and Open VSX (Cursor, VSCodium, Windsurf), with the Marketplace badge. No functional changes.

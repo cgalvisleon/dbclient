@@ -175,6 +175,12 @@
         "icon": "$(table)"
       },
       {
+        "command": "dbclient.openSql",
+        "title": "%command.openSql%",
+        "category": "DB Client",
+        "icon": "$(file-code)"
+      },
+      {
         "command": "dbclient.showStructure",
         "title": "%command.showStructure%",
         "category": "DB Client",
@@ -659,19 +665,24 @@
           "group": "0_table@1"
         },
         {
-          "command": "dbclient.showStructure",
+          "command": "dbclient.openSql",
           "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
           "group": "0_table@2"
         },
         {
-          "command": "dbclient.showDdl",
+          "command": "dbclient.showStructure",
           "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
           "group": "0_table@3"
         },
         {
-          "submenu": "dbclient.generateSql",
+          "command": "dbclient.showDdl",
           "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
           "group": "0_table@4"
+        },
+        {
+          "submenu": "dbclient.generateSql",
+          "when": "view == dbclient.connections && viewItem =~ /^(table|view) sql\\b/",
+          "group": "0_table@5"
         },
         {
           "command": "dbclient.exportConnections",
@@ -804,6 +815,10 @@
         },
         {
           "command": "dbclient.openData",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.openSql",
           "when": "false"
         },
         {

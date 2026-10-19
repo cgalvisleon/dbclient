@@ -761,6 +761,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   // ---------- tables and views ----------
 
   command('dbclient.openData', (item: NodeItem) => tableActions.openData(item));
+  command('dbclient.openSql', (item: NodeItem) => tableActions.openSql(item));
   command('dbclient.showStructure', (item: NodeItem) => tableActions.showStructure(item));
   command('dbclient.showDdl', (item: NodeItem) => tableActions.showDdl(item));
   command('dbclient.drop', (item: NodeItem) => tableActions.drop(item));

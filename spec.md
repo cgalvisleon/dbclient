@@ -84,7 +84,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 | S3 | Autocompletado de palabras clave y funciones según el dialecto del driver | 4 | 1 |
 | S4 | Autocompletado de objetos reales (esquemas, tablas, vistas, columnas) resolviendo alias | 5 | 1 |
 | S5 | Historial de consultas por conexión (SQL y Redis): sentencia, base, duración, filas o error; búsqueda, insertar en el editor o abrir en uno nuevo, copiar, limpiar; tamaño configurable (`dbclient.historySize`, 0 lo apaga) y sin comandos con credenciales | 2 | 1 |
-| S6 | Acciones desde el árbol: estructura de tabla, abrir datos, DDL, generar SELECT/INSERT/UPDATE/DELETE | 4 | 1 |
+| S6 | Acciones desde el árbol: estructura de tabla, abrir datos, abrir la SQL sin ejecutarla, DDL, generar SELECT/INSERT/UPDATE/DELETE | 4 | 1 |
 | S7 | Salida SQL: registro por sentencia con tiempo de ejecución, filas afectadas y errores con línea/columna que navegan al editor | 3 | 1 |
 | S8 | Edición de datos en la grilla: editar celdas, insertar y eliminar filas, confirmar o cancelar (genera el DML por clave primaria) | 4 | 1 |
 | S9 | Carpeta SQL por conexión: archivos `.sql` persistentes, vinculados a su conexión al abrirlos; crear, renombrar, eliminar, guardar la consulta actual; ubicación configurable | 3 | 1 |
@@ -240,3 +240,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-18 | Nombre visible **DB Client: SQL, Redis & NATS** ("DB Client" ya existe en el VS Code Marketplace) y primera publicación en el Marketplace; v0.13.1 (sin cambio de puntaje) | 2,1 % |
 | 2026-10-18 | Documentación: instalación desde el VS Code Marketplace (VS Code) y Open VSX (Cursor, VSCodium, Windsurf) e insignia del Marketplace en ambos README (sin cambio de puntaje) | 2,1 % |
 | 2026-10-18 | v0.13.2: la página de ambas tiendas muestra la instalación corregida (sin cambios funcionales ni de puntaje) | 2,1 % |
+| 2026-10-19 | **Open SQL** en el menú de tablas y vistas: abre el `SELECT * FROM` de **Open Data** en un editor vinculado sin ejecutarlo (S6, sin cambio de puntaje) | 2,1 % |

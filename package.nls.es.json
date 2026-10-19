@@ -11,6 +11,7 @@
   "command.newQuery": "Nueva consulta",
   "command.showHistory": "Historial de consultas…",
   "command.openData": "Abrir datos",
+  "command.openSql": "Abrir SQL",
   "command.showStructure": "Ver estructura",
   "command.showDdl": "Ver DDL",
   "command.drop": "Eliminar…",

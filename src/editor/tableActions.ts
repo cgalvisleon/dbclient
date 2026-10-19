@@ -59,6 +59,13 @@ export class TableActions {
     await this.runner.run(editor, 'file');
   }
 
+  /** Opens the same `SELECT * FROM table` as Open Data, without running it. */
+  async openSql(item: NodeItem): Promise<void> {
+    const editor = await this.open(item, openDataSql({ ref: this.refOf(item) }, this.dialectOf(item)));
+    const end = editor.document.lineAt(0).range.end;
+    editor.selection = new vscode.Selection(end, end);
+  }
+
   async showStructure(item: NodeItem): Promise<void> {
     const info = await this.info(item);
     const pageSize = vscode.workspace.getConfiguration('dbclient').get<number>('pageSize', 100);
