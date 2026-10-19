@@ -240,4 +240,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-18 | Nombre visible **DB Client: SQL, Redis & NATS** ("DB Client" ya existe en el VS Code Marketplace) y primera publicación en el Marketplace; v0.13.1 (sin cambio de puntaje) | 2,1 % |
 | 2026-10-18 | Documentación: instalación desde el VS Code Marketplace (VS Code) y Open VSX (Cursor, VSCodium, Windsurf) e insignia del Marketplace en ambos README (sin cambio de puntaje) | 2,1 % |
 | 2026-10-18 | v0.13.2: la página de ambas tiendas muestra la instalación corregida (sin cambios funcionales ni de puntaje) | 2,1 % |
-| 2026-10-19 | **Open SQL** en el menú de tablas y vistas: abre el `SELECT * FROM` de **Open Data** en un editor vinculado sin ejecutarlo (S6, sin cambio de puntaje) | 2,1 % |
+| 2026-10-19 | **Open SQL** en el menú de tablas y vistas: abre el `SELECT * FROM` de **Open Data** en un editor vinculado sin ejecutarlo (S6, sin cambio de puntaje); v0.14.0 | 2,1 % |
