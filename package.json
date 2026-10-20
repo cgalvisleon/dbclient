@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client: SQL, Redis & NATS",
   "description": "%extension.description%",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
