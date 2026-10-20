@@ -134,3 +134,67 @@ describe('results webview grid editing', () => {
     assert.ok(button('Commit'), 'first tab selected again');
   });
 });
+
+describe('results webview tabs', () => {
+  it('keeps Output first, piles up result tabs across runs and reorders them by dragging', () => {
+    const dom = new JSDOM('<!doctype html><div id="app"></div>', { runScripts: 'outside-only', pretendToBeVisual: true });
+    const window = dom.window as unknown as Window & typeof globalThis & { acquireVsCodeApi: unknown; eval(code: string): unknown };
+    let state: { keepTabs?: boolean } = {};
+    window.acquireVsCodeApi = () => ({ postMessage: () => undefined, getState: () => undefined, setState: (s: typeof state) => (state = s) });
+    window.eval(fs.readFileSync(path.join(__dirname, '../../media/l10n.js'), 'utf8'));
+    window.eval(source);
+    const doc = window.document;
+    const post = (data: unknown) => window.dispatchEvent(new window.MessageEvent('message', { data }));
+    const tabEls = () => [...doc.querySelectorAll<HTMLElement>('.tabbar .tab')];
+    const labels = () => tabEls().map((x) => x.querySelector('span')!.textContent);
+    const activeLabel = () => doc.querySelector('.tabbar .tab.active span')!.textContent;
+    const fire = (el: Element, type: string) => el.dispatchEvent(new window.Event(type, { bubbles: true, cancelable: true }));
+    const drag = (from: number, onto: number) => {
+      fire(tabEls()[from], 'dragstart');
+      fire(tabEls()[onto], 'dragover');
+      fire(tabEls()[onto], 'drop');
+    };
+    const result = (title: string) => post({ type: 'result', tab: { title, sql: title, columns: [{ name: 'x' }], rows: [[1]], rowCount: 1, truncated: false, durationMs: 1 } });
+
+    assert.deepStrictEqual(labels(), ['Output']);
+    post({ type: 'run', title: 'c', pageSize: 100 });
+    result('a');
+    post({ type: 'run', title: 'c', pageSize: 100 });
+    result('b');
+    result('c');
+    assert.deepStrictEqual(labels(), ['Output', '1. a', '2. b', '3. c'], 'Output first, tabs kept across runs');
+    assert.strictEqual(activeLabel(), '3. c');
+    assert.ok(tabEls()[1].draggable && !tabEls()[0].draggable, 'only result tabs drag');
+
+    // jsdom has no layout: a drop lands after the tab it is dropped on; on Output it goes first.
+    drag(1, 2);
+    assert.deepStrictEqual(labels(), ['Output', '2. b', '1. a', '3. c']);
+    drag(3, 0);
+    assert.deepStrictEqual(labels(), ['Output', '3. c', '2. b', '1. a']);
+    assert.strictEqual(activeLabel(), '3. c', 'the active tab stays active after moving');
+
+    // Turning Keep tabs off clears result tabs on the next run.
+    const keep = doc.querySelector<HTMLInputElement>('.keep input')!;
+    assert.ok(keep.checked, 'kept by default');
+    keep.checked = false;
+    fire(keep, 'change');
+    assert.strictEqual(state.keepTabs, false);
+    post({ type: 'run', title: 'c', pageSize: 100 });
+    result('d');
+    assert.deepStrictEqual(labels(), ['Output', '4. d']);
+  });
+
+  it('closes the oldest tabs past 50', () => {
+    const dom = new JSDOM('<!doctype html><div id="app"></div>', { runScripts: 'outside-only', pretendToBeVisual: true });
+    const window = dom.window as unknown as Window & typeof globalThis & { acquireVsCodeApi: unknown; eval(code: string): unknown };
+    window.acquireVsCodeApi = () => ({ postMessage: () => undefined, getState: () => undefined, setState: () => undefined });
+    window.eval(fs.readFileSync(path.join(__dirname, '../../media/l10n.js'), 'utf8'));
+    window.eval(source);
+    for (let i = 1; i <= 52; i++) {
+      window.dispatchEvent(new window.MessageEvent('message', { data: { type: 'result', tab: { title: `q${i}`, sql: '', columns: [], rows: [], rowCount: 0, truncated: false, durationMs: 0 } } }));
+    }
+    const labels = [...window.document.querySelectorAll('.tabbar .tab span:first-child')].map((x) => x.textContent);
+    assert.strictEqual(labels.length, 51);
+    assert.deepStrictEqual(labels.slice(0, 2), ['Output', '3. q3']);
+  });
+});

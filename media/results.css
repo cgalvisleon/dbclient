@@ -68,6 +68,18 @@ button:disabled {
   border-bottom-color: var(--vscode-panelTitle-activeBorder, var(--vscode-focusBorder));
 }
 
+.tab[draggable] {
+  cursor: grab;
+}
+
+.tab.drop-before {
+  box-shadow: inset 2px 0 0 var(--vscode-focusBorder);
+}
+
+.tab.drop-after {
+  box-shadow: inset -2px 0 0 var(--vscode-focusBorder);
+}
+
 .tab .close {
   opacity: 0;
 }

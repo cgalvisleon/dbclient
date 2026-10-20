@@ -8,7 +8,7 @@ import { CatalogCache } from './connections/catalog';
 import { ConnectionManager } from './connections/manager';
 import { SqlLocations } from './connections/sqlLocations';
 import { DocumentBindings, EDITOR_CATEGORIES } from './editor/bindings';
-import { RunCodeLens } from './editor/codeLens';
+import { ConnectionCodeLens, RunCodeLens } from './editor/codeLens';
 import { HistoryPicker } from './editor/historyPicker';
 import { RedisRunner } from './editor/redisRunner';
 import { SqlRunner } from './editor/sqlRunner';
@@ -101,6 +101,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }),
     vscode.window.registerWebviewViewProvider(RESULTS_VIEW_ID, results, { webviewOptions: { retainContextWhenHidden: true } }),
     vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings, catalog), '.', ' '),
+    vscode.languages.registerCodeLensProvider([...sqlDocs, ...redisDocs], new ConnectionCodeLens(bindings, manager)),
     vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager)),
     vscode.languages.registerCompletionItemProvider(redisDocs, new RedisCompletionProvider(manager, bindings), ' ', ':'),
   );

@@ -70,7 +70,7 @@ exports.run = async function () {
     await vscode.window.showTextDocument(doc);
     await api.bindings.set(doc, { connectionId: config.id, database });
     const lenses = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', doc.uri);
-    assert.strictEqual(lenses.length, 2, `${name}: code lens per statement`);
+    assert.strictEqual(lenses.filter((l) => l.command?.command === 'dbclient.runAt').length, 2, `${name}: code lens per statement`);
 
     await vscode.commands.executeCommand('dbclient.runFile');
     const diags = await until(() => {
@@ -286,6 +286,30 @@ exports.run = async function () {
     await vscode.commands.executeCommand('dbclient.runFile');
     await wait(500);
     assert.strictEqual(vscode.languages.getDiagnostics(bDoc.uri).length, 0, 'linked file runs');
+
+    // The connection shows on the first line; changing it asks for confirmation.
+    const lenses = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', bDoc.uri);
+    assert.ok(lenses.some((l) => l.range.start.line === 0 && l.command?.title.includes(one.name)), 'connection lens on line 0');
+    const { showQuickPick, showWarningMessage } = vscode.window;
+    let answer;
+    let asked = 0;
+    vscode.window.showQuickPick = async (items) => (await items).find((i) => i.id === two.id);
+    vscode.window.showWarningMessage = async (...args) => (asked++, args.find((a) => a === answer));
+    try {
+      answer = undefined;
+      await vscode.commands.executeCommand('dbclient.selectConnection');
+      assert.strictEqual(asked, 1, 'change asks first');
+      assert.strictEqual(api.bindings.get(bDoc)?.connectionId, one.id, 'cancelled change keeps the connection');
+      answer = 'Change Connection';
+      await vscode.commands.executeCommand('dbclient.selectConnection');
+      assert.strictEqual(api.bindings.get(bDoc)?.connectionId, two.id, 'confirmed change applies');
+      await vscode.commands.executeCommand('dbclient.selectConnection');
+      assert.strictEqual(asked, 2, 'picking the same connection does not ask');
+    } finally {
+      Object.assign(vscode.window, { showQuickPick, showWarningMessage });
+    }
+    await api.bindings.set(bDoc, { connectionId: one.id });
+    console.log('✓ editor connection shown and changed with confirmation');
 
     // Save location: the linked folder.
     api.store.patch(one.id, { sqlSaveLocation: sqlDir });

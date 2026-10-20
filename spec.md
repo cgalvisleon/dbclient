@@ -26,7 +26,7 @@ Estado: ✅ implementado · ◐ parcial.
 | `l10n/` + `package.nls*.json` + `media/l10n.js` | Traducciones al español del código (`vscode.l10n`), del manifiesto y de los webviews (la extensión inyecta el diccionario del idioma activo). | ◐ (falta verla en el editor) |
 | `src/connections/manager.ts` | Instancias vivas de drivers; conectar, desconectar, probar; cambios del driver refrescan solo su rama del árbol. | ✅ |
 | `src/tree/` | `TreeDataProvider` genérico: SQL, Redis y NATS en el mismo listado, agrupados en carpetas (arrastrar y soltar, mover, renombrar, eliminar); iconos de `img/`. | ✅ |
-| `src/editor/` | `bindings.ts` (conexión de cada editor `.sql`/`.redis`, barra de estado), `statements.ts` (división por dialecto: `GO`, `DELIMITER`, `/` y bloques PL/SQL, triggers), `sqlRunner.ts`, `gridEditor.ts` (edición en la grilla), `tableActions.ts` (acciones de tablas), `historyPicker.ts`, `redisRunner.ts` (una orden por línea, confirma FLUSHDB/FLUSHALL), `codeLens.ts`. | ✅ |
+| `src/editor/` | `bindings.ts` (conexión de cada editor `.sql`/`.redis`, barra de estado, cambio con confirmación), `statements.ts` (división por dialecto: `GO`, `DELIMITER`, `/` y bloques PL/SQL, triggers), `sqlRunner.ts`, `gridEditor.ts` (edición en la grilla), `tableActions.ts` (acciones de tablas), `historyPicker.ts`, `redisRunner.ts` (una orden por línea, confirma FLUSHDB/FLUSHALL), `codeLens.ts`. | ✅ |
 | `src/completion/` | Diccionarios ANSI + PostgreSQL, MySQL, SQL Server, Oracle y SQLite; con la conexión abierta, esquemas, tablas, vistas y columnas reales (`connections/catalog.ts`, caché por conexión) resolviendo alias; catálogo de ~110 comandos Redis con opciones y sugerencia de llaves existentes. | ✅ |
 | `src/sql/` | Puro: `parse.ts` (tokens, tablas con alias, SELECT de una tabla, contexto de autocompletado), `identifiers.ts` (comillas y marcadores por dialecto), `generate.ts` (plantillas, estructura, CREATE TABLE, DML de la grilla), `editable.ts` (columnas editables del resultado). | ✅ |
 | `src/webviews/` + `media/` | Formulario de conexión; panel *Results* (pestañas, paginación, orden, copiar, exportar CSV/JSON/Excel, edición de celdas y filas con confirmar/cancelar, *Output*); visor/editor de valores Redis; consola NATS. | ✅ |
@@ -79,8 +79,8 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 
 | ID | Requisito | Peso | Estado |
 |---|---|---|---|
-| S1 | Archivo `.sql` asociado a una conexión con selector de conexión en la barra del editor; ejecutar archivo, selección o sentencia bajo el cursor con atajos; cancelar | 5 | 1 |
-| S2 | Resultados en pestañas bajo el editor (una por sentencia, opción de conservar las anteriores); grilla con paginación de filas traídas (avance/retroceso), ordenar, copiar, exportar CSV/JSON | 6 | 1 |
+| S1 | Archivo `.sql` asociado a una conexión, visible en la primera línea del editor (CodeLens) y en la barra de estado, con cambio de conexión confirmado; ejecutar archivo, selección o sentencia bajo el cursor con atajos; cancelar | 5 | 1 |
+| S2 | Resultados en pestañas bajo el editor (una por sentencia, conservadas entre ejecuciones hasta 50 salvo que se apague, reordenables arrastrando, con Output fija en primer lugar); grilla con paginación de filas traídas (avance/retroceso), ordenar, copiar, exportar CSV/JSON | 6 | 1 |
 | S3 | Autocompletado de palabras clave y funciones según el dialecto del driver | 4 | 1 |
 | S4 | Autocompletado de objetos reales (esquemas, tablas, vistas, columnas) resolviendo alias | 5 | 1 |
 | S5 | Historial de consultas por conexión (SQL y Redis): sentencia, base, duración, filas o error; búsqueda, insertar en el editor o abrir en uno nuevo, copiar, limpiar; tamaño configurable (`dbclient.historySize`, 0 lo apaga) y sin comandos con credenciales | 2 | 1 |
@@ -241,3 +241,5 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-18 | Documentación: instalación desde el VS Code Marketplace (VS Code) y Open VSX (Cursor, VSCodium, Windsurf) e insignia del Marketplace en ambos README (sin cambio de puntaje) | 2,1 % |
 | 2026-10-18 | v0.13.2: la página de ambas tiendas muestra la instalación corregida (sin cambios funcionales ni de puntaje) | 2,1 % |
 | 2026-10-19 | **Open SQL** en el menú de tablas y vistas: abre el `SELECT * FROM` de **Open Data** en un editor vinculado sin ejecutarlo (S6, sin cambio de puntaje); v0.14.0 | 2,1 % |
+| 2026-10-19 | La conexión del editor SQL/Redis en su primera línea (CodeLens con **Change Connection…**, `dbclient.connectionLens`) y cambio de conexión con confirmación modal; prueba de humo (S1, sin cambio de puntaje) | 2,1 % |
+| 2026-10-19 | Panel de resultados: **Output** fija en primer lugar, pestañas conservadas entre ejecuciones por defecto (máximo 50), reordenables arrastrando y cierre con clic central; pruebas en jsdom (S2, sin cambio de puntaje) | 2,1 % |

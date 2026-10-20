@@ -910,6 +910,11 @@
           "default": true,
           "description": "%config.dbclient.codeLens.description%"
         },
+        "dbclient.connectionLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.dbclient.connectionLens.description%"
+        },
         "dbclient.sqlFolder": {
           "type": "string",
           "default": "",

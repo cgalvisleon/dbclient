@@ -37,11 +37,11 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | Export / import | **Export Connections…** writes all connections, one folder (on the folder) or the selected connections (on a connection) to a JSON file without passwords; **Import Connections…** merges it (existing ones kept, identical ones skipped) or replaces the list, and on a folder imports into that folder. |
 | Icons and colors | Each connection can pick its tree icon (database, server, cloud, with gear or magnifier) and one of 7 colors (blue, green, red, orange, purple, yellow, gray) in the form's **Appearance** section — e.g. red for production. Folders take a color too with **Change Color…**. |
 | Explorer (SQL) | Databases/schemas → tables, views, functions, procedures, triggers, indexes (Oracle: packages, sequences) → columns with type, PK and NOT NULL. |
-| SQL editor | Connection picker in the status bar and editor title; run the statement under the cursor, the selection or the whole file; ▶ Run above each statement; cancel. |
+| SQL editor | The editor's connection and database on its first line and in the status bar, with **Change Connection…** (asks before switching); run the statement under the cursor, the selection or the whole file; ▶ Run above each statement; cancel. |
 | Saved SQL files | Each SQL connection has a **SQL** node with its own `.sql` files; opening one binds it to the connection. New, rename, delete, and save the current query there. |
 | SQL locations | Link existing folders of `.sql` files (e.g. a repository's `sql/`) to a connection and browse them with their subfolders; choose where new files are saved. Paths accept `~` and `${workspaceFolder}`; unlinking never deletes files. |
 | Statement splitting | `;` everywhere, plus `GO` (SQL Server), `DELIMITER` (MySQL), `/` and PL/SQL blocks (Oracle), `$$` bodies (PostgreSQL), triggers (SQLite). |
-| Results | Bottom panel with one tab per result set, optional tab keeping, paging, sorting, row selection, copy as TSV, export to CSV, JSON or Excel (`.xlsx`, numbers and dates as Excel values). |
+| Results | Bottom panel with **Output** first and one tab per result set, kept across runs (up to 50; **Keep tabs** off clears them on each run) and reordered by dragging, paging, sorting, row selection, copy as TSV, export to CSV, JSON or Excel (`.xlsx`, numbers and dates as Excel values). |
 | SQL output | Each statement logged with time, rows fetched/affected and errors; errors jump to the line and column in the editor and are underlined. |
 | Query history | **Query History…** lists what ran on each SQL or Redis connection, newest first, with database, time, duration and rows or error; search it, insert a statement into the editor or open it in a new one. |
 | Table actions | On a table or view: **Open Data**, **Open SQL**, **Show Structure** (columns and indexes), **Show DDL**, and **Generate SQL** → SELECT, INSERT, UPDATE, DELETE in a new editor. |
@@ -84,7 +84,7 @@ update customers set active = false where id = 42;
 
 <!-- GIF (sql-editor.gif): Ctrl/Cmd+Enter on a statement, results tab, export to Excel. ![SQL editor](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/sql-editor.gif) -->
 
-Each query opens a tab in **DB Client → Results**; the **Output** tab lists every statement with its time and row count. **CSV**, **JSON** and **Excel** in the tab's toolbar export all its rows in the current sort order.
+Each query opens a tab in **DB Client → Results**, after the earlier ones; the **Output** tab, always first, lists every statement with its time and row count. Drag a tab to reorder it (drop it on **Output** to make it the first result), middle-click or **×** to close it. **CSV**, **JSON** and **Excel** in the tab's toolbar export all its rows in the current sort order.
 
 **Keep queries per connection.** Expand a SQL connection and use **New SQL File** on its **SQL** node, or press **Save to Connection's SQL Folder** in the editor title to keep the current query. The files open already bound to their connection. They live in the extension's storage, one folder per connection; set `dbclient.sqlFolder` to keep them somewhere else, such as a synced or versioned folder.
 
@@ -95,6 +95,8 @@ Save new files in:  ${workspaceFolder}/sql
 Linked folders:     ${workspaceFolder}/sql
                     ~/projects/reports
 ```
+
+**See and change the editor's connection.** The first line of every SQL and Redis editor shows the connection and database it runs against, for example `prod-pg / sales`, and the status bar shows the same. Click it or **Change Connection…** and pick another connection; when the editor already had one, a dialog asks before switching. Turn the line off with `dbclient.connectionLens`.
 
 **Work with a table.** Right-click a table in the tree. **Open Data** runs `SELECT * FROM` the table; **Open SQL** opens that same query in a new editor without running it; **Show Structure** lists its columns and indexes in the Results panel; **Show DDL** and **Generate SQL** open the statement in a new editor bound to the connection.
 

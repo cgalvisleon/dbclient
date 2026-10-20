@@ -19,14 +19,19 @@
   let log = saved.log || [];
   /** @type {number|'log'} */
   let active = saved.active ?? 'log';
-  let keep = Boolean(saved.keep);
+  // Result tabs pile up across runs unless the user turns it off.
+  let keep = saved.keepTabs ?? true;
   let pageSize = saved.pageSize || 100;
   let seq = saved.seq || 0;
   /** Cell being typed into: { seq, row, col } (not persisted). */
   let editing = null;
+  /** Index of the result tab being dragged. */
+  let dragging = -1;
+  /** Oldest result tabs (without pending edits) are closed past this many. */
+  const MAX_TABS = 50;
 
   function persist() {
-    vscode.setState({ tabs, log: log.slice(-500), active, keep, pageSize, seq });
+    vscode.setState({ tabs, log: log.slice(-500), active, keepTabs: keep, pageSize, seq });
   }
 
   function el(tag, attrs = {}, ...children) {
@@ -277,19 +282,40 @@
     const bar = el(
       'div',
       { class: 'tabbar' },
+      // Output always stays first; dropping a result tab on it moves that tab to the front.
+      el(
+        'div',
+        { class: `tab output ${active === 'log' ? 'active' : ''}`, on: { click: () => select('log'), ...dropTarget(0, () => 0) } },
+        el('span', {}, t('Output')),
+        log.some((e) => !e.ok) ? el('span', { class: 'badge' }, String(log.filter((e) => !e.ok).length)) : null,
+      ),
       ...tabs.map((x, i) =>
         el(
           'div',
-          { class: `tab ${active === i ? 'active' : ''}`, title: x.sql, on: { click: () => select(i) } },
+          {
+            class: `tab ${active === i ? 'active' : ''}`,
+            title: `${x.sql}\n\n${t('Drag to reorder')}`,
+            draggable: 'true',
+            on: {
+              click: () => select(i),
+              auxclick: (e) => e.button === 1 && closeTab(i),
+              dragstart: (e) => {
+                dragging = i;
+                if (e.dataTransfer) {
+                  e.dataTransfer.effectAllowed = 'move';
+                  e.dataTransfer.setData('text/plain', x.title);
+                }
+              },
+              dragend: () => ((dragging = -1), clearDropMarks()),
+              ...dropTarget(i, (e, node) => {
+                const rect = node.getBoundingClientRect();
+                return e.clientX < rect.left + rect.width / 2 ? i : i + 1;
+              }),
+            },
+          },
           el('span', {}, `${x.seq}. ${x.title}`),
           el('span', { class: 'close', title: t('Close'), on: { click: (e) => (e.stopPropagation(), closeTab(i)) } }, '×'),
         ),
-      ),
-      el(
-        'div',
-        { class: `tab ${active === 'log' ? 'active' : ''}`, on: { click: () => select('log') } },
-        el('span', {}, t('Output')),
-        log.some((e) => !e.ok) ? el('span', { class: 'badge' }, String(log.filter((e) => !e.ok).length)) : null,
       ),
       el('div', { class: 'spacer' }),
       el(
@@ -465,6 +491,56 @@
     return input;
   }
 
+  // ---------- reordering ----------
+
+  /**
+   * Drag handlers for the tab at `index`: a dragged result tab lands before the tab at the
+   * index `position` returns (indexes before the move), marked on the left or right edge.
+   */
+  function dropTarget(index, position) {
+    return {
+      dragover: (e) => {
+        if (dragging < 0) return;
+        e.preventDefault();
+        const node = /** @type {HTMLElement} */ (e.currentTarget);
+        clearDropMarks();
+        node.classList.add(position(e, node) > index ? 'drop-after' : 'drop-before');
+      },
+      dragleave: (e) => /** @type {HTMLElement} */ (e.currentTarget).classList.remove('drop-before', 'drop-after'),
+      drop: (e) => {
+        if (dragging < 0) return;
+        e.preventDefault();
+        const to = position(e, /** @type {HTMLElement} */ (e.currentTarget));
+        const from = dragging;
+        dragging = -1;
+        moveTab(from, to);
+      },
+    };
+  }
+
+  function clearDropMarks() {
+    app.querySelectorAll('.drop-before, .drop-after').forEach((n) => n.classList.remove('drop-before', 'drop-after'));
+  }
+
+  /** Moves result tab `from` so it lands before the tab at index `to` (indexes before the move). */
+  function moveTab(from, to) {
+    const current = typeof active === 'number' ? tabs[active] : undefined;
+    const [tab] = tabs.splice(from, 1);
+    tabs.splice(to > from ? to - 1 : to, 0, tab);
+    if (current) active = tabs.indexOf(current);
+    persist();
+    render();
+  }
+
+  /** Closes the oldest result tabs without pending edits beyond MAX_TABS. */
+  function trimTabs() {
+    while (tabs.length > MAX_TABS) {
+      const candidates = tabs.filter((x) => !x.pending && x !== tabs[tabs.length - 1]);
+      if (!candidates.length) return;
+      tabs.splice(tabs.indexOf(candidates.reduce((a, b) => (a.seq < b.seq ? a : b))), 1);
+    }
+  }
+
   // ---------- actions ----------
 
   function select(target) {
@@ -553,6 +629,7 @@
         break;
       case 'result':
         tabs.push({ ...msg.tab, seq: ++seq, page: 0, selected: [] });
+        trimTabs();
         active = tabs.length - 1;
         break;
       case 'log':

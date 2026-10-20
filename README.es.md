@@ -37,11 +37,11 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Exportar / importar | **Export Connections…** guarda todas las conexiones, una carpeta (sobre la carpeta) o las conexiones seleccionadas (sobre una conexión) en un archivo JSON sin contraseñas; **Import Connections…** lo fusiona (conserva las existentes y omite las idénticas) o reemplaza la lista, y sobre una carpeta importa dentro de ella. |
 | Iconos y colores | Cada conexión puede elegir su icono en el árbol (base de datos, servidor, nube, con engranaje o con lupa) y uno de 7 colores (azul, verde, rojo, naranja, morado, amarillo, gris) en la sección **Apariencia** del formulario; por ejemplo, rojo para producción. Las carpetas también cambian de color con **Change Color…** (**Cambiar color…**). |
 | Explorador (SQL) | Bases/esquemas → tablas, vistas, funciones, procedimientos, triggers, índices (Oracle: paquetes, secuencias) → columnas con tipo, PK y NOT NULL. |
-| Editor SQL | Selector de conexión en la barra de estado y en la barra del editor; ejecutar la sentencia bajo el cursor, la selección o el archivo completo; ▶ Run sobre cada sentencia; cancelar. |
+| Editor SQL | La conexión y la base del editor en su primera línea y en la barra de estado, con **Change Connection…** (confirma antes de cambiar); ejecutar la sentencia bajo el cursor, la selección o el archivo completo; ▶ Run sobre cada sentencia; cancelar. |
 | Archivos SQL guardados | Cada conexión SQL tiene un nodo **SQL** con sus propios archivos `.sql`; al abrir uno queda vinculado a la conexión. Crear, renombrar, eliminar y guardar ahí la consulta actual. |
 | Ubicaciones SQL | Vincular a una conexión carpetas existentes con archivos `.sql` (por ejemplo la carpeta `sql/` de un repositorio) y recorrerlas con sus subcarpetas; elegir dónde se guardan los archivos nuevos. Las rutas aceptan `~` y `${workspaceFolder}`; desvincular nunca borra archivos. |
 | División de sentencias | `;` en todos los motores, más `GO` (SQL Server), `DELIMITER` (MySQL), `/` y bloques PL/SQL (Oracle), cuerpos `$$` (PostgreSQL) y triggers (SQLite). |
-| Resultados | Panel inferior con una pestaña por conjunto de resultados, opción de conservar pestañas, paginación, orden, selección de filas, copiar como TSV y exportar a CSV, JSON o Excel (`.xlsx`, con números y fechas como valores de Excel). |
+| Resultados | Panel inferior con **Output** primero y una pestaña por conjunto de resultados, que se conservan entre ejecuciones (hasta 50; con **Keep tabs** apagado se limpian en cada ejecución) y se reordenan arrastrándolas, paginación, orden, selección de filas, copiar como TSV y exportar a CSV, JSON o Excel (`.xlsx`, con números y fechas como valores de Excel). |
 | Salida SQL | Cada sentencia queda registrada con su tiempo, filas traídas/afectadas y errores; los errores llevan a la línea y columna del editor y quedan subrayados. |
 | Historial de consultas | **Query History…** lista lo que se ejecutó en cada conexión SQL o Redis, lo más reciente primero, con base, hora, duración y filas o error; se puede buscar, insertar una sentencia en el editor o abrirla en uno nuevo. |
 | Acciones sobre tablas | En una tabla o vista: **Open Data**, **Open SQL**, **Show Structure** (columnas e índices), **Show DDL** y **Generate SQL** → SELECT, INSERT, UPDATE, DELETE en un editor nuevo. |
@@ -86,7 +86,7 @@ update customers set active = false where id = 42;
 
 <!-- GIF (sql-editor.gif): Ctrl/Cmd+Enter sobre una sentencia, pestaña de resultados, exportar a Excel. ![Editor SQL](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/sql-editor.gif) -->
 
-Cada consulta abre una pestaña en **DB Client → Results**; la pestaña **Output** lista cada sentencia con su tiempo y número de filas. **CSV**, **JSON** y **Excel** en la barra de la pestaña exportan todas sus filas en el orden actual.
+Cada consulta abre una pestaña en **DB Client → Results**, después de las anteriores; la pestaña **Output**, siempre primera, lista cada sentencia con su tiempo y número de filas. Arrastra una pestaña para reordenarla (suéltala sobre **Output** para dejarla como primer resultado); clic central o **×** la cierra. **CSV**, **JSON** y **Excel** en la barra de la pestaña exportan todas sus filas en el orden actual.
 
 **Guardar consultas por conexión.** Expande una conexión SQL y usa **New SQL File** sobre su nodo **SQL**, o pulsa **Save to Connection's SQL Folder** en la barra del editor para conservar la consulta actual. Los archivos se abren ya vinculados a su conexión. Se guardan en el almacenamiento de la extensión, una carpeta por conexión; configura `dbclient.sqlFolder` para guardarlos en otro lugar, como una carpeta sincronizada o versionada.
 
@@ -97,6 +97,8 @@ Save new files in:  ${workspaceFolder}/sql
 Linked folders:     ${workspaceFolder}/sql
                     ~/projects/reports
 ```
+
+**Ver y cambiar la conexión del editor.** La primera línea de cada editor SQL y Redis muestra la conexión y la base contra la que se ejecuta, por ejemplo `prod-pg / sales`, y la barra de estado muestra lo mismo. Haz clic ahí o en **Change Connection…** (**Cambiar conexión…**) y elige otra conexión; si el editor ya tenía una, un diálogo pide confirmación antes de cambiarla. Apaga esa línea con `dbclient.connectionLens`.
 
 **Trabajar con una tabla.** Haz clic derecho sobre una tabla del árbol. **Open Data** ejecuta `SELECT * FROM` la tabla; **Open SQL** abre esa misma consulta en un editor nuevo sin ejecutarla; **Show Structure** lista sus columnas e índices en el panel Results; **Show DDL** y **Generate SQL** abren la sentencia en un editor nuevo vinculado a la conexión.
 
