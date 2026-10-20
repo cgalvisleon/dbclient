@@ -34,7 +34,7 @@ import { openConnectionForm } from './webviews/connectionForm';
 import { NatsConsoles } from './webviews/natsConsole';
 import { openValueViewer } from './webviews/redisValue';
 import { openSettingsPanel } from './webviews/settings';
-import { RESULTS_VIEW_ID, ResultsView } from './webviews/resultsView';
+import { RESULTS_VIEW_ID, ResultsView, RowAction } from './webviews/resultsView';
 
 /** Returned from activate() so the smoke test can drive the extension; not a public API. */
 export interface DbClientInternals {
@@ -812,6 +812,22 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const editor = await vscode.window.showTextDocument(uri, { preserveFocus: false });
     await runner.run(editor, { offset });
   });
+  // Context menu of a result cell; the webview's data-vscode-context says which cell.
+  const rowActions: Record<string, RowAction> = {
+    copyValue: 'copyValue',
+    copyRow: 'copyRow',
+    copyRowJson: 'copyRowJson',
+    generateRowInsert: 'insert',
+    generateRowUpdate: 'update',
+    generateRowDelete: 'delete',
+  };
+  for (const [name, action] of Object.entries(rowActions)) {
+    command(`dbclient.results.${name}`, (cell?: { seq?: number; row?: number; col?: number }) => {
+      if (cell?.seq !== undefined && cell.row !== undefined) {
+        results.post({ type: 'rowAction', action, seq: cell.seq, row: cell.row, col: cell.col ?? 0 });
+      }
+    });
+  }
   command('dbclient.cancelQuery', () => runner.cancel(vscode.window.activeTextEditor));
 
   return { store, manager, tree, dragAndDrop, bindings, sqlFiles, sqlLocations, history, catalog, results };

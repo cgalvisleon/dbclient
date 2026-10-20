@@ -73,7 +73,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pe
 | D4 | MSSQL | 3 | 1 |
 | D5 | Oracle (por host y servicio o por URL JDBC: servicio, SID, `tcps://`, descriptor o alias de tnsnames.ora) | 3 | 1 |
 
-### S — Editor SQL (43)
+### S — Editor SQL (45)
 
 Referencia funcional: el editor SQL de NetBeans (selector de conexión en el editor, ejecutar archivo o sentencia con atajos, resultados en pestañas bajo el editor, paginación de filas traídas, salida SQL con tiempos y errores navegables, edición de datos en la grilla).
 
@@ -85,12 +85,13 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 | S4 | Autocompletado de objetos reales (esquemas, tablas, vistas, columnas) resolviendo alias | 5 | 1 |
 | S5 | Historial de consultas por conexión (SQL y Redis): sentencia, base, duración, filas o error; búsqueda, insertar en el editor o abrir en uno nuevo, copiar, limpiar; tamaño configurable (`dbclient.historySize`, 0 lo apaga) y sin comandos con credenciales | 2 | 1 |
 | S6 | Acciones desde el árbol: estructura de tabla, abrir datos, abrir la SQL sin ejecutarla, DDL, generar SELECT/INSERT/UPDATE/DELETE | 4 | 1 |
-| S7 | Salida SQL: registro por sentencia con tiempo de ejecución, filas afectadas y errores con línea/columna que navegan al editor | 3 | 1 |
+| S7 | Salida SQL: registro por sentencia con tiempo de ejecución, filas afectadas y errores con línea/columna que navegan al editor; limpiar el registro y reiniciar la numeración de consultas | 3 | 1 |
 | S8 | Edición de datos en la grilla: editar celdas, insertar y eliminar filas, confirmar o cancelar (genera el DML por clave primaria) | 4 | 1 |
 | S9 | Carpeta SQL por conexión: archivos `.sql` persistentes, vinculados a su conexión al abrirlos; crear, renombrar, eliminar, guardar la consulta actual; ubicación configurable | 3 | 1 |
 | S10 | Exportar resultados a Excel (`.xlsx`) con números y fechas como valores de Excel | 2 | 1 |
 | S11 | Ubicaciones SQL por conexión: vincular carpetas existentes con archivos `.sql` (subcarpetas, `~` y `${workspaceFolder}`), vínculo automático por la carpeta más específica (empate: se pregunta y se recuerda), ubicación de guardado configurable, vigilancia de cambios externos; desvincular nunca borra archivos | 3 | 1 |
 | S12 | Eliminar desde el árbol según el motor: tablas y vistas en todos los SQL (CASCADE en PostgreSQL, CASCADE CONSTRAINTS en Oracle; vistas materializadas en PostgreSQL) y esquemas en PostgreSQL y SQL Server, bases en MySQL y usuarios en Oracle; confirmación modal con el `DROP`, y para esquemas escribir el nombre | 2 | 0.5 |
+| S13 | Menú contextual de una celda del resultado: copiar valor, copiar registro (TSV o JSON) y generar INSERT/UPDATE/DELETE del registro con literales del dialecto (por clave primaria; sin ella, por todas las columnas con aviso) en un editor vinculado | 2 | 0.5 |
 
 ### R — Redis (11)
 
@@ -112,7 +113,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 ## 4. Cálculo de la brecha
 
 ```
-total   = Σ peso                      (hoy 120)
+total   = Σ peso                      (hoy 122)
 avance  = Σ (peso × estado)
 brecha  = (total − avance) / total × 100 %
 ```
@@ -122,12 +123,12 @@ brecha  = (total − avance) / total × 100 %
 | F — Fundación | 10 | 9 | 1 |
 | C — Conexiones y persistencia | 29 | 28,5 | 0,5 |
 | D — Drivers SQL | 16 | 16 | 0 |
-| S — Editor SQL | 43 | 42 | 1 |
+| S — Editor SQL | 45 | 43 | 2 |
 | R — Redis | 11 | 11 | 0 |
 | N — NATS | 11 | 11 | 0 |
-| **Total** | **120** | **117,5** | **2,5** |
+| **Total** | **122** | **118,5** | **3,5** |
 
-**Brecha actual: 2,1 % (2,5 de 120 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento); probar en Cursor la actualización por nodo (C9) y el borrado desde el árbol, y verificar el `DROP` contra MySQL, SQL Server y Oracle (S12: verificado en PostgreSQL y SQLite).
+**Brecha actual: 2,9 % (3,5 de 122 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento); probar en Cursor la actualización por nodo (C9) y el borrado desde el árbol, y verificar el `DROP` contra MySQL, SQL Server y Oracle (S12: verificado en PostgreSQL y SQLite); verificar contra MySQL, SQL Server y Oracle el SQL generado desde un registro y ver el menú contextual en Cursor (S13: verificado en PostgreSQL y SQLite).
 
 ## 5. Orden sugerido para cerrar la brecha
 
@@ -177,6 +178,7 @@ brecha  = (total − avance) / total × 100 %
 - Autocompletado (S4): pruebas unitarias del lector SQL (tablas con alias en FROM con comas, JOIN, UPDATE, INSERT, subconsultas; contexto tabla/columna/miembro) y prueba de humo por motor: columnas tras `alias.` y tablas tras `FROM`.
 - Edición en la grilla (S8): pruebas unitarias del mapeo (`*` por nombre, listas por posición, expresiones y duplicados de solo lectura, motivos: vista, sin clave primaria, clave ausente) y del DML parametrizado por dialecto; prueba de humo por motor: **Open Data** editable, confirmar actualización + inserción + eliminación y recarga de las filas guardadas, rechazo con reversión de una clave vieja, motivo de solo lectura; prueba del webview real (`media/results.js`) en jsdom: doble clic, Enter/Escape/Tab, columnas de solo lectura, NULL, fila nueva con DEFAULT, eliminar, confirmar y su respuesta, error que conserva los cambios, cancelar y texto que sobrevive a un redibujado. No verificado a mano: el aspecto visual de la grilla editable en VS Code/Cursor.
 - Conexión del editor (S1): prueba de humo del CodeLens en la línea 0 con el nombre de la conexión, cambio cancelado que conserva la conexión, cambio confirmado que la aplica y misma conexión sin pregunta. Pestañas de resultados (S2): prueba en jsdom de Output primero, pestañas conservadas entre ejecuciones, arrastre (incluido soltar sobre Output), pestaña activa tras moverla, **Keep tabs** apagado y límite de 50. No verificado a mano: el arrastre y el diálogo de confirmación dentro de Cursor.
+- Menú del registro (S13) y limpiar la salida (S7): pruebas unitarias de `sqlLiteral` (NULL, booleanos, enteros grandes como texto, comillas, barra invertida en MySQL, `N''` en SQL Server, `TIMESTAMP` en Oracle) y de `rowSql` (por clave y por todas las columnas); prueba en jsdom de **Clear** (registro vacío y numeración desde 1), del `data-vscode-context` de las celdas y de las acciones de copiar y generar; prueba de humo en SQLite y PostgreSQL: DELETE sin clave y UPDATE por clave generados en un editor vinculado y ejecutados sin error. No verificado: MySQL, SQL Server y Oracle (contenedores apagados) y el menú nativo dentro de Cursor.
 
 ### Verificación (v0.6.0)
 
@@ -244,3 +246,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-19 | **Open SQL** en el menú de tablas y vistas: abre el `SELECT * FROM` de **Open Data** en un editor vinculado sin ejecutarlo (S6, sin cambio de puntaje); v0.14.0 | 2,1 % |
 | 2026-10-19 | La conexión del editor SQL/Redis en su primera línea (CodeLens con **Change Connection…**, `dbclient.connectionLens`) y cambio de conexión con confirmación modal; prueba de humo (S1, sin cambio de puntaje) | 2,1 % |
 | 2026-10-19 | Panel de resultados: **Output** fija en primer lugar, pestañas conservadas entre ejecuciones por defecto (máximo 50), reordenables arrastrando y cierre con clic central; pruebas en jsdom (S2, sin cambio de puntaje); v0.15.0 | 2,1 % |
+| 2026-10-20 | Botón **Clear** en Output (vacía el registro y reinicia la numeración, S7) y menú contextual de las celdas: copiar valor, copiar registro (TSV/JSON) y generar INSERT/UPDATE/DELETE del registro (nuevo S13, 2 pts, en 0,5: verificado en PostgreSQL y SQLite); total 120 → 122 | 2,9 % |

@@ -2,12 +2,12 @@ import * as vscode from 'vscode';
 import { CatalogCache } from '../connections/catalog';
 import { ConnectionManager } from '../connections/manager';
 import { ParamValue, StatementResult, TableInfo } from '../drivers/types';
-import { editMapping } from '../sql/editable';
-import { GridChange, gridStatements } from '../sql/generate';
+import { editMapping, resultColumnMapping } from '../sql/editable';
+import { GridChange, gridStatements, rowSql, RowSqlKind } from '../sql/generate';
 import { singleTableSelect } from '../sql/parse';
 import { toCell } from '../webviews/cells';
 import { ResultsView } from '../webviews/resultsView';
-import { Binding } from './bindings';
+import { Binding, DocumentBindings } from './bindings';
 
 export interface GridEdit {
   id: number;
@@ -41,6 +41,7 @@ const MAX_CONTEXTS = 200;
  * Makes single-table results editable (NetBeans-style): decides which result columns map to
  * table columns, and turns the grid's pending changes into parameterized DML committed in one
  * transaction on a connection of its own; then re-runs the query to show the saved rows.
+ * Any single-table result (editable or not) can also turn one of its rows into SQL.
  */
 export class GridEditor {
   private readonly contexts = new Map<number, EditContext>();
@@ -50,12 +51,17 @@ export class GridEditor {
     private readonly manager: ConnectionManager,
     private readonly catalog: CatalogCache,
     private readonly results: ResultsView,
+    private readonly bindings: DocumentBindings,
   ) {
     results.onCommit((editId, changes) => this.commit(editId, changes));
+    results.onRowSql((source, kind, row) => this.rowSql(source, kind, row));
   }
 
-  /** Edit info for a result, a reason it stays read-only, or nothing when it is not a single-table SELECT. */
-  async prepare(binding: Binding, dialect: string, sql: string, result: StatementResult): Promise<{ edit?: GridEdit; readOnly?: string }> {
+  /**
+   * Edit info for a result, or a reason it stays read-only, plus `source` (for row SQL) when
+   * its columns map onto one table; nothing when it is not a single-table SELECT.
+   */
+  async prepare(binding: Binding, dialect: string, sql: string, result: StatementResult): Promise<{ edit?: GridEdit; readOnly?: string; source?: number }> {
     const select = singleTableSelect(sql);
     if (!select || !result.columns.length) {
       return {};
@@ -66,20 +72,40 @@ export class GridEditor {
       if (!info) {
         return {};
       }
-      const mapping = editMapping(select, result.columns.map((c) => c.name), info);
-      if ('reason' in mapping) {
-        return { readOnly: mapping.reason };
+      const names = result.columns.map((c) => c.name);
+      const mapping = editMapping(select, names, info);
+      const columns = 'reason' in mapping ? resultColumnMapping(select, names, info) : mapping.columns;
+      if (!columns?.some(Boolean)) {
+        return 'reason' in mapping ? { readOnly: mapping.reason } : {};
       }
       const id = this.nextId++;
       const tableName = [info.ref.schema, info.ref.name].filter(Boolean).join('.');
-      this.contexts.set(id, { connectionId: binding.connectionId, database: binding.database, dialect, info, sql, columns: mapping.columns, table: tableName });
+      this.contexts.set(id, { connectionId: binding.connectionId, database: binding.database, dialect, info, sql, columns, table: tableName });
       if (this.contexts.size > MAX_CONTEXTS) {
         this.contexts.delete(this.contexts.keys().next().value!);
       }
-      return { edit: { id, ...mapping, table: tableName } };
+      return 'reason' in mapping ? { readOnly: mapping.reason, source: id } : { edit: { id, ...mapping, table: tableName }, source: id };
     } catch {
       return {};
     }
+  }
+
+  /** Opens an INSERT, UPDATE or DELETE of one result row (values by result column) in a new editor bound to the result's connection. */
+  private async rowSql(source: number, kind: RowSqlKind, row: ParamValue[]): Promise<void> {
+    const context = this.contexts.get(source);
+    if (!context) {
+      vscode.window.showWarningMessage(vscode.l10n.t('Run the query again to generate SQL from its rows.'));
+      return;
+    }
+    const values: Record<string, ParamValue> = {};
+    context.columns.forEach((column, i) => {
+      if (column) {
+        values[column] = row[i] ?? null;
+      }
+    });
+    const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: `${rowSql(kind, context.info, context.dialect, values)}\n` });
+    await this.bindings.set(doc, { connectionId: context.connectionId, database: context.database });
+    await vscode.window.showTextDocument(doc);
   }
 
   private async commit(editId: number, changes: GridRowChange[]): Promise<void> {

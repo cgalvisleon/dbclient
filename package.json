@@ -217,6 +217,36 @@
         "category": "DB Client"
       },
       {
+        "command": "dbclient.results.copyValue",
+        "title": "%command.results.copyValue%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.results.copyRow",
+        "title": "%command.results.copyRow%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.results.copyRowJson",
+        "title": "%command.results.copyRowJson%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.results.generateRowInsert",
+        "title": "%command.results.generateRowInsert%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.results.generateRowUpdate",
+        "title": "%command.results.generateRowUpdate%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.results.generateRowDelete",
+        "title": "%command.results.generateRowDelete%",
+        "category": "DB Client"
+      },
+      {
         "command": "dbclient.selectConnection",
         "title": "%command.selectConnection%",
         "category": "DB Client",
@@ -725,6 +755,38 @@
           "group": "9_drop@1"
         }
       ],
+      "webview/context": [
+        {
+          "command": "dbclient.results.copyValue",
+          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell'",
+          "group": "1_copy@0"
+        },
+        {
+          "command": "dbclient.results.copyRow",
+          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell'",
+          "group": "1_copy@1"
+        },
+        {
+          "command": "dbclient.results.copyRowJson",
+          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell'",
+          "group": "1_copy@2"
+        },
+        {
+          "command": "dbclient.results.generateRowInsert",
+          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell' && rowSql",
+          "group": "2_sql@3"
+        },
+        {
+          "command": "dbclient.results.generateRowUpdate",
+          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell' && rowSql",
+          "group": "2_sql@4"
+        },
+        {
+          "command": "dbclient.results.generateRowDelete",
+          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell' && rowSql",
+          "group": "2_sql@5"
+        }
+      ],
       "editor/title": [
         {
           "command": "dbclient.selectConnection",
@@ -753,6 +815,30 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "dbclient.results.copyValue",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.results.copyRow",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.results.copyRowJson",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.results.generateRowInsert",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.results.generateRowUpdate",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.results.generateRowDelete",
+          "when": "false"
+        },
         {
           "command": "dbclient.editConnection",
           "when": "false"

@@ -28,7 +28,7 @@ export class SqlRunner implements vscode.Disposable {
     private readonly history: QueryHistory,
     private readonly catalog: CatalogCache,
   ) {
-    this.grid = new GridEditor(manager, catalog, results);
+    this.grid = new GridEditor(manager, catalog, results, bindings);
   }
 
   private readonly grid: GridEditor;

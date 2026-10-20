@@ -21,6 +21,22 @@ export function editMapping(select: SingleTableSelect, resultColumns: string[], 
   if (!info.primaryKey.length) {
     return { reason: `${name} has no primary key.` };
   }
+  const columns = resultColumnMapping(select, resultColumns, info);
+  if (!columns) {
+    return { reason: 'The result columns cannot be matched to the table.' };
+  }
+  const key = info.primaryKey.map((k) => columns.indexOf(k));
+  if (key.some((k) => k < 0)) {
+    return { reason: `Include the primary key (${info.primaryKey.join(', ')}) in the result to edit it.` };
+  }
+  return { columns, key };
+}
+
+/**
+ * Table column behind each result column of a single-table SELECT (null for expressions and
+ * repeated columns: only the first copy counts); undefined when they cannot be matched.
+ */
+export function resultColumnMapping(select: SingleTableSelect, resultColumns: string[], info: TableInfo): (string | null)[] | undefined {
   let columns: (string | null)[];
   const stars = select.items.filter((i) => i && 'star' in i).length;
   if (stars === 1 && select.items.length === 1) {
@@ -28,13 +44,7 @@ export function editMapping(select: SingleTableSelect, resultColumns: string[], 
   } else if (stars === 0 && select.items.length === resultColumns.length) {
     columns = select.items.map((item) => (item && 'column' in item ? findByName(info.columns, item.column, (c) => c.name, item.quoted)?.name ?? null : null));
   } else {
-    return { reason: 'The result columns cannot be matched to the table.' };
+    return undefined;
   }
-  // The same table column twice: only the first copy is editable.
-  columns = columns.map((c, i) => (c && columns.indexOf(c) !== i ? null : c));
-  const key = info.primaryKey.map((k) => columns.indexOf(k));
-  if (key.some((k) => k < 0)) {
-    return { reason: `Include the primary key (${info.primaryKey.join(', ')}) in the result to edit it.` };
-  }
-  return { columns, key };
+  return columns.map((c, i) => (c && columns.indexOf(c) !== i ? null : c));
 }

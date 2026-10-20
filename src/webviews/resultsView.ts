@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import type { ParamValue } from '../drivers/types';
 import type { GridEdit, GridRowChange } from '../editor/gridEditor';
+import type { RowSqlKind } from '../sql/generate';
 import { buildXlsx, XlsxCell } from '../export/xlsx';
 import { mediaRoots, webviewHtml } from './html';
 
@@ -19,7 +20,12 @@ export interface ResultTab {
   edit?: GridEdit;
   /** Why a single-table result is not editable. */
   readOnly?: string;
+  /** Present when its rows can be turned into INSERT/UPDATE/DELETE (columns map onto one table). */
+  source?: number;
 }
+
+/** Actions of the grid's context menu (`dbclient.results.*` commands). */
+export type RowAction = 'copyValue' | 'copyRow' | 'copyRowJson' | RowSqlKind;
 
 export interface LogEntry {
   time: string;
@@ -39,6 +45,8 @@ type ToView =
   | { type: 'focusLog' }
   /** Activates a result tab; negative counts from the end. */
   | { type: 'select'; tab: number }
+  /** A context menu action on the cell `row`/`col` of the tab numbered `seq`. */
+  | { type: 'rowAction'; action: RowAction; seq: number; row: number; col: number }
   | {
       type: 'committed';
       editId: number;
@@ -56,7 +64,8 @@ type FromView =
   | { type: 'save'; format: 'csv' | 'json'; content: string; name: string }
   | { type: 'saveXlsx'; name: string; sheet: string; columns: string[]; types: (string | undefined)[]; rows: XlsxCell[][] }
   | { type: 'reveal'; location: NonNullable<LogEntry['location']> }
-  | { type: 'commit'; editId: number; changes: GridRowChange[] };
+  | { type: 'commit'; editId: number; changes: GridRowChange[] }
+  | { type: 'rowSql'; source: number; kind: RowSqlKind; row: ParamValue[] };
 
 /** Bottom-panel view with one tab per result set plus the SQL output log. */
 export class ResultsView implements vscode.WebviewViewProvider {
@@ -65,6 +74,7 @@ export class ResultsView implements vscode.WebviewViewProvider {
   private queue: ToView[] = [];
   private readyWaiters: (() => void)[] = [];
   private commitHandler?: (editId: number, changes: GridRowChange[]) => Promise<void>;
+  private rowSqlHandler?: (source: number, kind: RowSqlKind, row: ParamValue[]) => Promise<void>;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -83,6 +93,11 @@ export class ResultsView implements vscode.WebviewViewProvider {
   /** Handles "Commit" from an editable grid. */
   onCommit(handler: (editId: number, changes: GridRowChange[]) => Promise<void>): void {
     this.commitHandler = handler;
+  }
+
+  /** Handles "Generate INSERT/UPDATE/DELETE" from a row's context menu. */
+  onRowSql(handler: (source: number, kind: RowSqlKind, row: ParamValue[]) => Promise<void>): void {
+    this.rowSqlHandler = handler;
   }
 
   /** Makes the panel visible without taking focus from the editor. */
@@ -146,6 +161,9 @@ export class ResultsView implements vscode.WebviewViewProvider {
       }
       case 'commit':
         await this.commitHandler?.(message.editId, message.changes);
+        return;
+      case 'rowSql':
+        await this.rowSqlHandler?.(message.source, message.kind, message.row);
         return;
       case 'reveal': {
         const { uri, line, character } = message.location;

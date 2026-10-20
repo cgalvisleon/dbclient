@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.0 — 2026-10-20
+
+- **Clear** on the **Output** tab empties the log and numbers queries from 1 again (open result tabs are renumbered in their current order).
+- Right-click a result cell: **Copy Value**, **Copy Row** (TSV with header), **Copy Row as JSON**, and on results of one table **Generate INSERT/UPDATE/DELETE from Row**, which opens the statement with the row's values in a new editor bound to the connection (`WHERE` by primary key, or by every column with a warning comment).
+
 ## 0.15.0 — 2026-10-19
 
 - SQL and Redis editors show their connection and database on the first line, with **Change Connection…**; the status bar tooltip adds the engine and whether it is connected. Setting `dbclient.connectionLens` turns the line off.

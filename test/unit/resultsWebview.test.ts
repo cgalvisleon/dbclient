@@ -198,3 +198,50 @@ describe('results webview tabs', () => {
     assert.deepStrictEqual(labels.slice(0, 2), ['Output', '3. q3']);
   });
 });
+
+describe('results webview output and cell menu', () => {
+  it('clears the output and renumbers, and answers context menu actions', () => {
+    const dom = new JSDOM('<!doctype html><div id="app"></div>', { runScripts: 'outside-only', pretendToBeVisual: true });
+    const window = dom.window as unknown as Window & typeof globalThis & { acquireVsCodeApi: unknown; eval(code: string): unknown };
+    const posted: Record<string, unknown>[] = [];
+    window.acquireVsCodeApi = () => ({ postMessage: (m: Record<string, unknown>) => posted.push(JSON.parse(JSON.stringify(m))), getState: () => undefined, setState: () => undefined });
+    window.eval(fs.readFileSync(path.join(__dirname, '../../media/l10n.js'), 'utf8'));
+    window.eval(source);
+    const doc = window.document;
+    const post = (data: unknown) => window.dispatchEvent(new window.MessageEvent('message', { data }));
+    const labels = () => [...doc.querySelectorAll('.tabbar .tab span:first-child')].map((x) => x.textContent);
+    const columns = [{ name: 'id' }, { name: 'name' }];
+    const result = (title: string, extra = {}) =>
+      post({ type: 'result', tab: { title, sql: title, columns, rows: [[1, 'a\tb'], [2, null]], rowCount: 2, truncated: false, durationMs: 1, ...extra } });
+
+    result('a');
+    result('b', { source: 4 });
+    post({ type: 'log', entry: { time: '1', connection: 'c', sql: 'select 1', ok: true, message: 'ok' } });
+    post({ type: 'focusLog' });
+    assert.ok(doc.querySelector('.log .entry'), 'log shown');
+    const clear = [...doc.querySelectorAll('button')].find((b) => b.textContent === 'Clear')!;
+    clear.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    assert.ok(!doc.querySelector('.log .entry'), 'log cleared');
+    assert.deepStrictEqual(labels(), ['Output', '1. a', '2. b'], 'open tabs numbered from 1');
+    result('c');
+    assert.deepStrictEqual(labels(), ['Output', '1. a', '2. b', '3. c'], 'numbering continues');
+
+    // Cells carry the context VS Code reads for the menu.
+    post({ type: 'select', tab: 1 });
+    const context = JSON.parse(doc.querySelector('tbody td:not(.rownum)')!.getAttribute('data-vscode-context')!);
+    assert.deepStrictEqual(context, { webviewSection: 'cell', seq: 2, row: 0, col: 0, rowSql: true, preventDefaultContextMenuItems: true });
+
+    posted.length = 0;
+    post({ type: 'rowAction', action: 'copyValue', seq: 2, row: 0, col: 1 });
+    post({ type: 'rowAction', action: 'copyRow', seq: 2, row: 1, col: 0 });
+    post({ type: 'rowAction', action: 'copyRowJson', seq: 2, row: 1, col: 0 });
+    post({ type: 'rowAction', action: 'update', seq: 2, row: 0, col: 0 });
+    post({ type: 'rowAction', action: 'insert', seq: 1, row: 0, col: 0 });
+    assert.deepStrictEqual(posted, [
+      { type: 'copy', text: 'a\tb' },
+      { type: 'copy', text: 'id\tname\n2\t' },
+      { type: 'copy', text: '{\n  "id": 2,\n  "name": null\n}' },
+      { type: 'rowSql', source: 4, kind: 'update', row: [1, 'a\tb'] },
+    ], 'a tab without source sends no SQL');
+  });
+});

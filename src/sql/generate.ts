@@ -160,6 +160,68 @@ export function gridStatements(info: TableInfo, dialect: string, changes: GridCh
   });
 }
 
+const ISO_UTC = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2}(?:\.\d+)?)Z$/;
+
+/** A value written as a SQL literal of the dialect, for statements the user reads and runs. */
+export function sqlLiteral(value: ParamValue, type: string | undefined, dialect: string): string {
+  if (value === null) {
+    return 'NULL';
+  }
+  if (typeof value === 'boolean') {
+    return dialect === 'postgres' ? (value ? 'TRUE' : 'FALSE') : value ? '1' : '0';
+  }
+  if (typeof value === 'number') {
+    return String(value);
+  }
+  const base = (type ?? '').replace(/\(.*$/, '').trim();
+  // Big integers and exact decimals arrive as text; booleans as 'true'/'false' on some drivers.
+  if (base && NUMERIC.test(base) && /^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(value)) {
+    return value;
+  }
+  // Oracle does not read ISO text as a date; an ANSI timestamp literal works for DATE and TIMESTAMP.
+  const iso = dialect === 'oracle' && TEMPORAL.test(base) ? ISO_UTC.exec(value) : null;
+  if (iso) {
+    return `TIMESTAMP '${iso[1]} ${iso[2]}'`;
+  }
+  const escaped = value.replace(/'/g, "''");
+  if (dialect === 'mysql') {
+    return `'${escaped.replace(/\\/g, '\\\\')}'`;
+  }
+  return dialect === 'mssql' && /[^\x00-\x7f]/.test(value) ? `N'${escaped}'` : `'${escaped}'`;
+}
+
+export type RowSqlKind = 'insert' | 'update' | 'delete';
+
+/**
+ * INSERT, UPDATE or DELETE of one result row, with its values as literals. `values` holds the
+ * row's table columns by name. Rows are matched by primary key; without every key column the
+ * WHERE uses all the given columns and says so in a comment.
+ */
+export function rowSql(kind: RowSqlKind, info: TableInfo, dialect: string, values: Record<string, ParamValue>): string {
+  const table = qualifiedName(info.ref, dialect);
+  const typeOf = (name: string) => info.columns.find((c) => c.name === name)?.type;
+  const lit = (name: string) => sqlLiteral(values[name], typeOf(name), dialect);
+  const names = Object.keys(values);
+  const byKey = info.primaryKey.length > 0 && info.primaryKey.every((k) => k in values);
+  const where = () => {
+    const columns = byKey ? info.primaryKey : names;
+    const conditions = columns.map((c) => (values[c] === null ? `${q(c, dialect)} IS NULL` : `${q(c, dialect)} = ${lit(c)}`));
+    const note = byKey ? '' : '-- No primary key in the result: the condition uses every column; check that it matches one row.\n';
+    return `${note}WHERE ${conditions.join('\n  AND ')}`;
+  };
+  switch (kind) {
+    case 'insert':
+      return `INSERT INTO ${table} (${names.map((n) => q(n, dialect)).join(', ')})\nVALUES (${names.map(lit).join(', ')});`;
+    case 'update': {
+      const keys = new Set(byKey ? info.primaryKey : []);
+      const sets = names.filter((n) => !keys.has(n));
+      return `UPDATE ${table}\nSET ${(sets.length ? sets : names).map((n) => `${q(n, dialect)} = ${lit(n)}`).join(',\n    ')}\n${where()};`;
+    }
+    case 'delete':
+      return `DELETE FROM ${table}\n${where()};`;
+  }
+}
+
 /** Whether a declared column type holds dates or times (drivers bind ISO strings as dates for these). */
 export function isTemporalType(type: string | undefined): boolean {
   return Boolean(type && TEMPORAL.test(type));

@@ -42,10 +42,11 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Ubicaciones SQL | Vincular a una conexión carpetas existentes con archivos `.sql` (por ejemplo la carpeta `sql/` de un repositorio) y recorrerlas con sus subcarpetas; elegir dónde se guardan los archivos nuevos. Las rutas aceptan `~` y `${workspaceFolder}`; desvincular nunca borra archivos. |
 | División de sentencias | `;` en todos los motores, más `GO` (SQL Server), `DELIMITER` (MySQL), `/` y bloques PL/SQL (Oracle), cuerpos `$$` (PostgreSQL) y triggers (SQLite). |
 | Resultados | Panel inferior con **Output** primero y una pestaña por conjunto de resultados, que se conservan entre ejecuciones (hasta 50; con **Keep tabs** apagado se limpian en cada ejecución) y se reordenan arrastrándolas, paginación, orden, selección de filas, copiar como TSV y exportar a CSV, JSON o Excel (`.xlsx`, con números y fechas como valores de Excel). |
-| Salida SQL | Cada sentencia queda registrada con su tiempo, filas traídas/afectadas y errores; los errores llevan a la línea y columna del editor y quedan subrayados. |
+| Salida SQL | Cada sentencia queda registrada con su tiempo, filas traídas/afectadas y errores; los errores llevan a la línea y columna del editor y quedan subrayados. **Clear** vacía el registro y vuelve a numerar las consultas desde 1. |
 | Historial de consultas | **Query History…** lista lo que se ejecutó en cada conexión SQL o Redis, lo más reciente primero, con base, hora, duración y filas o error; se puede buscar, insertar una sentencia en el editor o abrirla en uno nuevo. |
 | Acciones sobre tablas | En una tabla o vista: **Open Data**, **Open SQL**, **Show Structure** (columnas e índices), **Show DDL** y **Generate SQL** → SELECT, INSERT, UPDATE, DELETE en un editor nuevo. |
 | Actualizar y eliminar | **Refresh** sobre una conexión, base, esquema, carpeta o tabla la vuelve a leer, así aparecen los esquemas y tablas creados o borrados por fuera; el DDL ejecutado desde el editor actualiza la conexión solo. **Drop…** elimina una tabla o vista (CASCADE en PostgreSQL, CASCADE CONSTRAINTS en Oracle) y, donde el motor los tiene, un esquema: esquemas de PostgreSQL y SQL Server, bases de MySQL, usuarios de Oracle. |
+| Menú del registro | Clic derecho sobre una celda del resultado: **Copy Value**, **Copy Row** (TSV con encabezado), **Copy Row as JSON**; en resultados de una sola tabla, **Generate INSERT/UPDATE/DELETE from Row** abre la sentencia con los valores del registro en un editor nuevo vinculado a la conexión. |
 | Edición en la grilla | Los resultados de una sola tabla con clave primaria se pueden editar: celdas, agregar y eliminar filas, poner NULL, y luego **Commit** (una transacción, por clave primaria) o **Cancel**. |
 | Autocompletado SQL | Palabras clave, tipos y funciones del dialecto de la conexión; con la conexión abierta, sus esquemas, tablas, vistas y columnas, resolviendo los alias de la consulta. |
 | Explorador Redis | Bases con su número de llaves → llaves agrupadas por separador (`:`) con su tipo, usando `SCAN`. |
@@ -103,6 +104,17 @@ Linked folders:     ${workspaceFolder}/sql
 **Trabajar con una tabla.** Haz clic derecho sobre una tabla del árbol. **Open Data** ejecuta `SELECT * FROM` la tabla; **Open SQL** abre esa misma consulta en un editor nuevo sin ejecutarla; **Show Structure** lista sus columnas e índices en el panel Results; **Show DDL** y **Generate SQL** abren la sentencia en un editor nuevo vinculado a la conexión.
 
 **Actualizar o eliminar objetos.** Si alguien cambió la base por fuera de la extensión, pulsa el botón de actualizar sobre la conexión, base, esquema o carpeta (o **Refresh** en su menú contextual) para leerla de nuevo. Para quitar una tabla, vista o esquema, clic derecho → **Drop…**: el diálogo muestra la sentencia `DROP` y, en PostgreSQL y Oracle, ofrece **Drop with CASCADE**; los esquemas además piden escribir su nombre. El árbol se actualiza después de eliminar.
+
+**Convertir un registro en SQL.** Haz clic derecho sobre una celda de un resultado y elige **Generate UPDATE from Row** (**Generar UPDATE con el registro**). Se abre un editor nuevo vinculado a la misma conexión con los valores del registro como literales y un `WHERE` por la clave primaria:
+
+```sql
+UPDATE public.items
+SET name = 'O''Brien',
+    active = TRUE
+WHERE id = 7;
+```
+
+Si el resultado no incluye la clave primaria, el `WHERE` usa todas las columnas y un comentario pide comprobar que coincida con un solo registro. **Copy Value**, **Copy Row** y **Copy Row as JSON** en el mismo menú copian al portapapeles. **Clear** en la pestaña **Output** vacía el registro y vuelve a numerar las consultas siguientes desde 1.
 
 **Editar datos en la grilla.** En un resultado que lee una sola tabla e incluye su clave primaria, haz doble clic en una celda (o pulsa `F2`), escribe y pulsa `Enter`; `Tab` pasa a la columna siguiente y `Escape` descarta. **+ Row** agrega una fila (las celdas sin tocar conservan su DEFAULT), **Delete** marca las filas seleccionadas y **NULL** vacía la celda enfocada. **Commit** guarda todo en una transacción y recarga las filas; si una fila cambió mientras tanto, no se guarda nada. Los resultados de vistas, joins o sin la clave muestran una etiqueta **read-only** con el motivo.
 

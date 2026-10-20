@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TableInfo } from '../../src/drivers/types';
-import { editMapping } from '../../src/sql/editable';
+import { editMapping, resultColumnMapping } from '../../src/sql/editable';
 import {
   canCascade,
   createTableSql,
@@ -9,7 +9,9 @@ import {
   gridStatements,
   insertTemplate,
   openDataSql,
+  rowSql,
   selectTemplate,
+  sqlLiteral,
   structureTables,
   updateTemplate,
 } from '../../src/sql/generate';
@@ -232,5 +234,46 @@ describe('dropSql', () => {
     expect(canCascade({ kind: 'table', name: 't' }, 'mysql')).toBe(false);
     expect(canCascade({ kind: 'schema', name: 's' }, 'mssql')).toBe(false);
     expect(canCascade({ kind: 'materialized', name: 'm' }, 'oracle')).toBe(false);
+  });
+});
+
+describe('row SQL', () => {
+  const row = { id: 7, name: "O'Brien", active: true, created: '2026-10-20T08:30:00.000Z', Order: null };
+
+  it('writes literals per dialect', () => {
+    expect(sqlLiteral(null, 'text', 'postgres')).toBe('NULL');
+    expect(sqlLiteral(true, 'boolean', 'postgres')).toBe('TRUE');
+    expect(sqlLiteral(false, 'bit', 'mssql')).toBe('0');
+    expect(sqlLiteral('12345678901234567890', 'bigint', 'postgres')).toBe('12345678901234567890');
+    expect(sqlLiteral('12', 'varchar(5)', 'postgres')).toBe("'12'");
+    expect(sqlLiteral("it's", 'text', 'sqlite')).toBe("'it''s'");
+    expect(sqlLiteral('a\\b', 'varchar', 'mysql')).toBe("'a\\\\b'");
+    expect(sqlLiteral('año', 'nvarchar', 'mssql')).toBe("N'año'");
+    expect(sqlLiteral('2026-10-20T08:30:00.000Z', 'DATE', 'oracle')).toBe("TIMESTAMP '2026-10-20 08:30:00.000'");
+    expect(sqlLiteral('2026-10-20T08:30:00.000Z', 'datetime2', 'mssql')).toBe("'2026-10-20T08:30:00.000Z'");
+  });
+
+  it('builds INSERT, UPDATE and DELETE by primary key', () => {
+    expect(rowSql('insert', items, 'postgres', row)).toBe(
+      `INSERT INTO public.items (id, name, active, created, "Order")\nVALUES (7, 'O''Brien', TRUE, '2026-10-20T08:30:00.000Z', NULL);`,
+    );
+    expect(rowSql('update', items, 'mysql', row)).toBe(
+      "UPDATE public.items\nSET name = 'O''Brien',\n    active = 1,\n    created = '2026-10-20T08:30:00.000Z',\n    `Order` = NULL\nWHERE id = 7;",
+    );
+    expect(rowSql('delete', items, 'mssql', row)).toBe('DELETE FROM public.items\nWHERE id = 7;');
+  });
+
+  it('matches every column when the key is not in the row', () => {
+    expect(rowSql('delete', items, 'postgres', { name: 'a', Order: null })).toBe(
+      'DELETE FROM public.items\n-- No primary key in the result: the condition uses every column; check that it matches one row.\nWHERE name = \'a\'\n  AND "Order" IS NULL;',
+    );
+    expect(rowSql('update', { ...items, primaryKey: [] }, 'sqlite', { id: 1, name: 'a' })).toContain("SET id = 1,\n    name = 'a'\n-- No primary key");
+  });
+
+  it('maps result columns even when the grid is read-only', () => {
+    const select = singleTableSelect('select name, upper(name), name from items')!;
+    expect(editMapping(select, ['name', 'upper', 'name'], items)).toHaveProperty('reason');
+    expect(resultColumnMapping(select, ['name', 'upper', 'name'], items)).toEqual(['name', null, null]);
+    expect(resultColumnMapping(singleTableSelect('select *, 1 from items')!, ['id', 'x'], items)).toBeUndefined();
   });
 });

@@ -438,6 +438,25 @@ exports.run = async function () {
       const roTab = await until(() => posted.find((m) => m.type === 'result')?.tab, `${name}: read-only result`);
       assert.ok(!roTab.edit && /primary key/.test(roTab.readOnly), `${name}: read-only reason`);
       console.log(`✓ ${name} grid: editable Open Data, commit update/insert/delete, stale key rolled back, read-only reason`);
+
+      // A row's context menu generates SQL in a bound editor, and it runs on the engine.
+      assert.ok(roTab.source !== undefined && tab.source !== undefined, `${name}: results carry a row SQL source`);
+      await api.results.receive({ type: 'rowSql', source: roTab.source, kind: 'delete', row: ['nobody'] });
+      const loose = vscode.window.activeTextEditor;
+      assert.match(loose.document.getText(), /No primary key[\s\S]*WHERE \S*name\S* = 'nobody';/i, `${name}: DELETE by every column`);
+      await api.results.receive({ type: 'rowSql', source: tab.source, kind: 'update', row: done.rows.find((r) => idOf(r) === 1) });
+      const generated = vscode.window.activeTextEditor;
+      assert.notStrictEqual(generated, loose);
+      assert.match(generated.document.getText(), /^UPDATE [\s\S]*'uno'[\s\S]*WHERE \S*id\S* = 1;\n$/i, `${name}: UPDATE by key`);
+      assert.strictEqual(api.bindings.get(generated.document)?.connectionId, config.id, `${name}: generated SQL bound`);
+      for (const editor of [loose, generated]) {
+        await vscode.window.showTextDocument(editor.document);
+        posted.length = 0;
+        await vscode.commands.executeCommand('dbclient.runFile');
+        const entry = await until(() => posted.find((m) => m.type === 'log')?.entry, `${name}: generated SQL ran`);
+        assert.ok(entry.ok, `${name}: generated SQL runs (${entry.message})`);
+      }
+      console.log(`✓ ${name} row SQL: DELETE without key, UPDATE by key, both run`);
     } finally {
       await vscode.commands.executeCommand('workbench.action.closeAllEditors');
       for (const sql of teardown) await driver.execute(sql, { maxRows: 1 }).catch(() => undefined);

@@ -42,10 +42,11 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | SQL locations | Link existing folders of `.sql` files (e.g. a repository's `sql/`) to a connection and browse them with their subfolders; choose where new files are saved. Paths accept `~` and `${workspaceFolder}`; unlinking never deletes files. |
 | Statement splitting | `;` everywhere, plus `GO` (SQL Server), `DELIMITER` (MySQL), `/` and PL/SQL blocks (Oracle), `$$` bodies (PostgreSQL), triggers (SQLite). |
 | Results | Bottom panel with **Output** first and one tab per result set, kept across runs (up to 50; **Keep tabs** off clears them on each run) and reordered by dragging, paging, sorting, row selection, copy as TSV, export to CSV, JSON or Excel (`.xlsx`, numbers and dates as Excel values). |
-| SQL output | Each statement logged with time, rows fetched/affected and errors; errors jump to the line and column in the editor and are underlined. |
+| SQL output | Each statement logged with time, rows fetched/affected and errors; errors jump to the line and column in the editor and are underlined. **Clear** empties the log and numbers queries from 1 again. |
 | Query history | **Query History…** lists what ran on each SQL or Redis connection, newest first, with database, time, duration and rows or error; search it, insert a statement into the editor or open it in a new one. |
 | Table actions | On a table or view: **Open Data**, **Open SQL**, **Show Structure** (columns and indexes), **Show DDL**, and **Generate SQL** → SELECT, INSERT, UPDATE, DELETE in a new editor. |
 | Refresh and drop | **Refresh** on a connection, database, schema, folder or table re-reads it, so schemas and tables created or dropped elsewhere show up; DDL run from the editor refreshes the connection by itself. **Drop…** removes a table or view (CASCADE on PostgreSQL, CASCADE CONSTRAINTS on Oracle) and, where the engine has them, a schema: PostgreSQL and SQL Server schemas, MySQL databases, Oracle users. |
+| Row context menu | Right-click a result cell: **Copy Value**, **Copy Row** (TSV with header), **Copy Row as JSON**; on results of one table, **Generate INSERT/UPDATE/DELETE from Row** opens the statement with the row's values in a new editor bound to the connection. |
 | Grid editing | Results of a single table with a primary key are editable: edit cells, add and delete rows, set NULL, then **Commit** (one transaction, by primary key) or **Cancel**. |
 | SQL completion | Keywords, types and functions of the connection's dialect; with the connection open, its schemas, tables, views and columns, resolving the query's aliases. |
 | Redis explorer | Databases with key counts → keys grouped by separator (`:`) with their type, using `SCAN`. |
@@ -101,6 +102,17 @@ Linked folders:     ${workspaceFolder}/sql
 **Work with a table.** Right-click a table in the tree. **Open Data** runs `SELECT * FROM` the table; **Open SQL** opens that same query in a new editor without running it; **Show Structure** lists its columns and indexes in the Results panel; **Show DDL** and **Generate SQL** open the statement in a new editor bound to the connection.
 
 **Refresh or drop objects.** If someone changed the database outside the extension, press the refresh button on the connection, database, schema or folder (or **Refresh** in its context menu) to read it again. To remove a table, view or schema, right-click it → **Drop…**: the dialog shows the `DROP` statement and, on PostgreSQL and Oracle, offers **Drop with CASCADE**; schemas also ask you to type their name. The tree refreshes after the drop.
+
+**Turn a row into SQL.** Right-click a cell of a result and choose **Generate UPDATE from Row**. A new editor bound to the same connection opens with the row's values as literals and a `WHERE` on the primary key:
+
+```sql
+UPDATE public.items
+SET name = 'O''Brien',
+    active = TRUE
+WHERE id = 7;
+```
+
+When the result does not include the primary key, the `WHERE` uses every column and a comment asks you to check that it matches one row. **Copy Value**, **Copy Row** and **Copy Row as JSON** in the same menu copy to the clipboard. **Clear** on the **Output** tab empties the log and numbers the next queries from 1 again.
 
 **Edit data in the grid.** In a result that reads one table and includes its primary key, double-click a cell (or press `F2`), type, and press `Enter`; `Tab` moves to the next column and `Escape` discards. **+ Row** adds a row (untouched cells keep their DEFAULT), **Delete** marks the selected rows, and **NULL** clears the focused cell. **Commit** saves everything in one transaction and reloads the rows; if a row changed meanwhile, nothing is saved. Results from views, joins or without the key show a **read-only** badge with the reason.
 

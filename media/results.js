@@ -6,7 +6,7 @@
   /**
    * @typedef {{ title: string, sql: string, command?: string, columns: {name: string, type?: string}[],
    *   rows: any[][], rowCount: number|null, truncated: boolean, durationMs: number,
-   *   edit?: { id: number, columns: (string|null)[], key: number[], table: string }, readOnly?: string }} Tab
+   *   edit?: { id: number, columns: (string|null)[], key: number[], table: string }, readOnly?: string, source?: number }} Tab
    * @typedef {{ orig: Record<number, any[]>, changed: Record<number, Record<number, true>>, inserted: number[], deleted: number[] }} Pending
    * @typedef {Tab & { seq: number, page: number, sort?: {col: number, dir: 1|-1}, order?: number[], selected: number[], anchor?: number,
    *   pending?: Pending, focus?: {row: number, col: number}, committing?: boolean, editError?: string }} TabState
@@ -88,7 +88,8 @@
     return [tab.columns.map((c) => quote(c.name)).join(','), ...order(tab).map((i) => tab.rows[i].map(quote).join(','))].join('\r\n');
   }
 
-  function json(tab) {
+  /** All rows (in the current order) as a JSON array, or one row as an object. */
+  function json(tab, row) {
     const seen = new Map();
     const keys = tab.columns.map((c) => {
       const n = (seen.get(c.name) || 0) + 1;
@@ -106,7 +107,8 @@
       }
       return v;
     };
-    return JSON.stringify(order(tab).map((i) => Object.fromEntries(keys.map((k, c) => [k, parse(tab.rows[i][c], c)]))), null, 2);
+    const object = (i) => Object.fromEntries(keys.map((k, c) => [k, parse(tab.rows[i][c], c)]));
+    return JSON.stringify(row === undefined ? order(tab).map(object) : object(row), null, 2);
   }
 
   // ---------- grid editing ----------
@@ -340,8 +342,15 @@
   }
 
   function renderLog() {
-    if (!log.length) return el('div', { class: 'empty' }, t('SQL output will appear here.'));
-    return el(
+    const toolbar = el(
+      'div',
+      { class: 'toolbar' },
+      el('span', { class: 'info' }, t('{0} entries', log.length)),
+      el('div', { class: 'spacer' }),
+      el('button', { title: t('Clear the output log and restart the query numbering'), on: { click: clearOutput } }, t('Clear')),
+    );
+    if (!log.length) return el('div', { class: 'result' }, toolbar, el('div', { class: 'empty' }, t('SQL output will appear here.')));
+    return el('div', { class: 'result' }, toolbar, el(
       'div',
       { class: 'log' },
       ...log.map((e) =>
@@ -359,7 +368,7 @@
           el('div', { class: 'sql' }, e.sql),
         ),
       ),
-    );
+    ));
   }
 
   function renderTab(tab) {
@@ -429,6 +438,8 @@
             {
               class: [untouched ? 'null default' : v === null ? 'null' : typeof v === 'number' ? 'num' : '', dirty ? 'dirty' : '', focused ? 'focus' : '', editableCol(tab, col) ? 'editable' : ''].join(' '),
               title: untouched ? 'DEFAULT' : v === null ? 'NULL' : String(v).slice(0, 2000),
+              // Read by VS Code for the context menu (webview/context in package.json).
+              'data-vscode-context': JSON.stringify({ webviewSection: 'cell', seq: tab.seq, row: rowIndex, col, rowSql: tab.source !== undefined, preventDefaultContextMenuItems: true }),
               // Double clicks are detected by hand: the first click re-renders the grid, so the
               // browser would not see both clicks on the same element.
               on: { click: () => cellClick(tab, rowIndex, col, v) },
@@ -489,6 +500,37 @@
     input.addEventListener('click', (e) => e.stopPropagation());
     input.addEventListener('dblclick', (e) => e.stopPropagation());
     return input;
+  }
+
+  // ---------- output and context menu ----------
+
+  /** Empties the output log and numbers the open result tabs again from 1. */
+  function clearOutput() {
+    log = [];
+    tabs.forEach((x, i) => (x.seq = i + 1));
+    seq = tabs.length;
+    editing = null;
+    lastClick = { seq: -1, row: -1, col: -1, time: 0 };
+    persist();
+    render();
+  }
+
+  function rowAction(msg) {
+    const tab = tabs.find((x) => x.seq === msg.seq);
+    if (!tab || !tab.rows[msg.row]) return;
+    switch (msg.action) {
+      case 'copyValue':
+        vscode.postMessage({ type: 'copy', text: text(tab.rows[msg.row][msg.col]) });
+        break;
+      case 'copyRow':
+        vscode.postMessage({ type: 'copy', text: tsv(tab, [msg.row]) });
+        break;
+      case 'copyRowJson':
+        vscode.postMessage({ type: 'copy', text: json(tab, msg.row) });
+        break;
+      default:
+        if (tab.source !== undefined) vscode.postMessage({ type: 'rowSql', source: tab.source, kind: msg.action, row: tab.rows[msg.row] });
+    }
   }
 
   // ---------- reordering ----------
@@ -645,6 +687,9 @@
       case 'committed':
         committed(msg);
         break;
+      case 'rowAction':
+        rowAction(msg);
+        return;
     }
     persist();
     render();
