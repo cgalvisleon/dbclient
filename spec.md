@@ -243,4 +243,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-18 | v0.13.2: la página de ambas tiendas muestra la instalación corregida (sin cambios funcionales ni de puntaje) | 2,1 % |
 | 2026-10-19 | **Open SQL** en el menú de tablas y vistas: abre el `SELECT * FROM` de **Open Data** en un editor vinculado sin ejecutarlo (S6, sin cambio de puntaje); v0.14.0 | 2,1 % |
 | 2026-10-19 | La conexión del editor SQL/Redis en su primera línea (CodeLens con **Change Connection…**, `dbclient.connectionLens`) y cambio de conexión con confirmación modal; prueba de humo (S1, sin cambio de puntaje) | 2,1 % |
-| 2026-10-19 | Panel de resultados: **Output** fija en primer lugar, pestañas conservadas entre ejecuciones por defecto (máximo 50), reordenables arrastrando y cierre con clic central; pruebas en jsdom (S2, sin cambio de puntaje) | 2,1 % |
+| 2026-10-19 | Panel de resultados: **Output** fija en primer lugar, pestañas conservadas entre ejecuciones por defecto (máximo 50), reordenables arrastrando y cierre con clic central; pruebas en jsdom (S2, sin cambio de puntaje); v0.15.0 | 2,1 % |
