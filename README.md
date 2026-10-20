@@ -2,7 +2,7 @@
 
 # DB Client
 
-[Español](README.es.md)
+[Español](README.es.md) · [Português](README.pt.md)
 
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/cgalvisleon.dbclient?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=cgalvisleon.dbclient) [![Open VSX version](https://img.shields.io/open-vsx/v/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![Open VSX downloads](https://img.shields.io/open-vsx/dt/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -37,7 +37,7 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | Export / import | **Export Connections…** writes all connections, one folder (on the folder) or the selected connections (on a connection) to a JSON file without passwords; **Import Connections…** merges it (existing ones kept, identical ones skipped) or replaces the list, and on a folder imports into that folder. |
 | Icons and colors | Each connection can pick its tree icon (database, server, cloud, with gear or magnifier) and one of 7 colors (blue, green, red, orange, purple, yellow, gray) in the form's **Appearance** section — e.g. red for production. Folders take a color too with **Change Color…**. |
 | Explorer (SQL) | Databases/schemas → tables, views, functions, procedures, triggers, indexes (Oracle: packages, sequences) → columns with type, PK and NOT NULL. |
-| SQL editor | A bar on the first line of SQL and Redis editors: the connection and database (click to pick a connection, then a database), **Change Connection…** (asks before switching), **Run All**, **Statement**, **Selection**, **Copy**, **Paste**, **Export**, **Import**; ▶ Run above each further statement; cancel. |
+| SQL editor | A bar on the first line of SQL and Redis editors: NetBeans style, `Connection:` with the connection and database as a drop-down (click to pick a connection, then a database; asks before switching) and icon buttons to run all, the statement or the selection, stop, connect/disconnect, history, save, copy, paste, export and import; ▶ Run above each further statement; cancel. |
 | Saved SQL files | Each SQL connection, and each of its databases, has a **SQL** node with its own `.sql` files; opening one binds it to that connection and database. New, rename, delete, **Save** (on files with unsaved changes), and save the current query there. |
 | SQL locations | Link existing folders of `.sql` files (e.g. a repository's `sql/`) to a connection and browse them with their subfolders; choose where new files are saved. Paths accept `~` and `${workspaceFolder}`; unlinking never deletes files. |
 | Statement splitting | `;` everywhere, plus `GO` (SQL Server), `DELIMITER` (MySQL), `/` and PL/SQL blocks (Oracle), `$$` bodies (PostgreSQL), triggers (SQLite). |
@@ -97,13 +97,13 @@ Linked folders:     ${workspaceFolder}/sql
                     ~/projects/reports
 ```
 
-**See and change the editor's connection.** The first line of every SQL and Redis editor is a bar that shows the connection and database it runs against, for example `prod-pg / sales ▾`, followed by small buttons:
+**See and change the editor's connection.** The first line of every SQL and Redis editor is a NetBeans-style toolbar: `Connection:` with the connection and database it runs against as a drop-down, followed by icon buttons (hover one to see what it does):
 
 ```
-prod-pg / sales ▾ | Change Connection… | Run All | Statement | Selection | Copy | Paste | Export | Import
+Connection: 🛢 prod-pg / sales ▾ | ⏩ | ▶ | ☰ | ■ | 🔌 | 🕘 | 💾 | ⧉ | 📋 | ⇪ | ⇩
 ```
 
-Click the connection (or **Change Connection…**, or the status bar) to list your connections; after a SQL connection with several databases, pick the database. When the editor already had a connection, a dialog asks before switching. **Run All** runs the file, **Statement** the statement at the cursor and **Selection** the selected text; **Copy** copies the selection or the whole file, **Paste** pastes at the cursor, **Export** saves the content to a file you choose and **Import** inserts a file at the cursor. Turn the bar off with `dbclient.connectionLens`.
+Click the connection (or the status bar) to list your connections; after a SQL connection with several databases, pick the database. When the editor already had a connection, a dialog asks before switching. The buttons, in order: run the whole file, the statement at the cursor, the selection; **stop** (only while a query runs); connect or disconnect the editor's connection; query history; save to the connection's SQL folder (SQL only); copy the selection or the whole file; paste at the cursor; export the content to a file you choose; import a file at the cursor. The same actions are in the editor title bar and its `…` menu. Turn the bar off with `dbclient.connectionLens`.
 
 **Keep SQL files per database.** Expand a database in the tree: its first child is **SQL**, with the files of that database. **New SQL File** on the database or its **SQL** node creates one there, and opening it runs against that connection and database. A file with unsaved changes shows `● unsaved` and a **Save** button in the tree.
 
@@ -193,7 +193,7 @@ To test the NATS authentication modes, `eval "$(scripts/nats-auth-fixture.sh sta
 Bump `version` in `package.json`, add its section to `CHANGELOG.md`, commit, then push a tag with the same version:
 
 ```bash
-git tag v0.17.0 && git push origin main v0.17.0
+git tag v0.18.0 && git push origin main v0.18.0
 ```
 
 The **Release** workflow (`.github/workflows/release.yml`) runs the tests, builds the `.vsix`, attaches it to a GitHub Release with the changelog notes and publishes it to Open VSX and the VS Code Marketplace when the repository secrets `OVSX_PAT` and `VSCE_PAT` exist. From this machine: `OVSX_PAT=… npm run publish:ovsx` and `VSCE_PAT=… npm run publish:vsce`.

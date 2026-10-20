@@ -79,7 +79,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 
 | ID | Requisito | Peso | Estado |
 |---|---|---|---|
-| S1 | Archivo `.sql` asociado a una conexión, visible en la primera línea del editor (barra CodeLens con selector de conexión y base, ejecutar todo/sentencia/selección, copiar, pegar, exportar, importar) y en la barra de estado, con cambio de conexión confirmado; ejecutar archivo, selección o sentencia bajo el cursor con atajos; cancelar | 5 | 1 |
+| S1 | Archivo `.sql` asociado a una conexión, visible en la primera línea del editor (barra CodeLens al estilo NetBeans: `Connection:` con selector de conexión y base y botones de icono para ejecutar todo/sentencia/selección, detener, conectar/desconectar, historial, guardar, copiar, pegar, exportar, importar) y en la barra de estado, con cambio de conexión confirmado; ejecutar archivo, selección o sentencia bajo el cursor con atajos; cancelar | 5 | 1 |
 | S2 | Resultados en pestañas bajo el editor (una por sentencia, conservadas entre ejecuciones hasta 50 salvo que se apague, reordenables arrastrando, con Output fija en primer lugar); grilla con paginación de filas traídas (avance/retroceso), ordenar, copiar, exportar CSV/JSON | 6 | 1 |
 | S3 | Autocompletado de palabras clave y funciones según el dialecto del driver | 4 | 1 |
 | S4 | Autocompletado de objetos reales (esquemas, tablas, vistas, columnas) resolviendo alias | 5 | 1 |
@@ -249,3 +249,5 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-19 | Panel de resultados: **Output** fija en primer lugar, pestañas conservadas entre ejecuciones por defecto (máximo 50), reordenables arrastrando y cierre con clic central; pruebas en jsdom (S2, sin cambio de puntaje); v0.15.0 | 2,1 % |
 | 2026-10-20 | Botón **Clear** en Output (vacía el registro y reinicia la numeración, S7) y menú contextual de las celdas: copiar valor, copiar registro (TSV/JSON) y generar INSERT/UPDATE/DELETE del registro (nuevo S13, 2 pts, en 0,5: verificado en PostgreSQL y SQLite); total 120 → 122; v0.16.0 | 2,9 % |
 | 2026-10-20 | Carpeta **SQL** por base de datos en el árbol (archivos vinculados a esa base) y botón **Save** en archivos sin guardar (S9); barra en la primera línea del editor con selector de conexión y base, ejecutar todo/sentencia/selección, copiar, pegar, exportar e importar (S1). Sin cambio de puntaje; v0.17.0 | 2,9 % |
+| 2026-10-20 | Barra del editor al estilo NetBeans (S1): `Connection:` con la conexión como lista desplegable y botones solo de icono con descripción emergente; nuevos botones detener (solo mientras corre una consulta), conectar/desconectar, historial y guardar en la carpeta SQL; las mismas acciones en el menú `…` del título del editor. Sin cambio de puntaje; v0.18.0 | 2,9 % |
+| 2026-10-20 | Documentación: versión en portugués de Brasil (`README.pt.md`), enlazada desde los README en inglés y español; la interfaz sigue en inglés y español (sin cambio de puntaje) | 2,9 % |

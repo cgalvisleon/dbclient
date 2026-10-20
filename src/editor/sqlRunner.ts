@@ -20,6 +20,9 @@ interface Running {
 export class SqlRunner implements vscode.Disposable {
   private readonly diagnostics = vscode.languages.createDiagnosticCollection('dbclient');
   private readonly running = new Map<string, Running>();
+  private readonly runningChanged = new vscode.EventEmitter<void>();
+  /** Fires when a query starts or ends in any editor. */
+  readonly onDidChangeRunning = this.runningChanged.event;
 
   constructor(
     private readonly manager: ConnectionManager,
@@ -87,6 +90,7 @@ export class SqlRunner implements vscode.Disposable {
 
     const state: Running = { cancelled: false, cancel: async () => undefined };
     this.running.set(key, state);
+    this.runningChanged.fire();
     let failed = false;
     let ddl = false;
     try {
@@ -172,6 +176,7 @@ export class SqlRunner implements vscode.Disposable {
       this.log(config.name, preview(statements[0].text, 200), false, (err as Error).message);
     } finally {
       this.running.delete(key);
+      this.runningChanged.fire();
     }
     if (ddl) {
       // Created, altered or dropped objects show up in the tree without a manual refresh.
@@ -180,6 +185,10 @@ export class SqlRunner implements vscode.Disposable {
     if (failed) {
       this.results.post({ type: 'focusLog' });
     }
+  }
+
+  isRunning(doc: vscode.TextDocument): boolean {
+    return this.running.has(doc.uri.toString());
   }
 
   async cancel(editor: vscode.TextEditor | undefined): Promise<void> {
@@ -228,6 +237,7 @@ export class SqlRunner implements vscode.Disposable {
 
   dispose(): void {
     this.diagnostics.dispose();
+    this.runningChanged.dispose();
   }
 }
 

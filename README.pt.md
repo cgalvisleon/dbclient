@@ -1,0 +1,201 @@
+<img src="media/icon.png" width="72" align="right" alt="DB Client">
+
+# DB Client
+
+[English](README.md) · [Español](README.es.md)
+
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/cgalvisleon.dbclient?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=cgalvisleon.dbclient) [![Open VSX version](https://img.shields.io/open-vsx/v/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![Open VSX downloads](https://img.shields.io/open-vsx/dt/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+Um cliente de banco de dados gratuito e de código aberto (MIT) para VS Code e Cursor: PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis e NATS em uma única árvore de conexões, sem instalar mais nada.
+
+<!-- GIF (visão geral, ~8 s): a árvore com vários motores, executar uma consulta, aba de resultados. Salve como img/screenshots/overview.gif e referencie como
+![DB Client](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/overview.gif) — URL absoluta para aparecer no Open VSX e no Marketplace. -->
+
+## Instalação
+
+Procure **DB Client** (`cgalvisleon.dbclient`) na visão de Extensões. O VS Code instala a partir do [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=cgalvisleon.dbclient); Cursor, VSCodium e Windsurf a partir do [Open VSX](https://open-vsx.org/extension/cgalvisleon/dbclient). Para instalar offline, baixe `dbclient-<versão>.vsix` dos [GitHub Releases](https://github.com/cgalvisleon/dbclient/releases) (ou gere-o com `npm install && npm run package`), abra a Paleta de Comandos (`Ctrl/Cmd+Shift+P`), execute **Extensions: Install from VSIX…** e escolha o arquivo. Requer VS Code 1.90 ou mais recente; conexões SQLite precisam de um editor com Node 22.13 ou mais recente (Cursor, VS Code 1.101+). Não são necessários módulos nativos nem clientes de banco de dados.
+
+## O que é
+
+Um cliente de banco de dados dentro do editor. Conexões PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis e NATS ficam em uma única árvore, e cada tipo abre seu próprio editor: um editor SQL inspirado no NetBeans, um editor de comandos Redis com visualizador de valores e um console NATS.
+
+É gratuito, sem plano pago, e tem licença MIT. Os drivers são JavaScript puro, então não é preciso módulos nativos, Oracle Instant Client nem ferramentas de linha de comando de bancos. Redis e NATS (com JetStream) ficam ao lado dos motores SQL. A interface está em inglês e espanhol; com o editor em português, ela aparece em inglês, por isso este guia mantém os nomes dos comandos em inglês.
+
+As conexões são salvas uma vez por usuário e compartilhadas por todas as janelas e workspaces. Senhas e tokens vão para o armazenamento de segredos do editor, nunca para o arquivo de configurações. Um botão **Show** ao lado de cada campo de senha mostra o que você digita.
+
+## Funcionalidades
+
+| Área | O que você tem |
+|---|---|
+| Conexões | Uma árvore para todos os motores; criar, editar, duplicar, excluir, testar, conectar e desconectar a partir de um formulário. |
+| Pastas | Agrupe conexões em pastas aninhadas; criar, renomear, excluir (o conteúdo sobe um nível), mover com **Move to Folder…** ou arrastando e soltando. |
+| Armazenamento | `connections.json` no nível do usuário; segredos no armazenamento de segredos do editor. |
+| Settings and About | O botão ⚙ no título da visão abre um painel com onde a extensão guarda seus dados (pasta de armazenamento, `connections.json`, histórico de consultas, arquivos SQL salvos) com **Copy** e **Open folder**, as configurações `dbclient.*` atuais comparadas aos padrões, o ambiente (editor, Node.js, suporte a SQLite) e os links do autor no GitHub. |
+| SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis e NATS: **disable**, **require** (criptografado) ou **verify-full** (certificado e nome do host), com arquivo de CA, certificado e chave de cliente (com senha). SQL Server: **Encrypt** confiando ou não no certificado, e um arquivo de CA. |
+| Túnel SSH | Todos os motores exceto SQLite podem se conectar através de um servidor SSH, com senha ou chave privada (com senha) e uma impressão digital opcional da chave do host. |
+| Idiomas | Inglês e espanhol, conforme o idioma de exibição do editor (em outros idiomas, inglês). |
+| Exportar / importar | **Export Connections…** grava todas as conexões, uma pasta (na pasta) ou as conexões selecionadas (em uma conexão) em um arquivo JSON sem senhas; **Import Connections…** mescla (as existentes são mantidas, as idênticas ignoradas) ou substitui a lista, e em uma pasta importa para dentro dela. |
+| Ícones e cores | Cada conexão pode escolher seu ícone na árvore (banco de dados, servidor, nuvem, com engrenagem ou lupa) e uma de 7 cores (azul, verde, vermelho, laranja, roxo, amarelo, cinza) na seção **Appearance** do formulário — por exemplo, vermelho para produção. As pastas também recebem cor com **Change Color…**. |
+| Explorador (SQL) | Bancos/esquemas → tabelas, views, funções, procedures, triggers, índices (Oracle: packages, sequences) → colunas com tipo, PK e NOT NULL. |
+| Editor SQL | Uma barra na primeira linha dos editores SQL e Redis, no estilo do NetBeans: `Connection:` com a conexão e o banco como lista suspensa (clique para escolher uma conexão e depois um banco; pede confirmação antes de trocar) e botões de ícone para executar tudo, a instrução ou a seleção, parar, conectar/desconectar, histórico, salvar, copiar, colar, exportar e importar; ▶ Run acima de cada instrução seguinte; cancelar. |
+| Arquivos SQL salvos | Cada conexão SQL, e cada um de seus bancos, tem um nó **SQL** com seus próprios arquivos `.sql`; abrir um deles o vincula a essa conexão e banco. Novo, renomear, excluir, **Save** (em arquivos com alterações não salvas) e salvar ali a consulta atual. |
+| Locais SQL | Vincule pastas existentes de arquivos `.sql` (por exemplo, o `sql/` de um repositório) a uma conexão e navegue por elas com suas subpastas; escolha onde os novos arquivos são salvos. Os caminhos aceitam `~` e `${workspaceFolder}`; desvincular nunca exclui arquivos. |
+| Divisão de instruções | `;` em todos, mais `GO` (SQL Server), `DELIMITER` (MySQL), `/` e blocos PL/SQL (Oracle), corpos `$$` (PostgreSQL), triggers (SQLite). |
+| Resultados | Painel inferior com **Output** primeiro e uma aba por conjunto de resultados, mantidas entre execuções (até 50; com **Keep tabs** desligado são limpas a cada execução) e reordenáveis arrastando, paginação, ordenação, seleção de linhas, copiar como TSV, exportar para CSV, JSON ou Excel (`.xlsx`, números e datas como valores do Excel). |
+| Saída SQL | Cada instrução registrada com tempo, linhas lidas/afetadas e erros; os erros levam à linha e coluna no editor e aparecem sublinhados. **Clear** esvazia o registro e numera as consultas a partir de 1 de novo. |
+| Histórico de consultas | **Query History…** lista o que foi executado em cada conexão SQL ou Redis, do mais recente ao mais antigo, com banco, hora, duração e linhas ou erro; pesquise, insira uma instrução no editor ou abra-a em um novo. |
+| Ações de tabela | Em uma tabela ou view: **Open Data**, **Open SQL**, **Show Structure** (colunas e índices), **Show DDL** e **Generate SQL** → SELECT, INSERT, UPDATE, DELETE em um novo editor. |
+| Atualizar e excluir | **Refresh** em uma conexão, banco, esquema, pasta ou tabela a lê de novo, para que esquemas e tabelas criados ou excluídos em outro lugar apareçam; DDL executado no editor atualiza a conexão sozinho. **Drop…** remove uma tabela ou view (CASCADE no PostgreSQL, CASCADE CONSTRAINTS no Oracle) e, onde o motor os tem, um esquema: esquemas do PostgreSQL e SQL Server, bancos do MySQL, usuários do Oracle. |
+| Menu da linha | Clique com o botão direito em uma célula do resultado: **Copy Value**, **Copy Row** (TSV com cabeçalho), **Copy Row as JSON**; em resultados de uma tabela, **Generate INSERT/UPDATE/DELETE from Row** abre a instrução com os valores da linha em um novo editor vinculado à conexão. |
+| Edição na grade | Resultados de uma única tabela com chave primária são editáveis: edite células, adicione e exclua linhas, defina NULL e depois **Commit** (uma transação, pela chave primária) ou **Cancel**. |
+| Autocompletar SQL | Palavras-chave, tipos e funções do dialeto da conexão; com a conexão aberta, seus esquemas, tabelas, views e colunas, resolvendo os aliases da consulta. |
+| Explorador Redis | Bancos com contagem de chaves → chaves agrupadas por separador (`:`) com seu tipo, usando `SCAN`. |
+| Editor Redis | Arquivos `.redis`, um comando por linha; autocompletar comandos, opções e chaves existentes; pede confirmação antes de `FLUSHDB`/`FLUSHALL`. |
+| Valores Redis | Visualizador/editor para string, hash, list, set, sorted set e stream; TTL, renomear e excluir. |
+| URL JDBC do Oracle | Conexões Oracle podem usar **Connect by → JDBC URL** em vez de host e serviço: `jdbc:oracle:thin:@//host:1521/service`, `@host:1521:SID`, `tcps://…`, `(DESCRIPTION=…)` ou um alias do tnsnames.ora com `?TNS_ADMIN=<pasta>`. Usuário e senha dentro da URL vão para seus campos, então a senha nunca é salva em texto puro. Funciona com SSL e com o túnel SSH. |
+| NATS | Conecte sem autenticação ou com usuário/senha, token, seed NKey ou um arquivo `.creds`. Publique com headers, request/reply, assine com curingas `*`/`>` e queue groups, lista de mensagens ao vivo; streams e consumers do JetStream na árvore. |
+
+## Uso
+
+**Adicionar uma conexão.** Abra a visão **DB Client** na barra de atividades, pressione **+**, escolha o tipo, preencha o formulário, pressione **Test** e depois **Save**. Expanda a conexão para navegar por ela.
+
+**Conectar com segurança.** No formulário da conexão, a seção **SSL / TLS** define o modo e os arquivos PEM; **verify-full** verifica o certificado contra o arquivo de CA (ou as CAs do sistema) e o nome do host. A seção **SSH tunnel** alcança um banco visível apenas a partir de um bastion host: preencha o host SSH, o usuário e uma senha ou chave privada, e mantenha **Host** e **Port** como o banco é visto a partir desse servidor. Cole a impressão digital `SHA256:` do servidor (`ssh-keygen -lf` na chave pública do host) para recusar qualquer outro servidor.
+
+```text
+Host: db.internal   Port: 5432   SSL: verify-full   CA certificate: ~/certs/ca.pem
+SSH tunnel: private key   SSH host: bastion.example.com   SSH user: deploy   Private key: ~/.ssh/id_ed25519
+```
+
+**Levar conexões para outra máquina.** No menu **…** da visão escolha **Export Connections…** (ou **Export Connections…** em uma pasta, só para essa pasta) e salve o arquivo `.json`; ele contém pastas, conexões e locais SQL, nunca senhas. Na outra máquina escolha **Import Connections…**, selecione o arquivo e **Merge** ou **Replace**, depois informe as senhas com **Edit Connection**. Restaurar um backup na mesma máquina mantém o id de cada conexão, então sua senha salva e seus arquivos SQL voltam a funcionar.
+
+**Ver onde ficam seus dados.** Pressione **⚙ Settings and About** no título da visão. **Persistence** lista a pasta de armazenamento, o arquivo de conexões, o histórico de consultas e a pasta de arquivos SQL salvos, cada um com **Copy** e **Open folder**; as senhas não estão ali, e sim no armazenamento de segredos do editor. **Settings** mostra cada valor `dbclient.*`, onde está definido e seu padrão (**Open in Settings** para alterá-los), e **About** tem a versão e o perfil, o repositório e as issues do autor no GitHub.
+
+**Compartilhar uma conexão ou preencher uma pasta.** Clique com o botão direito em uma conexão (ou em várias selecionadas) → **Export Connections…** para salvar só essas, sem pastas nem senhas. Clique com o botão direito em uma pasta → **Import Connections…** para mesclar um arquivo nessa pasta: suas conexões e pastas ficam dentro dela.
+
+**Diferenciar conexões.** No formulário da conexão, **Appearance** mostra as formas e cores dos ícones com uma pré-visualização; escolha, por exemplo, o banco com engrenagem em vermelho para produção e o verde para desenvolvimento. **Automatic** mantém o ícone do motor. Para colorir uma pasta, clique com o botão direito nela → **Change Color…**.
+
+**Organizar com pastas.** Pressione o botão **New Folder** no título da visão (ou **New Folder** em uma pasta para criar uma subpasta). Arraste conexões ou pastas para uma pasta, ou use **Move to Folder…**; solte-as em um espaço vazio para devolvê-las ao nível superior. **Add Connection** em uma pasta cria a conexão dentro dela, e o campo **Folder** do formulário a altera depois.
+
+**Consultar um banco SQL.** Clique em **New Query** em uma conexão ou banco. Escreva SQL e pressione `Ctrl/Cmd+Enter` para executar a instrução sob o cursor (ou a seleção), ou `Ctrl/Cmd+Shift+Enter` para executar o arquivo inteiro:
+
+```sql
+select id, name from customers where created_at > now() - interval '7 days';
+update customers set active = false where id = 42;
+```
+
+<!-- GIF (sql-editor.gif): Ctrl/Cmd+Enter em uma instrução, aba de resultados, exportar para Excel. ![Editor SQL](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/sql-editor.gif) -->
+
+Cada consulta abre uma aba em **DB Client → Results**, depois das anteriores; a aba **Output**, sempre a primeira, lista cada instrução com seu tempo e número de linhas. Arraste uma aba para reordená-la (solte-a sobre **Output** para torná-la o primeiro resultado); clique com o botão do meio ou em **×** para fechá-la. **CSV**, **JSON** e **Excel** na barra da aba exportam todas as suas linhas na ordem atual.
+
+**Guardar consultas por conexão.** Expanda uma conexão SQL e use **New SQL File** em seu nó **SQL**, ou pressione **Save to Connection's SQL Folder** no título do editor para guardar a consulta atual. Os arquivos abrem já vinculados à sua conexão. Eles ficam no armazenamento da extensão, uma pasta por conexão; defina `dbclient.sqlFolder` para guardá-los em outro lugar, como uma pasta sincronizada ou versionada.
+
+**Vincular pastas de arquivos SQL.** Use **Link SQL Folder…** em uma conexão ou em seu nó **SQL** e escolha uma ou mais pastas. Se a pasta estiver dentro do projeto aberto, você pode salvá-la como `${workspaceFolder}/…`, e a mesma conexão mostra a pasta `sql/` do projeto que estiver aberto. Cada pasta vinculada aparece em **SQL** com suas subpastas (pastas ocultas, `.git` e `node_modules` são ignoradas). Arquivos abertos de uma pasta vinculada são executados nessa conexão; quando duas conexões vinculam a mesma pasta, vence a pasta mais específica e um empate é perguntado uma vez. **Set Save Location for SQL Files…** escolhe onde **New SQL File** e **Save to Connection's SQL Folder** gravam. A seção **SQL files** do formulário da conexão edita as mesmas configurações:
+
+```text
+Save new files in:  ${workspaceFolder}/sql
+Linked folders:     ${workspaceFolder}/sql
+                    ~/projects/reports
+```
+
+**Ver e trocar a conexão do editor.** A primeira linha de cada editor SQL e Redis é uma barra no estilo do NetBeans: `Connection:` com a conexão e o banco em que ele é executado como lista suspensa, seguida de botões de ícone (passe o mouse sobre um para ver o que faz):
+
+```
+Connection: 🛢 prod-pg / sales ▾ | ⏩ | ▶ | ☰ | ■ | 🔌 | 🕘 | 💾 | ⧉ | 📋 | ⇪ | ⇩
+```
+
+Clique na conexão (ou na barra de status) para ver a lista de conexões; depois de uma conexão SQL com vários bancos, escolha o banco. Se o editor já tinha uma conexão, um diálogo pede confirmação antes de trocar. Os botões, em ordem: executar o arquivo inteiro, a instrução do cursor, a seleção; **parar** (só enquanto uma consulta está em execução); conectar ou desconectar a conexão do editor; histórico de consultas; salvar na pasta SQL da conexão (só SQL); copiar a seleção ou o arquivo inteiro; colar no cursor; exportar o conteúdo para um arquivo à sua escolha; importar um arquivo no cursor. As mesmas ações estão na barra de título do editor e em seu menu `…`. Desligue a barra com `dbclient.connectionLens`.
+
+**Guardar arquivos SQL por banco.** Expanda um banco na árvore: seu primeiro filho é **SQL**, com os arquivos desse banco. **New SQL File** no banco ou em seu nó **SQL** cria um ali, e ao abri-lo ele é executado nessa conexão e banco. Um arquivo com alterações não salvas mostra `● unsaved` e um botão **Save** na árvore.
+
+**Trabalhar com uma tabela.** Clique com o botão direito em uma tabela na árvore. **Open Data** executa `SELECT * FROM` a tabela; **Open SQL** abre essa mesma consulta em um novo editor sem executá-la; **Show Structure** lista suas colunas e índices no painel Results; **Show DDL** e **Generate SQL** abrem a instrução em um novo editor vinculado à conexão.
+
+**Atualizar ou excluir objetos.** Se alguém alterou o banco fora da extensão, pressione o botão de atualizar na conexão, banco, esquema ou pasta (ou **Refresh** em seu menu de contexto) para lê-lo de novo. Para remover uma tabela, view ou esquema, clique com o botão direito → **Drop…**: o diálogo mostra a instrução `DROP` e, no PostgreSQL e no Oracle, oferece **Drop with CASCADE**; esquemas também pedem que você digite o nome. A árvore é atualizada após a exclusão.
+
+**Transformar uma linha em SQL.** Clique com o botão direito em uma célula de um resultado e escolha **Generate UPDATE from Row**. Um novo editor vinculado à mesma conexão abre com os valores da linha como literais e um `WHERE` pela chave primária:
+
+```sql
+UPDATE public.items
+SET name = 'O''Brien',
+    active = TRUE
+WHERE id = 7;
+```
+
+Quando o resultado não inclui a chave primária, o `WHERE` usa todas as colunas e um comentário pede que você verifique se ele corresponde a uma única linha. **Copy Value**, **Copy Row** e **Copy Row as JSON** no mesmo menu copiam para a área de transferência. **Clear** na aba **Output** esvazia o registro e numera as próximas consultas a partir de 1 de novo.
+
+**Editar dados na grade.** Em um resultado que lê uma tabela e inclui sua chave primária, clique duas vezes em uma célula (ou pressione `F2`), digite e pressione `Enter`; `Tab` vai para a próxima coluna e `Escape` descarta. **+ Row** adiciona uma linha (células não tocadas mantêm seu DEFAULT), **Delete** marca as linhas selecionadas e **NULL** limpa a célula com foco. **Commit** salva tudo em uma transação e recarrega as linhas; se uma linha mudou nesse meio-tempo, nada é salvo. Resultados de views, joins ou sem a chave mostram um selo **read-only** com o motivo.
+
+<!-- GIF (grid-editing.gif): editar uma célula, + Row, Commit. ![Edição na grade](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/grid-editing.gif) -->
+
+**Completar nomes de tabelas e colunas.** Com a conexão aberta, digite `select * from ` para ver suas tabelas, ou um alias e um ponto para ver as colunas dessa tabela:
+
+```sql
+select o.id, o.total, c.name
+from orders o join customers c on c.id = o.customer_id
+where o.   -- sugere as colunas de orders
+```
+
+**Reutilizar uma consulta anterior.** Clique com o botão direito em uma conexão SQL ou Redis, ou use o menu **…** do título do editor, e escolha **Query History…**. Digite para filtrar, por exemplo `orders`. Enter insere a instrução no editor ativo quando ele é executado na mesma conexão e, caso contrário, a abre em um novo editor vinculado à sua conexão e banco; os botões do item a abrem em um novo editor ou a copiam. Defina `dbclient.historySize` como `0` para desligar o histórico.
+
+**Executar um lote do SQL Server ou um bloco Oracle.** Separe lotes com `GO` e blocos PL/SQL com `/`:
+
+```sql
+create or alter procedure dbo.touch as
+begin
+  update dbo.items set updated_at = sysdatetime();
+end
+GO
+exec dbo.touch;
+```
+
+**Trabalhar com Redis.** Clique em **New Query** em uma conexão Redis ou em um de seus bancos (`db0`, `db1`…) e digite um comando por linha; `Ctrl/Cmd+Enter` executa a linha atual ou as linhas selecionadas:
+
+```redis
+HSET user:1 name "Ana Maria" age 30
+HGETALL user:1
+EXPIRE user:1 3600
+```
+
+Clique em uma chave na árvore para abrir seu visualizador de valores e editá-la.
+
+<!-- GIF (redis.gif): executar comandos, abrir um hash no visualizador de valores. ![Redis](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/redis.gif) -->
+
+**Publicar e assinar com NATS.** Clique em **Open NATS Console** em uma conexão NATS. Assine `orders.>` e publique em `orders.created` com um payload JSON e headers como `X-Trace: abc`; as mensagens recebidas aparecem na lista, e selecionar uma mostra seu payload e headers.
+
+<!-- GIF (nats.gif): assinar orders.>, publicar, lista de mensagens. ![NATS](https://raw.githubusercontent.com/cgalvisleon/dbclient/main/img/screenshots/nats.gif) -->
+
+## Configurações
+
+| Configuração | Padrão | Descrição |
+|---|---|---|
+| `dbclient.maxRows` | 5000 | Linhas lidas por instrução; resultados maiores são truncados. |
+| `dbclient.pageSize` | 100 | Linhas por página na grade de resultados. |
+| `dbclient.codeLens` | true | Mostrar ▶ Run acima de cada instrução SQL. |
+| `dbclient.connectionLens` | true | Mostrar a barra com a conexão do editor e seus botões na primeira linha dos editores SQL e Redis. |
+| `dbclient.sqlFolder` | (vazio) | Pasta para os arquivos `.sql` salvos, uma subpasta por conexão; vazio usa o armazenamento da extensão. |
+| `dbclient.historySize` | 500 | Entradas mantidas no histórico de consultas de cada conexão; `0` o desliga. Comandos que podem conter credenciais (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) nunca são registrados. |
+
+## Desenvolvimento
+
+```bash
+npm install
+npm run build        # empacota em dist/
+npm test             # testes unitários; os de integração rodam quando as variáveis DBCLIENT_* estão definidas
+npm run test:smoke   # executa a extensão dentro de um VS Code baixado
+npm run package      # gera o .vsix
+```
+
+Para testar SSL e SSH, `eval "$(scripts/tls-fixture.sh start)"` e `eval "$(scripts/ssh-fixture.sh start)"` iniciam servidores descartáveis com Docker (certificados e chaves novos) e exportam suas variáveis `DBCLIENT_TLS_*` / `DBCLIENT_SSH_*`; `stop` os remove. Com todos os servidores no ar, execute `npm run test:integration` (um arquivo de teste por vez). As traduções ficam em `l10n/bundle.l10n.es.json` e `package.nls.es.json`; `npx tsx test/unit/l10nKeys.ts l10n/bundle.l10n.es.json` lista os textos que ainda faltam.
+
+Para testar os modos de autenticação do NATS, `eval "$(scripts/nats-auth-fixture.sh start)"` inicia servidores descartáveis (usuário/senha, NKey, token e `.creds`, com Docker) e exporta suas variáveis `DBCLIENT_NATS_AUTH_*`; `scripts/nats-auth-fixture.sh stop` os remove.
+
+### Publicação
+
+Aumente `version` em `package.json`, adicione sua seção ao `CHANGELOG.md`, faça o commit e depois envie uma tag com a mesma versão:
+
+```bash
+git tag v0.18.0 && git push origin main v0.18.0
+```
+
+O workflow **Release** (`.github/workflows/release.yml`) executa os testes, gera o `.vsix`, anexa-o a um GitHub Release com as notas do changelog e o publica no Open VSX e no VS Code Marketplace quando os segredos do repositório `OVSX_PAT` e `VSCE_PAT` existem. Desta máquina: `OVSX_PAT=… npm run publish:ovsx` e `VSCE_PAT=… npm run publish:vsce`.
+
+Pressione **F5** nesta pasta para iniciar um Extension Development Host. Requisitos e progresso são acompanhados em [spec.md](spec.md).

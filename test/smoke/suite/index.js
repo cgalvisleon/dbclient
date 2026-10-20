@@ -72,7 +72,7 @@ exports.run = async function () {
     const lenses = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', doc.uri);
     // Line 0 carries the toolbar (its Statement button), so ▶ Run shows from the second statement on.
     assert.strictEqual(lenses.filter((l) => l.command?.command === 'dbclient.runAt').length, 1, `${name}: code lens per statement`);
-    for (const c of ['dbclient.runFile', 'dbclient.runStatement', 'dbclient.runSelection', 'dbclient.copyQuery', 'dbclient.pasteQuery', 'dbclient.exportQuery', 'dbclient.importQuery']) {
+    for (const c of ['dbclient.runFile', 'dbclient.runStatement', 'dbclient.runSelection', 'dbclient.disconnect', 'dbclient.showHistory', 'dbclient.saveToSqlFolder', 'dbclient.copyQuery', 'dbclient.pasteQuery', 'dbclient.exportQuery', 'dbclient.importQuery']) {
       assert.ok(lenses.some((l) => l.range.start.line === 0 && l.command?.command === c), `${name}: toolbar ${c}`);
     }
 

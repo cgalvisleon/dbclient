@@ -63,7 +63,7 @@
   "config.dbclient.maxRows.description": "Número máximo de filas traídas por sentencia. Los resultados más grandes se truncan.",
   "config.dbclient.pageSize.description": "Filas por página en la grilla de resultados.",
   "config.dbclient.codeLens.description": "Mostrar una acción Ejecutar sobre cada sentencia en los editores SQL vinculados a una conexión.",
-  "config.dbclient.connectionLens.description": "Mostrar en la primera línea de los editores SQL y Redis la conexión del editor, Cambiar conexión… y una barra (ejecutar todo, sentencia, selección, copiar, pegar, exportar, importar).",
+  "config.dbclient.connectionLens.description": "Mostrar en la primera línea de los editores SQL y Redis una barra al estilo NetBeans: la conexión del editor como lista desplegable y botones de icono (ejecutar todo, sentencia, selección, detener, conectar/desconectar, historial, guardar, copiar, pegar, exportar, importar).",
   "config.dbclient.sqlFolder.description": "Carpeta donde cada conexión SQL guarda sus archivos .sql (una subcarpeta por conexión). Vacío usa el almacenamiento global de la extensión; apúntala a una carpeta sincronizada o versionada para compartir los archivos.",
   "config.dbclient.historySize.description": "Sentencias y comandos Redis que se guardan en el historial de cada conexión (Historial de consultas…). 0 apaga el historial. Los comandos AUTH, HELLO, ACL, MIGRATE y CONFIG nunca se registran.",
   "viewsWelcome.dbclient.connections": "Aún no hay conexiones.\n[Agregar conexión](command:dbclient.addConnection)",

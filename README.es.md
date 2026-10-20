@@ -2,7 +2,7 @@
 
 # DB Client
 
-[English](README.md)
+[English](README.md) · [Português](README.pt.md)
 
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/cgalvisleon.dbclient?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=cgalvisleon.dbclient) [![Open VSX version](https://img.shields.io/open-vsx/v/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![Open VSX downloads](https://img.shields.io/open-vsx/dt/cgalvisleon/dbclient)](https://open-vsx.org/extension/cgalvisleon/dbclient) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -37,7 +37,7 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Exportar / importar | **Export Connections…** guarda todas las conexiones, una carpeta (sobre la carpeta) o las conexiones seleccionadas (sobre una conexión) en un archivo JSON sin contraseñas; **Import Connections…** lo fusiona (conserva las existentes y omite las idénticas) o reemplaza la lista, y sobre una carpeta importa dentro de ella. |
 | Iconos y colores | Cada conexión puede elegir su icono en el árbol (base de datos, servidor, nube, con engranaje o con lupa) y uno de 7 colores (azul, verde, rojo, naranja, morado, amarillo, gris) en la sección **Apariencia** del formulario; por ejemplo, rojo para producción. Las carpetas también cambian de color con **Change Color…** (**Cambiar color…**). |
 | Explorador (SQL) | Bases/esquemas → tablas, vistas, funciones, procedimientos, triggers, índices (Oracle: paquetes, secuencias) → columnas con tipo, PK y NOT NULL. |
-| Editor SQL | Una barra en la primera línea de los editores SQL y Redis: la conexión y la base (clic para elegir una conexión y luego una base), **Change Connection…** (confirma antes de cambiar), **Run All**, **Statement**, **Selection**, **Copy**, **Paste**, **Export**, **Import**; ▶ Run sobre cada sentencia siguiente; cancelar. |
+| Editor SQL | Una barra en la primera línea de los editores SQL y Redis: al estilo NetBeans, `Conexión:` con la conexión y la base como lista desplegable (clic para elegir una conexión y luego una base; confirma antes de cambiar) y botones de icono para ejecutar todo, la sentencia o la selección, detener, conectar/desconectar, historial, guardar, copiar, pegar, exportar e importar; ▶ Run sobre cada sentencia siguiente; cancelar. |
 | Archivos SQL guardados | Cada conexión SQL, y cada una de sus bases, tiene un nodo **SQL** con sus propios archivos `.sql`; al abrir uno queda vinculado a esa conexión y base. Crear, renombrar, eliminar, **Save** (en archivos con cambios sin guardar) y guardar ahí la consulta actual. |
 | Ubicaciones SQL | Vincular a una conexión carpetas existentes con archivos `.sql` (por ejemplo la carpeta `sql/` de un repositorio) y recorrerlas con sus subcarpetas; elegir dónde se guardan los archivos nuevos. Las rutas aceptan `~` y `${workspaceFolder}`; desvincular nunca borra archivos. |
 | División de sentencias | `;` en todos los motores, más `GO` (SQL Server), `DELIMITER` (MySQL), `/` y bloques PL/SQL (Oracle), cuerpos `$$` (PostgreSQL) y triggers (SQLite). |
@@ -99,13 +99,13 @@ Linked folders:     ${workspaceFolder}/sql
                     ~/projects/reports
 ```
 
-**Ver y cambiar la conexión del editor.** La primera línea de cada editor SQL y Redis es una barra que muestra la conexión y la base contra la que se ejecuta, por ejemplo `prod-pg / sales ▾`, seguida de botones pequeños:
+**Ver y cambiar la conexión del editor.** La primera línea de cada editor SQL y Redis es una barra al estilo NetBeans: `Conexión:` con la conexión y la base contra la que se ejecuta como lista desplegable, seguida de botones de icono (pasa el ratón por encima para ver qué hace cada uno):
 
 ```
-prod-pg / sales ▾ | Change Connection… | Run All | Statement | Selection | Copy | Paste | Export | Import
+Conexión: 🛢 prod-pg / sales ▾ | ⏩ | ▶ | ☰ | ■ | 🔌 | 🕘 | 💾 | ⧉ | 📋 | ⇪ | ⇩
 ```
 
-Haz clic en la conexión (o en **Change Connection…**, o en la barra de estado) para ver la lista de conexiones; después de una conexión SQL con varias bases, elige la base. Si el editor ya tenía una conexión, un diálogo pide confirmación antes de cambiarla. **Run All** ejecuta el archivo, **Statement** la sentencia del cursor y **Selection** el texto seleccionado; **Copy** copia la selección o todo el archivo, **Paste** pega en el cursor, **Export** guarda el contenido en el archivo que elijas e **Import** inserta un archivo en el cursor. Apaga la barra con `dbclient.connectionLens`.
+Haz clic en la conexión (o en la barra de estado) para ver la lista de conexiones; después de una conexión SQL con varias bases, elige la base. Si el editor ya tenía una conexión, un diálogo pide confirmación antes de cambiarla. Los botones, en orden: ejecutar todo el archivo, la sentencia del cursor, la selección; **detener** (solo mientras corre una consulta); conectar o desconectar la conexión del editor; historial de consultas; guardar en la carpeta SQL de la conexión (solo SQL); copiar la selección o todo el archivo; pegar en el cursor; exportar el contenido al archivo que elijas; importar un archivo en el cursor. Las mismas acciones están en la barra de título del editor y en su menú `…`. Apaga la barra con `dbclient.connectionLens`.
 
 **Guardar archivos SQL por base de datos.** Expande una base en el árbol: su primer hijo es **SQL**, con los archivos de esa base. **New SQL File** sobre la base o su nodo **SQL** crea uno ahí, y al abrirlo se ejecuta contra esa conexión y base. Un archivo con cambios sin guardar muestra `● unsaved` y un botón **Save** en el árbol.
 
@@ -195,7 +195,7 @@ Para probar las autenticaciones de NATS, `eval "$(scripts/nats-auth-fixture.sh s
 Sube `version` en `package.json`, agrega su sección en `CHANGELOG.md`, haz commit y empuja un tag con la misma versión:
 
 ```bash
-git tag v0.17.0 && git push origin main v0.17.0
+git tag v0.18.0 && git push origin main v0.18.0
 ```
 
 El workflow **Release** (`.github/workflows/release.yml`) corre las pruebas, genera el `.vsix`, lo adjunta a un GitHub Release con las notas del changelog y lo publica en Open VSX y en el VS Code Marketplace cuando existen los secretos del repositorio `OVSX_PAT` y `VSCE_PAT`. Desde esta máquina: `OVSX_PAT=… npm run publish:ovsx` y `VSCE_PAT=… npm run publish:vsce`.
