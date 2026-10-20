@@ -29,6 +29,8 @@ export class DocumentBindings implements vscode.Disposable {
     private readonly manager: ConnectionManager,
     /** Connections implied by where a file is saved (SQL locations); several ids mean a tie. */
     private readonly impliedConnections: (uri: vscode.Uri) => string[] = () => [],
+    /** Database implied by where a file is saved (a database's SQL folder). */
+    private readonly impliedDatabase: (uri: vscode.Uri, connectionId: string) => string | undefined = () => undefined,
   ) {
     this.bindings = new Map(Object.entries(state.get<Record<string, Binding>>(STATE_KEY, {})));
     this.status = vscode.window.createStatusBarItem('dbclient.connection', vscode.StatusBarAlignment.Left, 100);
@@ -54,7 +56,7 @@ export class DocumentBindings implements vscode.Disposable {
     if (!binding && doc.uri.scheme === 'file') {
       const implied = this.impliedConnections(doc.uri);
       // A tie (folder linked to several connections) is resolved once with pick() and remembered.
-      binding = implied.length === 1 ? { connectionId: implied[0] } : undefined;
+      binding = implied.length === 1 ? { connectionId: implied[0], database: this.impliedDatabase(doc.uri, implied[0]) } : undefined;
     }
     const config = binding && this.manager.store.get(binding.connectionId);
     // A binding only counts when the connection still exists and suits the editor's language.
@@ -101,6 +103,33 @@ export class DocumentBindings implements vscode.Disposable {
     }
     // Picking the same SQL connection again keeps the database it was opened on.
     const binding: Binding = { connectionId: picked.id, database: category === 'sql' && current?.connectionId === picked.id ? current.database : undefined };
+    if (category === 'sql') {
+      const databases = await this.databasesOf(picked.id);
+      if (databases.length > 1) {
+        const config = this.manager.config(picked.id);
+        const selected = binding.database ?? config.options.database;
+        const inUse = current?.connectionId === picked.id ? selected : undefined;
+        const items = databases.map((name) => ({
+          label: name,
+          description: [name === config.options.database ? vscode.l10n.t('default') : undefined, name === inUse ? vscode.l10n.t('current') : undefined].filter(Boolean).join(' · '),
+        }));
+        const quick = vscode.window.createQuickPick<(typeof items)[number]>();
+        quick.items = items;
+        quick.placeholder = vscode.l10n.t('Database of {0} for this editor', config.name);
+        quick.activeItems = items.filter((i) => i.label === selected);
+        const db = await new Promise<string | undefined>((resolve) => {
+          quick.onDidAccept(() => resolve(quick.selectedItems[0]?.label));
+          quick.onDidHide(() => resolve(undefined));
+          quick.show();
+        });
+        quick.dispose();
+        if (db === undefined) {
+          return undefined;
+        }
+        // The connection's own database stays implicit, so editing the connection later still applies.
+        binding.database = db === config.options.database ? undefined : db;
+      }
+    }
     if (category === 'kv') {
       const config = this.manager.config(picked.id);
       const dbs = Array.from({ length: 16 }, (_, i) => ({ label: `db${i}`, db: String(i), picked: i === Number(config.options.db ?? 0) }));
@@ -129,6 +158,19 @@ export class DocumentBindings implements vscode.Disposable {
     await this.set(doc, binding);
     vscode.window.setStatusBarMessage(vscode.l10n.t('This editor now runs against {0}.', this.describe(binding).label), 4000);
     return binding;
+  }
+
+  /** Databases of a SQL connection from its top-level tree nodes; empty when offline or single-database. */
+  private async databasesOf(connectionId: string): Promise<string[]> {
+    try {
+      const driver = await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Window, title: vscode.l10n.t('Connecting to {0}…', this.manager.config(connectionId).name) },
+        () => this.manager.connect(connectionId),
+      );
+      return (await driver.children()).filter((n) => n.kind === 'database' && n.database).map((n) => n.database!);
+    } catch {
+      return [];
+    }
   }
 
   /** "connection / database" for a binding, the engine and whether the connection is open. */

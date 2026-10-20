@@ -37,8 +37,8 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Exportar / importar | **Export Connections…** guarda todas las conexiones, una carpeta (sobre la carpeta) o las conexiones seleccionadas (sobre una conexión) en un archivo JSON sin contraseñas; **Import Connections…** lo fusiona (conserva las existentes y omite las idénticas) o reemplaza la lista, y sobre una carpeta importa dentro de ella. |
 | Iconos y colores | Cada conexión puede elegir su icono en el árbol (base de datos, servidor, nube, con engranaje o con lupa) y uno de 7 colores (azul, verde, rojo, naranja, morado, amarillo, gris) en la sección **Apariencia** del formulario; por ejemplo, rojo para producción. Las carpetas también cambian de color con **Change Color…** (**Cambiar color…**). |
 | Explorador (SQL) | Bases/esquemas → tablas, vistas, funciones, procedimientos, triggers, índices (Oracle: paquetes, secuencias) → columnas con tipo, PK y NOT NULL. |
-| Editor SQL | La conexión y la base del editor en su primera línea y en la barra de estado, con **Change Connection…** (confirma antes de cambiar); ejecutar la sentencia bajo el cursor, la selección o el archivo completo; ▶ Run sobre cada sentencia; cancelar. |
-| Archivos SQL guardados | Cada conexión SQL tiene un nodo **SQL** con sus propios archivos `.sql`; al abrir uno queda vinculado a la conexión. Crear, renombrar, eliminar y guardar ahí la consulta actual. |
+| Editor SQL | Una barra en la primera línea de los editores SQL y Redis: la conexión y la base (clic para elegir una conexión y luego una base), **Change Connection…** (confirma antes de cambiar), **Run All**, **Statement**, **Selection**, **Copy**, **Paste**, **Export**, **Import**; ▶ Run sobre cada sentencia siguiente; cancelar. |
+| Archivos SQL guardados | Cada conexión SQL, y cada una de sus bases, tiene un nodo **SQL** con sus propios archivos `.sql`; al abrir uno queda vinculado a esa conexión y base. Crear, renombrar, eliminar, **Save** (en archivos con cambios sin guardar) y guardar ahí la consulta actual. |
 | Ubicaciones SQL | Vincular a una conexión carpetas existentes con archivos `.sql` (por ejemplo la carpeta `sql/` de un repositorio) y recorrerlas con sus subcarpetas; elegir dónde se guardan los archivos nuevos. Las rutas aceptan `~` y `${workspaceFolder}`; desvincular nunca borra archivos. |
 | División de sentencias | `;` en todos los motores, más `GO` (SQL Server), `DELIMITER` (MySQL), `/` y bloques PL/SQL (Oracle), cuerpos `$$` (PostgreSQL) y triggers (SQLite). |
 | Resultados | Panel inferior con **Output** primero y una pestaña por conjunto de resultados, que se conservan entre ejecuciones (hasta 50; con **Keep tabs** apagado se limpian en cada ejecución) y se reordenan arrastrándolas, paginación, orden, selección de filas, copiar como TSV y exportar a CSV, JSON o Excel (`.xlsx`, con números y fechas como valores de Excel). |
@@ -99,7 +99,15 @@ Linked folders:     ${workspaceFolder}/sql
                     ~/projects/reports
 ```
 
-**Ver y cambiar la conexión del editor.** La primera línea de cada editor SQL y Redis muestra la conexión y la base contra la que se ejecuta, por ejemplo `prod-pg / sales`, y la barra de estado muestra lo mismo. Haz clic ahí o en **Change Connection…** (**Cambiar conexión…**) y elige otra conexión; si el editor ya tenía una, un diálogo pide confirmación antes de cambiarla. Apaga esa línea con `dbclient.connectionLens`.
+**Ver y cambiar la conexión del editor.** La primera línea de cada editor SQL y Redis es una barra que muestra la conexión y la base contra la que se ejecuta, por ejemplo `prod-pg / sales ▾`, seguida de botones pequeños:
+
+```
+prod-pg / sales ▾ | Change Connection… | Run All | Statement | Selection | Copy | Paste | Export | Import
+```
+
+Haz clic en la conexión (o en **Change Connection…**, o en la barra de estado) para ver la lista de conexiones; después de una conexión SQL con varias bases, elige la base. Si el editor ya tenía una conexión, un diálogo pide confirmación antes de cambiarla. **Run All** ejecuta el archivo, **Statement** la sentencia del cursor y **Selection** el texto seleccionado; **Copy** copia la selección o todo el archivo, **Paste** pega en el cursor, **Export** guarda el contenido en el archivo que elijas e **Import** inserta un archivo en el cursor. Apaga la barra con `dbclient.connectionLens`.
+
+**Guardar archivos SQL por base de datos.** Expande una base en el árbol: su primer hijo es **SQL**, con los archivos de esa base. **New SQL File** sobre la base o su nodo **SQL** crea uno ahí, y al abrirlo se ejecuta contra esa conexión y base. Un archivo con cambios sin guardar muestra `● unsaved` y un botón **Save** en el árbol.
 
 **Trabajar con una tabla.** Haz clic derecho sobre una tabla del árbol. **Open Data** ejecuta `SELECT * FROM` la tabla; **Open SQL** abre esa misma consulta en un editor nuevo sin ejecutarla; **Show Structure** lista sus columnas e índices en el panel Results; **Show DDL** y **Generate SQL** abren la sentencia en un editor nuevo vinculado a la conexión.
 
@@ -164,7 +172,7 @@ Haz clic en una llave del árbol para abrir su visor de valores y editarla.
 | `dbclient.maxRows` | 5000 | Filas traídas por sentencia; los resultados más grandes se truncan. |
 | `dbclient.pageSize` | 100 | Filas por página en la grilla de resultados. |
 | `dbclient.codeLens` | true | Mostrar ▶ Run sobre cada sentencia SQL. |
-| `dbclient.connectionLens` | true | Mostrar la conexión del editor y **Change Connection…** en la primera línea de los editores SQL y Redis. |
+| `dbclient.connectionLens` | true | Mostrar la barra con la conexión del editor y sus botones en la primera línea de los editores SQL y Redis. |
 | `dbclient.sqlFolder` | (vacío) | Carpeta de los archivos `.sql` guardados, una subcarpeta por conexión; vacío usa el almacenamiento de la extensión. |
 | `dbclient.historySize` | 500 | Entradas que se guardan en el historial de cada conexión; `0` lo apaga. Los comandos que pueden llevar credenciales (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) nunca se registran. |
 

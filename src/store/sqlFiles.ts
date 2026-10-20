@@ -18,9 +18,13 @@ export function sqlFileName(name: string): string {
   return `${clean}.sql`;
 }
 
+/** Hidden subfolder of a connection's folder with one folder per database (skipped by `listDir`). */
+const DATABASES = '.databases';
+
 /**
- * Saved `.sql` files per connection: `<root>/<connectionId>/*.sql`. The folder a file lives in
- * tells which connection it runs against. No vscode imports, so it is unit-testable.
+ * Saved `.sql` files per connection: `<root>/<connectionId>/*.sql`, and per database of the
+ * connection in `<root>/<connectionId>/.databases/<database>/`. The folder a file lives in tells
+ * which connection (and database) it runs against. No vscode imports, so it is unit-testable.
  */
 export class SqlFileStore {
   private readonly listeners = new Set<(connectionId: string | undefined) => void>();
@@ -48,6 +52,24 @@ export class SqlFileStore {
 
   dir(connectionId: string): string {
     return path.join(this.root, connectionId);
+  }
+
+  /** Folder of the SQL files of one database of a connection (database names are URI-encoded). */
+  databaseDir(connectionId: string, database: string): string {
+    return path.join(this.dir(connectionId), DATABASES, encodeURIComponent(database));
+  }
+
+  /** Database whose folder (or a subfolder of it) holds `file`; undefined elsewhere. */
+  databaseOf(file: string, connectionId: string): string | undefined {
+    const parts = path.relative(this.dir(connectionId), file).split(path.sep);
+    if (parts.length < 3 || parts[0] !== DATABASES) {
+      return undefined;
+    }
+    try {
+      return decodeURIComponent(parts[1]);
+    } catch {
+      return undefined;
+    }
   }
 
   onDidChange(listener: (connectionId: string | undefined) => void): { dispose(): void } {
@@ -130,11 +152,11 @@ export class SqlFileStore {
     this.emitFor(file);
   }
 
-  /** Our own changes in the internal folder refresh right away; linked folders are covered by their watcher. */
+  /** Our own changes in the internal folder (any depth) refresh right away; linked folders are covered by their watcher. */
   private emitFor(file: string): void {
-    const id = this.connectionOf(file);
-    if (id) {
-      this.emit(id);
+    const relative = path.relative(this.root, file);
+    if (relative && !relative.startsWith('..') && !path.isAbsolute(relative) && relative.includes(path.sep)) {
+      this.emit(relative.split(path.sep)[0]);
     }
   }
 

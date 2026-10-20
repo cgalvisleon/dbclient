@@ -13,7 +13,7 @@ export class RunCodeLens implements vscode.CodeLensProvider {
   ) {
     const emitter = new vscode.EventEmitter<void>();
     bindings.onDidChange(() => emitter.fire());
-    vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('dbclient.codeLens') && emitter.fire());
+    vscode.workspace.onDidChangeConfiguration((e) => (e.affectsConfiguration('dbclient.codeLens') || e.affectsConfiguration('dbclient.connectionLens')) && emitter.fire());
     this.onDidChangeCodeLenses = emitter.event;
   }
 
@@ -23,7 +23,9 @@ export class RunCodeLens implements vscode.CodeLensProvider {
       return [];
     }
     const dialect = this.manager.factoryOf(this.manager.config(binding.connectionId)).dialect;
-    return splitStatements(doc.getText(), dialect).map((stmt) => {
+    // Line 0 holds the toolbar when it is shown; its Statement button covers that statement.
+    const toolbar = vscode.workspace.getConfiguration('dbclient').get<boolean>('connectionLens', true);
+    return splitStatements(doc.getText(), dialect).filter((stmt) => !toolbar || doc.positionAt(stmt.start).line > 0).map((stmt) => {
       const start = doc.positionAt(stmt.start);
       return new vscode.CodeLens(new vscode.Range(start, start), {
         title: `$(play) ${vscode.l10n.t('Run')}`,
@@ -34,7 +36,10 @@ export class RunCodeLens implements vscode.CodeLensProvider {
   }
 }
 
-/** First line of SQL and Redis editors: the connection the editor runs against, and a way to change it. */
+/**
+ * First line of SQL and Redis editors: the connection the editor runs against, a way to change
+ * it, and a small toolbar (run all / statement / selection, copy, paste, export, import).
+ */
 export class ConnectionCodeLens implements vscode.CodeLensProvider {
   readonly onDidChangeCodeLenses: vscode.Event<void>;
 
@@ -55,18 +60,29 @@ export class ConnectionCodeLens implements vscode.CodeLensProvider {
       return [];
     }
     const top = new vscode.Range(0, 0, 0, 0);
+    const lens = (title: string, command: string, tooltip?: string) => new vscode.CodeLens(top, { title, command, tooltip });
+    const toolbar = [
+      lens(`$(run-all) ${vscode.l10n.t('Run All')}`, 'dbclient.runFile', vscode.l10n.t('Run every statement of the file')),
+      lens(`$(play) ${vscode.l10n.t('Statement')}`, 'dbclient.runStatement', vscode.l10n.t('Run the statement at the cursor')),
+      lens(`$(list-selection) ${vscode.l10n.t('Selection')}`, 'dbclient.runSelection', vscode.l10n.t('Run the selected statements')),
+      lens(`$(copy) ${vscode.l10n.t('Copy')}`, 'dbclient.copyQuery', vscode.l10n.t('Copy the selection, or the whole file when nothing is selected')),
+      lens(`$(clippy) ${vscode.l10n.t('Paste')}`, 'dbclient.pasteQuery', vscode.l10n.t('Paste at the cursor')),
+      lens(`$(export) ${vscode.l10n.t('Export')}`, 'dbclient.exportQuery', vscode.l10n.t('Save the content to a file of your choice')),
+      lens(`$(go-to-file) ${vscode.l10n.t('Import')}`, 'dbclient.importQuery', vscode.l10n.t('Insert a file at the cursor')),
+    ];
     const binding = this.bindings.get(doc);
     if (!binding) {
-      return [new vscode.CodeLens(top, { title: `$(database) ${vscode.l10n.t('Select connection')}`, command: 'dbclient.selectConnection' })];
+      return [lens(`$(database) ${vscode.l10n.t('Select connection')} $(chevron-down)`, 'dbclient.selectConnection'), ...toolbar];
     }
     const { label, engine, connected } = this.bindings.describe(binding);
     return [
-      new vscode.CodeLens(top, {
-        title: `$(${connected ? 'database' : 'debug-disconnect'}) ${label}`,
-        tooltip: `${engine} · ${connected ? vscode.l10n.t('connected') : vscode.l10n.t('not connected')}`,
-        command: 'dbclient.selectConnection',
-      }),
-      new vscode.CodeLens(top, { title: vscode.l10n.t('Change Connection…'), command: 'dbclient.selectConnection' }),
+      lens(
+        `$(${connected ? 'database' : 'debug-disconnect'}) ${label} $(chevron-down)`,
+        'dbclient.selectConnection',
+        `${engine} · ${connected ? vscode.l10n.t('connected') : vscode.l10n.t('not connected')} · ${vscode.l10n.t('Click to choose the connection and database')}`,
+      ),
+      lens(vscode.l10n.t('Change Connection…'), 'dbclient.selectConnection'),
+      ...toolbar,
     ];
   }
 }

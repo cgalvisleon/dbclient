@@ -62,7 +62,12 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   const sqlLocations = new SqlLocations(manager, sqlFiles);
   const tree = new ConnectionsTree(manager, sqlLocations);
   const dragAndDrop = new ConnectionsDragAndDrop(manager);
-  const bindings = new DocumentBindings(context.workspaceState, manager, (uri) => sqlLocations.owners(uri.fsPath));
+  const bindings = new DocumentBindings(
+    context.workspaceState,
+    manager,
+    (uri) => sqlLocations.owners(uri.fsPath),
+    (uri, id) => sqlFiles.databaseOf(uri.fsPath, id),
+  );
   const results = new ResultsView(context.extensionUri);
   const history = new QueryHistory(vscode.Uri.joinPath(context.globalStorageUri, 'history').fsPath, () =>
     Math.max(0, Math.floor(vscode.workspace.getConfiguration('dbclient').get<number>('historySize', 500))),
@@ -466,9 +471,17 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
    * Folder for a new file: the clicked location/subfolder, else the save location; when the
    * connection has several locations the user may pick another one (the save location first).
    */
+  /** Database a tree item stands for: a database node or its SQL folder (or a folder inside it). */
+  const databaseOfItem = (item?: SqlItem): string | undefined =>
+    item instanceof NodeItem ? item.node.database : item instanceof SqlDirItem ? sqlFiles.databaseOf(path.join(item.dir, 'x.sql'), item.connectionId) : undefined;
+
   const targetDir = async (connectionId: string, item?: SqlItem): Promise<string | undefined> => {
     if (item instanceof SqlLocationItem || item instanceof SqlDirItem) {
       return item.dir;
+    }
+    // A database node keeps its files in its own SQL folder.
+    if (item instanceof NodeItem && item.node.kind === 'database' && item.node.database) {
+      return sqlFiles.databaseDir(connectionId, item.node.database);
     }
     const locations = sqlLocations.of(connectionId).filter((l) => l.path);
     if (locations.length < 2) {
@@ -514,7 +527,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }
     const name = await askFileName(dir);
     if (name) {
-      await openBound(sqlFiles.createIn(dir, name), id, item instanceof NodeItem ? item.node.database : undefined);
+      await openBound(sqlFiles.createIn(dir, name), id, databaseOfItem(item));
     }
   });
 
@@ -534,7 +547,8 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       await doc.save();
       return;
     }
-    const dir = await targetDir(binding.connectionId);
+    // Bound to a database: its own SQL folder; otherwise the connection's save location.
+    const dir = binding.database ? sqlFiles.databaseDir(binding.connectionId, binding.database) : await targetDir(binding.connectionId);
     if (!dir) {
       return;
     }
@@ -549,6 +563,16 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
     }
     await openBound(file, binding.connectionId, binding.database);
+  });
+
+  // Inline Save on a file of the tree: saves its open editor.
+  command('dbclient.saveSqlFile', async (item?: SqlFileItem) => {
+    const doc = item && vscode.workspace.textDocuments.find((d) => d.uri.fsPath === item.file);
+    if (doc?.isDirty) {
+      await doc.save();
+    } else if (item) {
+      vscode.window.setStatusBarMessage(vscode.l10n.t('{0} has no unsaved changes.', path.basename(item.file)), 3000);
+    }
   });
 
   command('dbclient.renameSqlFile', async (item?: SqlFileItem) => {
@@ -808,6 +832,84 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   };
   command('dbclient.run', () => run('auto'));
   command('dbclient.runFile', () => run('file'));
+
+  // Editor title toolbar: run all / the statement at the cursor / the selection; copy, paste, export, import.
+  const queryEditor = () => {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor || !EDITOR_CATEGORIES[editor.document.languageId]) {
+      vscode.window.showWarningMessage(vscode.l10n.t('Open a SQL or Redis editor first.'));
+      return undefined;
+    }
+    return editor;
+  };
+  command('dbclient.runStatement', async () => {
+    const editor = queryEditor();
+    if (!editor) {
+      return;
+    }
+    if (editor.document.languageId === 'redis') {
+      // Redis runs the cursor's line when nothing is selected.
+      editor.selection = new vscode.Selection(editor.selection.active, editor.selection.active);
+      await redisRunner.run(editor, 'auto');
+    } else {
+      await runner.run(editor, { offset: editor.document.offsetAt(editor.selection.active) });
+    }
+  });
+  command('dbclient.runSelection', async () => {
+    const editor = queryEditor();
+    if (!editor) {
+      return;
+    }
+    if (editor.selection.isEmpty) {
+      vscode.window.showInformationMessage(vscode.l10n.t('Select the statements to run first.'));
+      return;
+    }
+    await run('auto');
+  });
+  command('dbclient.copyQuery', async () => {
+    const editor = queryEditor();
+    if (editor) {
+      // The selection, or the whole file when nothing is selected.
+      const text = editor.document.getText(editor.selection.isEmpty ? undefined : editor.selection);
+      await vscode.env.clipboard.writeText(text);
+      vscode.window.setStatusBarMessage(editor.selection.isEmpty ? vscode.l10n.t('Copied the whole file.') : vscode.l10n.t('Copied the selection.'), 2000);
+    }
+  });
+  command('dbclient.pasteQuery', async () => {
+    const editor = queryEditor();
+    const text = editor && (await vscode.env.clipboard.readText());
+    if (editor && text) {
+      await editor.edit((edit) => editor.selections.forEach((s) => edit.replace(s, text)));
+    }
+  });
+  const queryFilters = (language: string): Record<string, string[]> => (language === 'redis' ? { Redis: ['redis', 'txt'] } : { SQL: ['sql', 'txt'] });
+  command('dbclient.exportQuery', async () => {
+    const editor = queryEditor();
+    if (!editor) {
+      return;
+    }
+    const doc = editor.document;
+    const ext = doc.languageId === 'redis' ? 'redis' : 'sql';
+    const name = doc.isUntitled ? `query.${ext}` : path.basename(doc.uri.fsPath);
+    const target = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(os.homedir(), name)), filters: queryFilters(doc.languageId) });
+    if (target) {
+      await vscode.workspace.fs.writeFile(target, Buffer.from(doc.getText(), 'utf8'));
+      vscode.window.setStatusBarMessage(vscode.l10n.t('Saved {0}', target.fsPath), 3000);
+    }
+  });
+  command('dbclient.importQuery', async () => {
+    const editor = queryEditor();
+    if (!editor) {
+      return;
+    }
+    const [source] = (await vscode.window.showOpenDialog({ canSelectMany: false, filters: queryFilters(editor.document.languageId), openLabel: vscode.l10n.t('Import') })) ?? [];
+    if (!source) {
+      return;
+    }
+    const text = Buffer.from(await vscode.workspace.fs.readFile(source)).toString('utf8');
+    // Inserted at the cursor (replacing the selection), so the editor keeps its connection.
+    await editor.edit((edit) => edit.replace(editor.selection, text));
+  });
   command('dbclient.runAt', async (uri: vscode.Uri, offset: number) => {
     const editor = await vscode.window.showTextDocument(uri, { preserveFocus: false });
     await runner.run(editor, { offset });

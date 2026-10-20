@@ -359,6 +359,48 @@
         }
       },
       {
+        "command": "dbclient.saveSqlFile",
+        "title": "%command.saveSqlFile%",
+        "category": "DB Client",
+        "icon": "$(save)"
+      },
+      {
+        "command": "dbclient.runStatement",
+        "title": "%command.runStatement%",
+        "category": "DB Client",
+        "icon": "$(play)"
+      },
+      {
+        "command": "dbclient.runSelection",
+        "title": "%command.runSelection%",
+        "category": "DB Client",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "dbclient.copyQuery",
+        "title": "%command.copyQuery%",
+        "category": "DB Client",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "dbclient.pasteQuery",
+        "title": "%command.pasteQuery%",
+        "category": "DB Client",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "dbclient.exportQuery",
+        "title": "%command.exportQuery%",
+        "category": "DB Client",
+        "icon": "$(export)"
+      },
+      {
+        "command": "dbclient.importQuery",
+        "title": "%command.importQuery%",
+        "category": "DB Client",
+        "icon": "$(go-to-file)"
+      },
+      {
         "command": "dbclient.renameSqlFile",
         "title": "%command.renameSqlFile%",
         "category": "DB Client"
@@ -675,13 +717,23 @@
           "group": "1_sql@2"
         },
         {
+          "command": "dbclient.saveSqlFile",
+          "when": "view == dbclient.connections && viewItem == 'sqlFile dirty'",
+          "group": "inline@1"
+        },
+        {
+          "command": "dbclient.saveSqlFile",
+          "when": "view == dbclient.connections && viewItem =~ /^sqlFile\\b/",
+          "group": "3_edit@0"
+        },
+        {
           "command": "dbclient.renameSqlFile",
-          "when": "view == dbclient.connections && viewItem == sqlFile",
+          "when": "view == dbclient.connections && viewItem =~ /^sqlFile\\b/",
           "group": "3_edit@1"
         },
         {
           "command": "dbclient.deleteSqlFile",
-          "when": "view == dbclient.connections && viewItem == sqlFile",
+          "when": "view == dbclient.connections && viewItem =~ /^sqlFile\\b/",
           "group": "3_edit@2"
         },
         {
@@ -815,6 +867,34 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "dbclient.saveSqlFile",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.runStatement",
+          "when": "editorLangId == sql || editorLangId == redis"
+        },
+        {
+          "command": "dbclient.runSelection",
+          "when": "editorLangId == sql || editorLangId == redis"
+        },
+        {
+          "command": "dbclient.copyQuery",
+          "when": "editorLangId == sql || editorLangId == redis"
+        },
+        {
+          "command": "dbclient.pasteQuery",
+          "when": "editorLangId == sql || editorLangId == redis"
+        },
+        {
+          "command": "dbclient.exportQuery",
+          "when": "editorLangId == sql || editorLangId == redis"
+        },
+        {
+          "command": "dbclient.importQuery",
+          "when": "editorLangId == sql || editorLangId == redis"
+        },
         {
           "command": "dbclient.results.copyValue",
           "when": "false"

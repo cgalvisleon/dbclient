@@ -55,6 +55,21 @@ describe('SqlFileStore', () => {
     expect(events).toEqual(['c', 'c', 'c', 'c', 'c']);
   });
 
+  it('keeps each database in its own hidden folder and tells it back', () => {
+    const seen: (string | undefined)[] = [];
+    files.onDidChange((id) => seen.push(id));
+    const dir = files.databaseDir('conn-1', 'ventas/2026');
+    expect(path.relative(files.dir('conn-1'), dir)).toBe(path.join('.databases', 'ventas%2F2026'));
+    const file = files.createIn(dir, 'mes');
+    expect(seen).toEqual(['conn-1']);
+    expect(files.databaseOf(file, 'conn-1')).toBe('ventas/2026');
+    expect(files.databaseOf(path.join(dir, 'sub', 'x.sql'), 'conn-1')).toBe('ventas/2026');
+    expect(files.databaseOf(files.create('conn-1', 'top'), 'conn-1')).toBeUndefined();
+    expect(files.databaseOf(file, 'conn-2')).toBeUndefined();
+    // The connection's own listing does not show the database folders.
+    expect(files.list('conn-1').map((f) => f.name)).toEqual(['top.sql']);
+  });
+
   it('sanitizes file names', () => {
     expect(sqlFileName(' a/b:c?.SQL ')).toBe('a-b-c-.sql');
     expect(() => sqlFileName('   ')).toThrow();

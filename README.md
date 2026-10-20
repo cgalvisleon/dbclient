@@ -37,8 +37,8 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | Export / import | **Export Connections…** writes all connections, one folder (on the folder) or the selected connections (on a connection) to a JSON file without passwords; **Import Connections…** merges it (existing ones kept, identical ones skipped) or replaces the list, and on a folder imports into that folder. |
 | Icons and colors | Each connection can pick its tree icon (database, server, cloud, with gear or magnifier) and one of 7 colors (blue, green, red, orange, purple, yellow, gray) in the form's **Appearance** section — e.g. red for production. Folders take a color too with **Change Color…**. |
 | Explorer (SQL) | Databases/schemas → tables, views, functions, procedures, triggers, indexes (Oracle: packages, sequences) → columns with type, PK and NOT NULL. |
-| SQL editor | The editor's connection and database on its first line and in the status bar, with **Change Connection…** (asks before switching); run the statement under the cursor, the selection or the whole file; ▶ Run above each statement; cancel. |
-| Saved SQL files | Each SQL connection has a **SQL** node with its own `.sql` files; opening one binds it to the connection. New, rename, delete, and save the current query there. |
+| SQL editor | A bar on the first line of SQL and Redis editors: the connection and database (click to pick a connection, then a database), **Change Connection…** (asks before switching), **Run All**, **Statement**, **Selection**, **Copy**, **Paste**, **Export**, **Import**; ▶ Run above each further statement; cancel. |
+| Saved SQL files | Each SQL connection, and each of its databases, has a **SQL** node with its own `.sql` files; opening one binds it to that connection and database. New, rename, delete, **Save** (on files with unsaved changes), and save the current query there. |
 | SQL locations | Link existing folders of `.sql` files (e.g. a repository's `sql/`) to a connection and browse them with their subfolders; choose where new files are saved. Paths accept `~` and `${workspaceFolder}`; unlinking never deletes files. |
 | Statement splitting | `;` everywhere, plus `GO` (SQL Server), `DELIMITER` (MySQL), `/` and PL/SQL blocks (Oracle), `$$` bodies (PostgreSQL), triggers (SQLite). |
 | Results | Bottom panel with **Output** first and one tab per result set, kept across runs (up to 50; **Keep tabs** off clears them on each run) and reordered by dragging, paging, sorting, row selection, copy as TSV, export to CSV, JSON or Excel (`.xlsx`, numbers and dates as Excel values). |
@@ -97,7 +97,15 @@ Linked folders:     ${workspaceFolder}/sql
                     ~/projects/reports
 ```
 
-**See and change the editor's connection.** The first line of every SQL and Redis editor shows the connection and database it runs against, for example `prod-pg / sales`, and the status bar shows the same. Click it or **Change Connection…** and pick another connection; when the editor already had one, a dialog asks before switching. Turn the line off with `dbclient.connectionLens`.
+**See and change the editor's connection.** The first line of every SQL and Redis editor is a bar that shows the connection and database it runs against, for example `prod-pg / sales ▾`, followed by small buttons:
+
+```
+prod-pg / sales ▾ | Change Connection… | Run All | Statement | Selection | Copy | Paste | Export | Import
+```
+
+Click the connection (or **Change Connection…**, or the status bar) to list your connections; after a SQL connection with several databases, pick the database. When the editor already had a connection, a dialog asks before switching. **Run All** runs the file, **Statement** the statement at the cursor and **Selection** the selected text; **Copy** copies the selection or the whole file, **Paste** pastes at the cursor, **Export** saves the content to a file you choose and **Import** inserts a file at the cursor. Turn the bar off with `dbclient.connectionLens`.
+
+**Keep SQL files per database.** Expand a database in the tree: its first child is **SQL**, with the files of that database. **New SQL File** on the database or its **SQL** node creates one there, and opening it runs against that connection and database. A file with unsaved changes shows `● unsaved` and a **Save** button in the tree.
 
 **Work with a table.** Right-click a table in the tree. **Open Data** runs `SELECT * FROM` the table; **Open SQL** opens that same query in a new editor without running it; **Show Structure** lists its columns and indexes in the Results panel; **Show DDL** and **Generate SQL** open the statement in a new editor bound to the connection.
 
@@ -162,7 +170,7 @@ Click a key in the tree to open its value viewer and edit it.
 | `dbclient.maxRows` | 5000 | Rows fetched per statement; larger results are truncated. |
 | `dbclient.pageSize` | 100 | Rows per page in the results grid. |
 | `dbclient.codeLens` | true | Show ▶ Run above each SQL statement. |
-| `dbclient.connectionLens` | true | Show the editor's connection and **Change Connection…** on the first line of SQL and Redis editors. |
+| `dbclient.connectionLens` | true | Show the bar with the editor's connection and its buttons on the first line of SQL and Redis editors. |
 | `dbclient.sqlFolder` | (empty) | Folder for saved `.sql` files, one subfolder per connection; empty uses the extension's storage. |
 | `dbclient.historySize` | 500 | Entries kept in each connection's query history; `0` turns it off. Commands that can carry credentials (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) are never recorded. |
 

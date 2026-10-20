@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.17.0 — 2026-10-20
+
+- Every database of a SQL connection has its own **SQL** node in the tree; its files run against that connection and database, and **New SQL File** on a database creates them there.
+- Files with unsaved changes show `● unsaved` and a **Save** button in the tree.
+- The first line of SQL and Redis editors is a bar: the connection and database (click to pick a connection, then a database), **Change Connection…**, **Run All**, **Statement**, **Selection**, **Copy**, **Paste**, **Export** and **Import**.
+
 ## 0.16.0 — 2026-10-20
 
 - **Clear** on the **Output** tab empties the log and numbers queries from 1 again (open result tabs are renumbered in their current order).

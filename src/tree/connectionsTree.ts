@@ -5,7 +5,7 @@ import { ConnectionManager } from '../connections/manager';
 import { DbNode, NodeKind } from '../drivers/types';
 import { connectionIcon, DEFAULT_SHAPES, folderIcon, icon, IconName } from '../icons';
 import { SqlLocations } from '../connections/sqlLocations';
-import { displayPath, listDir, SqlLocation } from '../store/sqlLocations';
+import { displayPath, isInside, listDir, SqlLocation } from '../store/sqlLocations';
 
 /** Image icons from img/ for the main node kinds; the rest use codicons from ICONS. */
 const IMAGES: Partial<Record<NodeKind, IconName>> = {
@@ -156,21 +156,43 @@ export class SqlDirItem extends vscode.TreeItem {
   }
 }
 
+/** The "SQL" node of a database: SQL files that run against that database of the connection. */
+export class DatabaseSqlItem extends SqlDirItem {
+  constructor(
+    connectionId: string,
+    readonly database: string,
+    dir: string,
+    count: number,
+  ) {
+    super(connectionId, dir, 'SQL');
+    this.id = `sqldb:${connectionId}:${database}`;
+    this.resourceUri = undefined;
+    this.iconPath = icon('sql-file');
+    this.description = String(count);
+    this.tooltip = vscode.l10n.t('SQL files of database {0}', database);
+  }
+}
+
 export class SqlFileItem extends vscode.TreeItem {
   constructor(
     readonly connectionId: string,
     readonly file: string,
     name: string,
-    modified: number,
+    private readonly modified: number,
   ) {
     super(name.replace(/\.sql$/i, ''), vscode.TreeItemCollapsibleState.None);
     this.id = `sqlfile:${file}`;
     this.resourceUri = vscode.Uri.file(file);
     this.iconPath = icon('query');
-    this.description = new Date(modified).toLocaleString();
     this.tooltip = file;
-    this.contextValue = 'sqlFile';
     this.command = { command: 'vscode.open', title: vscode.l10n.t('Open'), arguments: [vscode.Uri.file(file)] };
+    this.setDirty(vscode.workspace.textDocuments.some((d) => d.isDirty && d.uri.fsPath === file));
+  }
+
+  /** Unsaved changes in an open editor show as "● unsaved" and enable the inline Save button. */
+  setDirty(dirty: boolean): void {
+    this.description = dirty ? `● ${vscode.l10n.t('unsaved')}` : new Date(this.modified).toLocaleString();
+    this.contextValue = dirty ? 'sqlFile dirty' : 'sqlFile';
   }
 }
 
@@ -245,6 +267,10 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
   private readonly subscriptions: vscode.Disposable[];
   private readonly roots = new Map<string, ConnectionItem>();
   private readonly sqlFolders = new Map<string, SqlFolderItem>();
+  /** SQL nodes of databases by connection, refreshed when that connection's files change. */
+  private readonly databaseFolders = new Map<string, Map<string, DatabaseSqlItem>>();
+  /** File items last shown, by path, to flip their unsaved mark. */
+  private readonly fileItems = new Map<string, SqlFileItem>();
 
   constructor(
     private readonly manager: ConnectionManager,
@@ -263,8 +289,15 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
             folder.description = this.sqlSummary(id);
             this.changed.fire(folder);
           }
+          for (const item of this.databaseFolders.get(id)?.values() ?? []) {
+            item.description = String(listDir(item.dir).files.length);
+            this.changed.fire(item);
+          }
         }
       }),
+      vscode.workspace.onDidChangeTextDocument((e) => this.markDirty(e.document)),
+      vscode.workspace.onDidSaveTextDocument((doc) => this.markDirty(doc)),
+      vscode.workspace.onDidCloseTextDocument((doc) => this.markDirty(doc)),
       manager.store.onDidChange(() => this.refresh()),
       // Re-rendering the root keeps item ids, so expanded state survives connect/disconnect.
       manager.onDidChangeState(() => this.refresh()),
@@ -285,6 +318,15 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
     this.changed.fire(item instanceof ConnectionItem ? (this.roots.get(item.connectionId) ?? item) : item);
   }
 
+  private markDirty(doc: vscode.TextDocument): void {
+    const item = doc.uri.scheme === 'file' ? this.fileItems.get(doc.uri.fsPath) : undefined;
+    const dirty = doc.isDirty && !doc.isClosed;
+    if (item && item.contextValue !== (dirty ? 'sqlFile dirty' : 'sqlFile')) {
+      item.setDirty(dirty);
+      this.changed.fire(item);
+    }
+  }
+
   private sqlSummary(connectionId: string): string {
     const locations = this.sqlLocations.of(connectionId);
     return locations.length === 1
@@ -296,14 +338,18 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
   private sqlEntries(connectionId: string, dir: string): TreeNode[] {
     const listing = listDir(dir);
     if (listing.missing) {
-      // The internal folder is only created with the first file.
-      return dir === this.sqlLocations.files.dir(connectionId)
+      // The internal folder (and each database folder) is only created with its first file.
+      return isInside(dir, this.sqlLocations.files.dir(connectionId))
         ? [new MessageItem(vscode.l10n.t('No SQL files yet'), 'circle-slash')]
         : [new MessageItem(vscode.l10n.t('Folder not found: {0}', dir))];
     }
     const nodes: TreeNode[] = [
       ...listing.folders.map((f) => new SqlDirItem(connectionId, f.path, f.name)),
-      ...listing.files.map((f) => new SqlFileItem(connectionId, f.path, f.name, f.modified)),
+      ...listing.files.map((f) => {
+        const item = new SqlFileItem(connectionId, f.path, f.name, f.modified);
+        this.fileItems.set(f.path, item);
+        return item;
+      }),
     ];
     if (listing.truncated) {
       nodes.push(new MessageItem(vscode.l10n.t('Showing the first {0} entries', nodes.length), 'info'));
@@ -357,6 +403,15 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
     if (element instanceof ConnectionItem && category === 'sql') {
       const folder = new SqlFolderItem(id, this.sqlSummary(id));
       this.sqlFolders.set(id, folder);
+      head.push(folder);
+    }
+    if (element instanceof NodeItem && element.node.kind === 'database' && category === 'sql' && element.node.database) {
+      const database = element.node.database;
+      const dir = this.sqlLocations.files.databaseDir(id, database);
+      const folder = new DatabaseSqlItem(id, database, dir, listDir(dir).files.length);
+      const byDatabase = this.databaseFolders.get(id) ?? new Map<string, DatabaseSqlItem>();
+      byDatabase.set(database, folder);
+      this.databaseFolders.set(id, byDatabase);
       head.push(folder);
     }
     try {

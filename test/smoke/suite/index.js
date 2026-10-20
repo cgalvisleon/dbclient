@@ -70,7 +70,11 @@ exports.run = async function () {
     await vscode.window.showTextDocument(doc);
     await api.bindings.set(doc, { connectionId: config.id, database });
     const lenses = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', doc.uri);
-    assert.strictEqual(lenses.filter((l) => l.command?.command === 'dbclient.runAt').length, 2, `${name}: code lens per statement`);
+    // Line 0 carries the toolbar (its Statement button), so ▶ Run shows from the second statement on.
+    assert.strictEqual(lenses.filter((l) => l.command?.command === 'dbclient.runAt').length, 1, `${name}: code lens per statement`);
+    for (const c of ['dbclient.runFile', 'dbclient.runStatement', 'dbclient.runSelection', 'dbclient.copyQuery', 'dbclient.pasteQuery', 'dbclient.exportQuery', 'dbclient.importQuery']) {
+      assert.ok(lenses.some((l) => l.range.start.line === 0 && l.command?.command === c), `${name}: toolbar ${c}`);
+    }
 
     await vscode.commands.executeCommand('dbclient.runFile');
     const diags = await until(() => {
@@ -228,6 +232,17 @@ exports.run = async function () {
     await vscode.commands.executeCommand('dbclient.runFile');
     await wait(500);
     assert.strictEqual(vscode.languages.getDiagnostics(doc.uri).length, 0, 'saved file runs without errors');
+
+    // A database's SQL folder binds its files to that database; unsaved files show a Save action.
+    const dbFile = api.sqlFiles.createIn(api.sqlFiles.databaseDir(conn.id, 'main'), 'per database', 'select 1;\n');
+    const dbDoc = await vscode.workspace.openTextDocument(dbFile);
+    assert.deepStrictEqual(api.bindings.get(dbDoc), { connectionId: conn.id, database: 'main' }, 'database folder implies the database');
+    assert.strictEqual(sqlNode.description, '1', 'database files are not counted on the connection');
+    const dbEditor = await vscode.window.showTextDocument(dbDoc);
+    await dbEditor.edit((e) => e.insert(new vscode.Position(0, 0), '-- edited\n'));
+    await vscode.commands.executeCommand('dbclient.saveSqlFile', { file: dbFile });
+    assert.ok(!dbDoc.isDirty && fs.readFileSync(dbFile, 'utf8').startsWith('-- edited'), 'Save writes the open editor');
+    await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
 
     // A Redis or other connection never shows the SQL node.
     const other = await addConnection(`smoke-sqlfiles-nats-${run}`, 'nats', { servers: 'nats://127.0.0.1:1', auth: 'none' });
