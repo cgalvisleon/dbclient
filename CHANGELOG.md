@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0 — 2026-10-19
+
+- SQL and Redis editors show their connection and database on the first line, with **Change Connection…**; the status bar tooltip adds the engine and whether it is connected. Setting `dbclient.connectionLens` turns the line off.
+- Changing the connection of an editor that already had one asks for confirmation first.
+- Results panel: **Output** is always the first tab; result tabs are kept across runs by default (up to 50, oldest closed first; uncheck **Keep tabs** for the old behavior), can be reordered by dragging and closed with a middle click.
+
 ## 0.14.0 — 2026-10-19
 
 - **Open SQL** on tables and views: opens the same `SELECT * FROM` as **Open Data** in a new editor bound to the connection, without running it.

@@ -150,6 +150,7 @@ Click a key in the tree to open its value viewer and edit it.
 | `dbclient.maxRows` | 5000 | Rows fetched per statement; larger results are truncated. |
 | `dbclient.pageSize` | 100 | Rows per page in the results grid. |
 | `dbclient.codeLens` | true | Show ▶ Run above each SQL statement. |
+| `dbclient.connectionLens` | true | Show the editor's connection and **Change Connection…** on the first line of SQL and Redis editors. |
 | `dbclient.sqlFolder` | (empty) | Folder for saved `.sql` files, one subfolder per connection; empty uses the extension's storage. |
 | `dbclient.historySize` | 500 | Entries kept in each connection's query history; `0` turns it off. Commands that can carry credentials (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) are never recorded. |
 

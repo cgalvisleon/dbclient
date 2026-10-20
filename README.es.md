@@ -152,6 +152,7 @@ Haz clic en una llave del árbol para abrir su visor de valores y editarla.
 | `dbclient.maxRows` | 5000 | Filas traídas por sentencia; los resultados más grandes se truncan. |
 | `dbclient.pageSize` | 100 | Filas por página en la grilla de resultados. |
 | `dbclient.codeLens` | true | Mostrar ▶ Run sobre cada sentencia SQL. |
+| `dbclient.connectionLens` | true | Mostrar la conexión del editor y **Change Connection…** en la primera línea de los editores SQL y Redis. |
 | `dbclient.sqlFolder` | (vacío) | Carpeta de los archivos `.sql` guardados, una subcarpeta por conexión; vacío usa el almacenamiento de la extensión. |
 | `dbclient.historySize` | 500 | Entradas que se guardan en el historial de cada conexión; `0` lo apaga. Los comandos que pueden llevar credenciales (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) nunca se registran. |
 
