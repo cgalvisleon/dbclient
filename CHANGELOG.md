@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.18.0 — 2026-10-20
+
+- NetBeans-style editor toolbar: the first line of SQL and Redis editors shows `Connection:` with the connection and database as a drop-down, followed by icon-only buttons with tooltips (the separate **Change Connection…** is gone; the drop-down does the same).
+- New toolbar buttons: **stop** (only while a query runs), **connect/disconnect** the editor's connection, **Query History…** and **Save to Connection's SQL Folder** (SQL editors).
+- The editor title's `…` menu also lists run statement, run selection, cancel, copy, paste, export and import.
+- Documentation in Brazilian Portuguese (`README.pt.md`), linked from the English and Spanish READMEs.
+
 ## 0.17.0 — 2026-10-20
 
 - Every database of a SQL connection has its own **SQL** node in the tree; its files run against that connection and database, and **New SQL File** on a database creates them there.

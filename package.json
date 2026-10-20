@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client: SQL, Redis & NATS",
   "description": "%extension.description%",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -864,6 +864,41 @@
           "command": "dbclient.showHistory",
           "when": "editorLangId == sql || editorLangId == redis",
           "group": "1_history@1"
+        },
+        {
+          "command": "dbclient.runStatement",
+          "when": "editorLangId == sql || editorLangId == redis",
+          "group": "0_run@1"
+        },
+        {
+          "command": "dbclient.runSelection",
+          "when": "editorLangId == sql || editorLangId == redis",
+          "group": "0_run@2"
+        },
+        {
+          "command": "dbclient.cancelQuery",
+          "when": "editorLangId == sql",
+          "group": "0_run@3"
+        },
+        {
+          "command": "dbclient.copyQuery",
+          "when": "editorLangId == sql || editorLangId == redis",
+          "group": "2_edit@1"
+        },
+        {
+          "command": "dbclient.pasteQuery",
+          "when": "editorLangId == sql || editorLangId == redis",
+          "group": "2_edit@2"
+        },
+        {
+          "command": "dbclient.exportQuery",
+          "when": "editorLangId == sql || editorLangId == redis",
+          "group": "3_file@1"
+        },
+        {
+          "command": "dbclient.importQuery",
+          "when": "editorLangId == sql || editorLangId == redis",
+          "group": "3_file@2"
         }
       ],
       "commandPalette": [
