@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.19.0 — 2026-10-21
+
+- **DB Client SQL editor** (optional, NetBeans style): open a `.sql` file with **Open in DB Client SQL Editor** or **Reopen Editor With…**. It has a toolbar with drop-downs for the connection (grouped by folder) and the database, icon buttons for every action, the SQL with syntax highlighting (CodeMirror), and its own results below in the same tab with a draggable divider. The file stays a normal document (save, undo, Git). `dbclient.sqlEditor.openByDefault` opens new queries and saved SQL files of the tree there. Autocompletion and inline errors come in a later version.
+- Text editor: the first line now shows only the connection and database selector, and ▶ Run appears above every statement. Run file, run selection, copy, paste and save are buttons in the editor title bar; the other actions (run statement, cancel, change/connect/disconnect, history, export, import, open in the SQL editor) are in its `…` menu.
+- Interface in Brazilian Portuguese, and a `dbclient.language` setting (default `auto`, the editor's language) with a selector in **Settings and About**.
+
 ## 0.18.0 — 2026-10-20
 
 - NetBeans-style editor toolbar: the first line of SQL and Redis editors shows `Connection:` with the connection and database as a drop-down, followed by icon-only buttons with tooltips (the separate **Change Connection…** is gone; the drop-down does the same).
