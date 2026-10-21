@@ -99,6 +99,29 @@ body {
   flex: 1;
 }
 
+.tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 320px;
+  padding: 3px 8px;
+  color: var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground));
+  background: var(--vscode-editorHoverWidget-background, var(--vscode-editorWidget-background));
+  border: 1px solid var(--vscode-editorHoverWidget-border, var(--vscode-widget-border, transparent));
+  border-radius: 3px;
+  box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0, 0, 0, 0.36));
+  pointer-events: none;
+  white-space: normal;
+}
+
+.tooltip[hidden] {
+  display: none;
+}
+
+.tooltip .keys {
+  margin-left: 8px;
+  color: var(--vscode-descriptionForeground);
+}
+
 .editor {
   flex: 0 0 55%;
   min-height: 60px;

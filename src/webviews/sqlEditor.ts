@@ -82,9 +82,9 @@ export class SqlEditorProvider implements vscode.CustomTextEditorProvider {
   }
 }
 
-/** Opens a SQL document in the DB Client SQL editor when `dbclient.sqlEditor.openByDefault` is on, else in the text editor. */
+/** Opens a SQL document in the DB Client SQL editor when `dbclient.sqlEditor.openByDefault` is on (the default), else in the text editor. */
 export async function showSqlDocument(doc: vscode.TextDocument): Promise<void> {
-  if (doc.languageId === 'sql' && vscode.workspace.getConfiguration('dbclient').get<boolean>('sqlEditor.openByDefault', false)) {
+  if (doc.languageId === 'sql' && vscode.workspace.getConfiguration('dbclient').get<boolean>('sqlEditor.openByDefault', true)) {
     await vscode.commands.executeCommand('vscode.openWith', doc.uri, SQL_EDITOR_VIEW_TYPE);
     return;
   }

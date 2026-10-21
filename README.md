@@ -119,7 +119,7 @@ select id, name from customers;
 Output │ select id, name from…
 ```
 
-Pick the connection and database in the drop-downs (they list databases once the connection is open), run with the buttons or `Ctrl/Cmd+Enter` (statement at the caret or the selection) and `Ctrl/Cmd+Shift+Enter` (everything). Results, editing in the grid and exports work as in the bottom panel, but each SQL editor keeps its own. 📄 goes back to the text editor. Set `dbclient.sqlEditor.openByDefault` to open new queries and saved SQL files of the tree there; to use it for every `.sql` file, choose **Configure default editor for '*.sql'** in the **Reopen Editor With…** list. Autocompletion and errors underlined in the text are still only in the text editor (a later version adds them).
+Pick the connection and database in the drop-downs (they list databases once the connection is open), run with the buttons or `Ctrl/Cmd+Enter` (statement at the caret or the selection) and `Ctrl/Cmd+Shift+Enter` (everything). Results, editing in the grid and exports work as in the bottom panel, but each SQL editor keeps its own (the bottom panel's **DB Client** tab stays hidden until Redis, Show Structure or the text editor shows something there). Hover a button to see what it does (and its shortcut). 📄 goes back to the text editor. New queries and saved SQL files of the tree open there by default (turn `dbclient.sqlEditor.openByDefault` off to use the text editor); to use it for every `.sql` file, choose **Configure default editor for '*.sql'** in the **Reopen Editor With…** list. Autocompletion and errors underlined in the text are still only in the text editor (a later version adds them).
 
 **Keep SQL files per database.** Expand a database in the tree: its first child is **SQL**, with the files of that database. **New SQL File** on the database or its **SQL** node creates one there, and opening it runs against that connection and database. A file with unsaved changes shows `● unsaved` and a **Save** button in the tree.
 
@@ -189,7 +189,7 @@ Click a key in the tree to open its value viewer and edit it.
 | `dbclient.connectionLens` | true | Show the editor's connection and database on the first line of SQL and Redis editors. |
 | `dbclient.sqlFolder` | (empty) | Folder for saved `.sql` files, one subfolder per connection; empty uses the extension's storage. |
 | `dbclient.historySize` | 500 | Entries kept in each connection's query history; `0` turns it off. Commands that can carry credentials (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) are never recorded. |
-| `dbclient.sqlEditor.openByDefault` | false | Open new queries and saved SQL files of the tree in the DB Client SQL editor instead of the text editor. |
+| `dbclient.sqlEditor.openByDefault` | true | Open new queries and saved SQL files of the tree in the DB Client SQL editor instead of the text editor. |
 | `dbclient.language` | auto | Interface language: `auto` (same as the editor), `en`, `es` or `pt-br`. |
 
 ## Development

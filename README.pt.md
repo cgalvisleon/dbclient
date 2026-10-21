@@ -119,7 +119,7 @@ select id, name from customers;
 Output │ select id, name from…
 ```
 
-Escolha a conexão e o banco nas listas (os bancos aparecem quando a conexão está aberta), execute com os botões ou com `Ctrl/Cmd+Enter` (a instrução do cursor ou a seleção) e `Ctrl/Cmd+Shift+Enter` (tudo). Os resultados, a edição na grade e as exportações funcionam como no painel inferior, mas cada editor SQL tem os seus. 📄 volta ao editor de texto. Ative `dbclient.sqlEditor.openByDefault` para abrir ali as consultas novas e os arquivos SQL salvos da árvore; para usá-lo com todos os `.sql`, escolha **Configure default editor for '*.sql'** na lista de **Reopen Editor With…**. O autocompletar e os erros sublinhados no texto continuam só no editor de texto (chegam em uma próxima versão).
+Escolha a conexão e o banco nas listas (os bancos aparecem quando a conexão está aberta), execute com os botões ou com `Ctrl/Cmd+Enter` (a instrução do cursor ou a seleção) e `Ctrl/Cmd+Shift+Enter` (tudo). Os resultados, a edição na grade e as exportações funcionam como no painel inferior, mas cada editor SQL tem os seus (a aba **DB Client** do painel inferior fica oculta até que Redis, Show Structure ou o editor de texto mostrem algo ali). Passe o ponteiro sobre um botão para ver o que ele faz (e seu atalho). 📄 volta ao editor de texto. As consultas novas e os arquivos SQL salvos da árvore abrem ali por padrão (desative `dbclient.sqlEditor.openByDefault` para usar o editor de texto); para usá-lo com todos os `.sql`, escolha **Configure default editor for '*.sql'** na lista de **Reopen Editor With…**. O autocompletar e os erros sublinhados no texto continuam só no editor de texto (chegam em uma próxima versão).
 
 **Guardar arquivos SQL por banco.** Expanda um banco na árvore: seu primeiro filho é **SQL**, com os arquivos desse banco. **New SQL File** no banco ou em seu nó **SQL** cria um ali, e ao abri-lo ele é executado nessa conexão e banco. Um arquivo com alterações não salvas mostra `● unsaved` e um botão **Save** na árvore.
 
@@ -189,7 +189,7 @@ Clique em uma chave na árvore para abrir seu visualizador de valores e editá-l
 | `dbclient.connectionLens` | true | Mostrar a conexão e o banco do editor na primeira linha dos editores SQL e Redis. |
 | `dbclient.sqlFolder` | (vazio) | Pasta para os arquivos `.sql` salvos, uma subpasta por conexão; vazio usa o armazenamento da extensão. |
 | `dbclient.historySize` | 500 | Entradas mantidas no histórico de consultas de cada conexão; `0` o desliga. Comandos que podem conter credenciais (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) nunca são registrados. |
-| `dbclient.sqlEditor.openByDefault` | false | Abrir as consultas novas e os arquivos SQL salvos da árvore no editor SQL do DB Client em vez do editor de texto. |
+| `dbclient.sqlEditor.openByDefault` | true | Abrir as consultas novas e os arquivos SQL salvos da árvore no editor SQL do DB Client em vez do editor de texto. |
 | `dbclient.language` | auto | Idioma da interface: `auto` (igual ao editor), `en`, `es` ou `pt-br`. |
 
 ## Desenvolvimento

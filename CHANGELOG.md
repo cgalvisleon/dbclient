@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20.1 — 2026-10-21
+
+- The DB Client SQL editor is now the default for new queries and saved SQL files of the tree (`dbclient.sqlEditor.openByDefault` defaults to `true`; turn it off to keep the text editor).
+- The **DB Client** tab of the bottom panel is hidden until something is shown in it (Redis commands, Show Structure, runs from the text editor).
+- DB Client SQL editor: the toolbar buttons and drop-downs show a tooltip (with the keyboard shortcut of the run buttons), also on disabled buttons and on keyboard focus.
+- Saving an untitled query of the DB Client SQL editor in the SQL folder no longer leaves the untitled tab open next to the saved file; renaming and deleting a saved SQL file also close its SQL editor tab.
+
 ## 0.20.0 — 2026-10-21
 
 - Disconnecting a connection collapses its detail in the tree.

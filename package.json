@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client: SQL, Redis & NATS",
   "description": "%extension.description%",
-  "version": "0.20.0",
+  "version": "0.20.1",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -73,7 +73,8 @@
         {
           "type": "webview",
           "id": "dbclient.results",
-          "name": "%view.dbclient.results%"
+          "name": "%view.dbclient.results%",
+          "when": "dbclient.resultsPanel"
         }
       ]
     },
@@ -1163,7 +1164,7 @@
         },
         "dbclient.sqlEditor.openByDefault": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "%config.dbclient.sqlEditor.openByDefault.description%"
         }
       }

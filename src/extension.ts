@@ -11,6 +11,7 @@ import { DocumentBindings, EDITOR_CATEGORIES } from './editor/bindings';
 import { ConnectionCodeLens, RunCodeLens } from './editor/codeLens';
 import { HistoryPicker } from './editor/historyPicker';
 import { showSqlDocument, SQL_EDITOR_VIEW_TYPE, SqlEditorProvider } from './webviews/sqlEditor';
+import { closeDocumentTabs } from './editor/tabs';
 import { RedisRunner } from './editor/redisRunner';
 import { SqlRunner } from './editor/sqlRunner';
 import { TableActions, TemplateKind } from './editor/tableActions';
@@ -602,9 +603,8 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }
     const file = sqlFiles.createIn(dir, name, doc.getText());
     if (doc.isUntitled) {
-      // Close the untitled original without the "save changes?" prompt.
-      await vscode.window.showTextDocument(doc);
-      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+      // Close the untitled original (text or SQL editor tab) without the "save changes?" prompt.
+      await closeDocumentTabs(doc.uri, true);
     }
     await openBound(file, binding.connectionId, binding.database);
   });
@@ -634,9 +634,8 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const target = sqlFiles.rename(item.file, name);
     if (open) {
       // Reopen under the new name in place of the old tab.
-      await vscode.window.showTextDocument(open);
-      await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-      await vscode.window.showTextDocument(vscode.Uri.file(target));
+      await closeDocumentTabs(open.uri);
+      await showSqlDocument(await vscode.workspace.openTextDocument(target));
     }
   });
 
@@ -653,8 +652,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (answer === remove) {
       const open = vscode.workspace.textDocuments.find((d) => d.uri.fsPath === item.file);
       if (open) {
-        await vscode.window.showTextDocument(open);
-        await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+        await closeDocumentTabs(open.uri, true);
       }
       sqlFiles.delete(item.file);
     }
@@ -822,7 +820,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const content = category === 'kv' ? '# One command per line. Ctrl/Cmd+Enter runs the current line or the selection.\n' : '';
     const doc = await vscode.workspace.openTextDocument({ language, content });
     await bindings.set(doc, { connectionId: id, database: item instanceof NodeItem ? item.node.database : undefined });
-    if (language === 'sql' && vscode.workspace.getConfiguration('dbclient').get<boolean>('sqlEditor.openByDefault', false)) {
+    if (language === 'sql' && vscode.workspace.getConfiguration('dbclient').get<boolean>('sqlEditor.openByDefault', true)) {
       await showSqlDocument(doc);
       return;
     }

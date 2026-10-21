@@ -465,7 +465,19 @@ exports.run = async function () {
     }
     if (untitledSession) {
       assert.strictEqual((await untitledSession.pushState()).connectionId, conn.id, 'untitled editor keeps its binding');
-      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+      // Saving it in the SQL folder replaces the untitled tab: one tab, no text editor next to it.
+      const { showInputBox } = vscode.window;
+      vscode.window.showInputBox = async () => `smoke-saved-${run}`;
+      try {
+        await vscode.commands.executeCommand('dbclient.saveToSqlFolder', untitled.uri);
+      } finally {
+        vscode.window.showInputBox = showInputBox;
+      }
+      const tabs = () => vscode.window.tabGroups.all.flatMap((g) => g.tabs).map((tab) => tab.input?.uri?.toString() ?? '');
+      await until(() => !tabs().includes(untitled.uri.toString()), 'untitled tab closed');
+      const saved = tabs().filter((u) => u.includes(`smoke-saved-${run}`));
+      assert.strictEqual(saved.length, 1, `one tab for the saved file: ${tabs().join(', ')}`);
+      assert.ok(vscode.window.tabGroups.all.flatMap((g) => g.tabs).find((tab) => tab.input?.uri?.toString() === saved[0]).input instanceof vscode.TabInputCustom, 'saved file opened in the SQL editor');
     }
 
     await vscode.commands.executeCommand('workbench.action.closeAllEditors');

@@ -30,18 +30,25 @@
 
   const post = (m) => vscode.postMessage(m);
   const icon = (name) => el('span', { class: `codicon codicon-${name}` });
-  /** Icon button; `message` is posted on click unless `action` is given. */
-  const button = (name, title, message, action) =>
-    el('button', { class: 'tool', title, 'aria-label': title, on: { click: () => (action ? action() : (flush(), post(message))) } }, icon(name));
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+  /** A shortcut written for this platform: `Mod` is Cmd on macOS, Ctrl elsewhere. */
+  const keys = (shortcut) => shortcut.replace('Mod', mac ? '⌘' : 'Ctrl').replace(/\+/g, mac ? '' : '+').replace('Shift', mac ? '⇧' : 'Shift').replace('Enter', mac ? '↩' : 'Enter');
+  /** Icon button with a tooltip (`data-tip`); `message` is posted on click unless `action` is given. */
+  const button = (name, title, message, action, shortcut) =>
+    el(
+      'button',
+      { class: 'tool', 'data-tip': title, 'data-keys': shortcut && keys(shortcut), 'aria-label': title, on: { click: () => (action ? action() : (flush(), post(message))) } },
+      icon(name),
+    );
   const separator = () => el('span', { class: 'separator' });
 
   // ---------- layout ----------
 
-  const connectionSelect = /** @type {HTMLSelectElement} */ (el('select', { id: 'connection', title: t('Connection for this editor') }));
-  const databaseSelect = /** @type {HTMLSelectElement} */ (el('select', { id: 'database', title: t('Database') }));
-  const runAll = button('run-all', t('Run every statement of the file'), undefined, () => run('file'));
-  const runStatement = button('play', t('Run the statement at the cursor'), undefined, () => run('statement'));
-  const runSelection = button('list-selection', t('Run the selected statements'), undefined, () => run('auto'));
+  const connectionSelect = /** @type {HTMLSelectElement} */ (el('select', { id: 'connection', 'data-tip': t('Connection for this editor') }));
+  const databaseSelect = /** @type {HTMLSelectElement} */ (el('select', { id: 'database', 'data-tip': t('Database') }));
+  const runAll = button('run-all', t('Run every statement of the file'), undefined, () => run('file'), 'Mod+Shift+Enter');
+  const runStatement = button('play', t('Run the statement at the cursor'), undefined, () => run('statement'), 'Mod+Enter');
+  const runSelection = button('list-selection', t('Run the selected statements'), undefined, () => run('auto'), 'Mod+Enter');
   const stop = button('debug-stop', t('Stop the running query'), { type: 'cancel' });
   const connect = button('plug', t('Connect'), { type: 'connect' });
   const disconnect = button('debug-disconnect', t('Disconnect'), { type: 'disconnect' });
@@ -70,10 +77,53 @@
     el('span', { class: 'grow' }),
     button('file-code', t('Open in the text editor'), { type: 'openAsText' }),
   );
+
+  // Tooltips of the toolbar (native `title` tooltips do not show in every webview host). Found by
+  // position, so disabled buttons get theirs too; keyboard focus shows them as well.
+  const tooltip = el('div', { class: 'tooltip', role: 'tooltip', hidden: true });
+  let tipTarget = null;
+  let tipTimer = 0;
+  function showTip(target, delay) {
+    if (target === tipTarget) return;
+    hideTip();
+    tipTarget = target;
+    const show = () => {
+      tooltip.replaceChildren(target.dataset.tip, ...(target.dataset.keys ? [el('span', { class: 'keys' }, target.dataset.keys)] : []));
+      tooltip.hidden = false;
+      const box = target.getBoundingClientRect();
+      const left = Math.min(Math.max(4, box.left + box.width / 2 - tooltip.offsetWidth / 2), window.innerWidth - tooltip.offsetWidth - 4);
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${box.bottom + 4}px`;
+    };
+    if (delay) tipTimer = window.setTimeout(show, delay);
+    else show();
+  }
+  function hideTip() {
+    window.clearTimeout(tipTimer);
+    tipTarget = null;
+    tooltip.hidden = true;
+  }
+  toolbar.addEventListener('pointermove', (e) => {
+    const target = document.elementsFromPoint(e.clientX, e.clientY).find((n) => n instanceof HTMLElement && n.dataset.tip && toolbar.contains(n));
+    if (target) showTip(target, 500);
+    else hideTip();
+  });
+  toolbar.addEventListener('pointerleave', hideTip);
+  toolbar.addEventListener('pointerdown', hideTip);
+  /** True when the last input was the keyboard, so focus (Tab) shows the tooltip but a click does not. */
+  let keyboard = false;
+  document.addEventListener('pointerdown', () => (keyboard = false), true);
+  document.addEventListener('keydown', (e) => {
+    keyboard = true;
+    if (e.key === 'Escape') hideTip();
+  }, true);
+  toolbar.addEventListener('focusin', (e) => keyboard && e.target instanceof HTMLElement && e.target.dataset.tip && showTip(e.target, 0));
+  toolbar.addEventListener('focusout', hideTip);
+
   const editorPane = el('div', { class: 'editor' });
   const splitter = el('div', { class: 'splitter', role: 'separator', title: t('Drag to resize') });
   const resultsPane = el('div', { class: 'results' });
-  page.append(toolbar, editorPane, splitter, resultsPane);
+  page.append(toolbar, editorPane, splitter, resultsPane, tooltip);
 
   function applySplit() {
     const share = Math.min(0.9, Math.max(0.1, state.split ?? 0.55));
@@ -134,7 +184,7 @@
       ...(s.databases.length ? s.databases.map((d) => el('option', { value: d, selected: d === s.database }, d)) : [el('option', { value: '' }, '—')]),
     );
     databaseSelect.disabled = s.databases.length < 2;
-    databaseSelect.title = s.connected || !s.connectionId ? t('Database') : t('Connect to list the databases');
+    databaseSelect.dataset.tip = s.connected || !s.connectionId ? t('Database') : t('Connect to list the databases');
 
     const bound = Boolean(s.connectionId);
     connect.hidden = !bound || s.connected;

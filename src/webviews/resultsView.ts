@@ -199,7 +199,9 @@ export class ResultsView implements vscode.WebviewViewProvider, ResultsSink {
     this.panel.post(message);
   }
 
+  /** The panel tab stays hidden (context `dbclient.resultsPanel`) until something is shown in it. */
   private async showPanel(): Promise<void> {
+    await vscode.commands.executeCommand('setContext', 'dbclient.resultsPanel', true);
     if (this.view) {
       this.view.show(true);
     } else {

@@ -167,4 +167,24 @@ describe('SQL editor webview', () => {
     assert.ok(cell, 'grid rendered inside the results pane');
     assert.strictEqual(JSON.parse(cell.getAttribute('data-vscode-context')!).document, 'file:///q.sql');
   });
+
+  it('shows tooltips on toolbar buttons, with their shortcut, also on disabled ones', async () => {
+    const { window, doc, send } = load();
+    send({ type: 'state', state: { ...STATE, running: true } });
+    const runAll = doc.querySelector('[aria-label="Run every statement of the file"]') as HTMLButtonElement;
+    assert.ok(runAll.disabled, 'run buttons disabled while running');
+    assert.ok(!doc.querySelector('.sql-toolbar [title]'), 'no native titles left in the toolbar');
+    const tip = doc.querySelector('.tooltip') as HTMLElement;
+    (doc as any).elementsFromPoint = () => [runAll.firstChild, runAll];
+    doc.querySelector('.sql-toolbar')!.dispatchEvent(new window.MouseEvent('pointermove', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 550));
+    assert.ok(!tip.hidden, 'tooltip shown after the hover delay');
+    assert.match(tip.textContent ?? '', /^Run every statement of the file(Ctrl\+Shift\+Enter|⌘⇧↩)$/);
+    doc.querySelector('.sql-toolbar')!.dispatchEvent(new window.MouseEvent('pointerleave'));
+    assert.ok(tip.hidden, 'hidden when the pointer leaves');
+
+    doc.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab' }));
+    (doc.querySelector('[aria-label="Query History…"]') as HTMLElement).focus();
+    assert.ok(!tip.hidden && tip.textContent === 'Query History…', 'keyboard focus shows it at once');
+  });
 });
