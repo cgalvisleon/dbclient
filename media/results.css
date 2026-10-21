@@ -218,8 +218,9 @@ tr.selected td {
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
+/* Clicking goes to the statement; the arrow pointer stays, the hover background tells it is clickable. */
 .entry.link {
-  cursor: pointer;
+  cursor: default;
 }
 
 .entry.link:hover {

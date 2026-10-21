@@ -258,7 +258,14 @@ exports.run = async function () {
     await until(() => sqlNode.description === '1', 'SQL node count updated');
     const files = await api.tree.getChildren(sqlNode);
     assert.strictEqual(files[0].label, 'report');
-    assert.strictEqual(files[0].command.command, 'vscode.open');
+    // A click opens it in the DB Client SQL editor (the default), in one tab.
+    assert.strictEqual(files[0].command.command, 'dbclient.openSqlFile');
+    await vscode.commands.executeCommand(files[0].command.command, ...files[0].command.arguments);
+    const fileTabs = () => vscode.window.tabGroups.all.flatMap((g) => g.tabs).filter((tab) => tab.input?.uri?.fsPath === file);
+    await until(() => (fileTabs().length === 1 && fileTabs()[0].input instanceof vscode.TabInputCustom ? true : undefined), 'tree SQL file opened in the SQL editor');
+    await vscode.commands.executeCommand(files[0].command.command, ...files[0].command.arguments);
+    assert.strictEqual(fileTabs().length, 1, 'a second click keeps one tab');
+    await vscode.window.tabGroups.close(fileTabs());
 
     const doc = await vscode.workspace.openTextDocument(file);
     await vscode.window.showTextDocument(doc);
@@ -404,6 +411,69 @@ exports.run = async function () {
     console.log('✓ sql locations: linked folders, subfolders, ignores, binding by most specific, tie, save location, watcher, unlink');
   }
 
+  // Disconnect (toolbar and tree) and connect again: the SQL editor keeps its connection and runs.
+  async function reconnectAndRun(session, id, name, sleep) {
+    const got = [];
+    const realPost = session.channel.post;
+    session.channel.post = function (m) {
+      got.push(m);
+      return realPost.call(this, m);
+    };
+    try {
+      const runOnce = async (what) => {
+        got.length = 0;
+        await session.receive({ type: 'run', mode: 'file', anchor: { line: 0, ch: 0 }, head: { line: 0, ch: 0 } });
+        const done = await until(() => got.find((m) => m.type === 'result' || (m.type === 'log' && !m.entry.ok)), `${name}: run ${what}`);
+        assert.strictEqual(done.type, 'result', `${name}: run ${what} (${done.entry?.message})`);
+      };
+      await runOnce('before disconnecting');
+      await session.receive({ type: 'disconnect' });
+      assert.strictEqual((await session.pushState()).connected, false, `${name}: toolbar disconnect`);
+      assert.strictEqual((await session.pushState()).connectionId, id, `${name}: binding kept while disconnected`);
+      await runOnce('after a disconnect (reconnects by itself)');
+      await vscode.commands.executeCommand('dbclient.disconnect', await rootOf(api.store.get(id)));
+      await session.receive({ type: 'connect' });
+      assert.strictEqual((await session.pushState()).connected, true, `${name}: toolbar connect`);
+      await runOnce('after a tree disconnect and toolbar connect');
+      if (sleep) {
+        // Disconnecting while a query runs ends that run; the next one works.
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(session.document.uri, new vscode.Range(0, 0, session.document.lineCount, 0), `${sleep};\n`);
+        await vscode.workspace.applyEdit(edit);
+        got.length = 0;
+        await session.receive({ type: 'run', mode: 'file', anchor: { line: 0, ch: 0 }, head: { line: 0, ch: 0 } });
+        await until(() => api.sqlEditors && (session.services ?? true) && got.some((m) => m.type === 'run'), `${name}: long run started`);
+        await wait(500);
+        await vscode.commands.executeCommand('dbclient.disconnect', await rootOf(api.store.get(id)));
+        await until(() => ((async () => !(await session.pushState()).running)()), `${name}: run ended by the disconnect`, 8000);
+        const back = new vscode.WorkspaceEdit();
+        back.replace(session.document.uri, new vscode.Range(0, 0, session.document.lineCount, 0), 'select 1 as one;\n');
+        await vscode.workspace.applyEdit(back);
+        await runOnce('after disconnecting during a run');
+      }
+    } finally {
+      session.channel.post = realPost;
+    }
+    console.log(`✓ ${name} sql editor: runs after disconnect + connect${sleep ? ', and after disconnecting during a run' : ''}`);
+  }
+
+  if (env.DBCLIENT_PG_HOST) {
+    const conn = await addConnection(`smoke-sqleditor-pg-${run}`, 'postgres', { host: env.DBCLIENT_PG_HOST, port: 5432, database: env.DBCLIENT_PG_DATABASE, user: env.DBCLIENT_PG_USER }, env.DBCLIENT_PG_PASSWORD);
+    const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: 'select 1 as one;\n' });
+    await api.bindings.set(doc, { connectionId: conn.id });
+    await vscode.commands.executeCommand('vscode.openWith', doc.uri, 'dbclient.sqlEditor');
+    const session = await until(() => api.sqlEditors.sessions.get(doc.uri.toString()), 'postgres SQL editor session');
+    await session.loaded;
+    try {
+      await reconnectAndRun(session, conn.id, 'postgres', 'select pg_sleep(30)');
+    } finally {
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+      await api.manager.disconnect(conn.id);
+      await api.store.delete(conn.id, []);
+      api.history.clear(conn.id);
+    }
+  }
+
   // DB Client SQL editor (custom editor): CodeMirror loads in the webview, edits reach the
   // document, runs land in the editor's own results.
   {
@@ -452,6 +522,18 @@ exports.run = async function () {
     assert.strictEqual((await session.pushState()).connected, true, 'running opened the connection');
     await doc.save();
 
+    // The layout button asks where the results go and saves it for every SQL editor.
+    const { showQuickPick: realQuickPick } = vscode.window;
+    vscode.window.showQuickPick = async (items) => (await items).find((i) => i.position === 'right');
+    try {
+      await session.receive({ type: 'resultsPosition' });
+    } finally {
+      vscode.window.showQuickPick = realQuickPick;
+    }
+    assert.strictEqual(vscode.workspace.getConfiguration('dbclient').get('sqlEditor.resultsPosition'), 'right', 'results position saved');
+    await vscode.workspace.getConfiguration('dbclient').update('sqlEditor.resultsPosition', undefined, vscode.ConfigurationTarget.Global);
+    await reconnectAndRun(session, conn.id, 'sqlite');
+
     // Untitled queries (New Query) in the SQL editor.
     const untitled = await vscode.workspace.openTextDocument({ language: 'sql', content: 'select 3 as three;\n' });
     await api.bindings.set(untitled, { connectionId: conn.id });
@@ -495,6 +577,10 @@ exports.run = async function () {
     posted.push(m);
     realPost(m);
   };
+
+  // The table flows below check the text editor; the DB Client SQL editor gets its own flow after them.
+  const dbSettings = vscode.workspace.getConfiguration('dbclient');
+  await dbSettings.update('sqlEditor.openByDefault', false, vscode.ConfigurationTarget.Global);
 
   async function tableFlow({ name, type, options, password, database, setup, teardown, path: labels, table }) {
     const config = await addConnection(`smoke-tables-${name}`, type, options, password);
@@ -678,6 +764,97 @@ exports.run = async function () {
       path: ['Tables'],
       table: 'items',
     });
+  }
+
+  // DB Client SQL editor (the default): tree actions, row SQL and Query History open or insert there,
+  // and Open Data shows its results in the editor, not in the bottom panel.
+  await dbSettings.update('sqlEditor.openByDefault', undefined, vscode.ConfigurationTarget.Global);
+  {
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dbclient-sqleditor-')), 'actions.db');
+    const config = await addConnection('smoke-sqleditor-actions', 'sqlite', { file });
+    const driver = await api.manager.connectSql(config.id);
+    for (const sql of ['create table items (id integer primary key, name varchar(20))', tableRows('items')]) await driver.execute(sql, { maxRows: 1 });
+    const channelPosts = [];
+    let channelProto;
+    try {
+      let item = await rootOf(config);
+      for (const label of ['Tables', 'items']) item = (await api.tree.getChildren(item)).find((c) => c.label === label);
+      const activeSession = () => {
+        const input = vscode.window.tabGroups.activeTabGroup.activeTab?.input;
+        return input instanceof vscode.TabInputCustom ? api.sqlEditors.sessions.get(input.uri.toString()) : undefined;
+      };
+      const opened = async (command, arg, pattern, label) => {
+        const before = activeSession();
+        await vscode.commands.executeCommand(command, arg);
+        const session = await until(() => {
+          const active = activeSession();
+          return active !== before && pattern.test(active?.document.getText() ?? '') ? active : undefined;
+        }, `sql editor: ${label} opened in the SQL editor`);
+        assert.strictEqual(api.bindings.get(session.document)?.connectionId, config.id, `sql editor: ${label} bound`);
+        return session;
+      };
+      // Text tabs of documents bound to this connection (other flows may leave tabs of their own).
+      const textTabs = () =>
+        vscode.window.tabGroups.all
+          .flatMap((g) => g.tabs)
+          .filter((tab) => tab.input instanceof vscode.TabInputText)
+          .map((tab) => vscode.workspace.textDocuments.find((d) => d.uri.toString() === tab.input.uri.toString()))
+          .filter((d) => d && api.bindings.get(d)?.connectionId === config.id)
+          .map((d) => d.getText().slice(0, 40));
+
+      await opened('dbclient.generateSelect', item, /^SELECT id, name\nFROM /i, 'SELECT template');
+      await opened('dbclient.showDdl', item, /CREATE TABLE/i, 'DDL');
+      await opened('dbclient.openSql', item, /^SELECT \* FROM /i, 'Open SQL');
+
+      const first = [...api.sqlEditors.sessions.values()][0];
+      channelProto = Object.getPrototypeOf(first.channel);
+      const realChannelPost = channelProto.post;
+      channelProto.post = function (m) {
+        channelPosts.push({ sink: this, m });
+        return realChannelPost.call(this, m);
+      };
+      channelProto.realPost = realChannelPost;
+      posted.length = 0;
+      const data = await opened('dbclient.openData', item, /^SELECT \* FROM /i, 'Open Data');
+      const tab = await until(() => channelPosts.find((p) => p.sink === data.channel && p.m.type === 'result')?.m.tab, 'sql editor: Open Data result in the editor');
+      assert.ok(tab.edit, 'sql editor: editable grid');
+      assert.ok(!posted.some((m) => m.type === 'result'), 'sql editor: no result in the bottom panel');
+
+      await api.results.answer(data.channel, { type: 'rowSql', source: tab.source, kind: 'delete', row: tab.rows[0] });
+      await until(() => (activeSession() !== data && /^DELETE /i.test(activeSession()?.document.getText() ?? '') ? true : undefined), 'sql editor: row SQL opened in the SQL editor');
+
+      // Query History from the palette inserts at the caret of the active SQL editor.
+      const target = await vscode.workspace.openTextDocument({ language: 'sql', content: '' });
+      await api.bindings.set(target, { connectionId: config.id });
+      await vscode.commands.executeCommand('vscode.openWith', target.uri, 'dbclient.sqlEditor');
+      await (await until(() => api.sqlEditors.sessions.get(target.uri.toString()), 'sql editor: history target')).loaded;
+      await vscode.commands.executeCommand('dbclient.showHistory');
+      await new Promise((r) => setTimeout(r, 300));
+      await vscode.commands.executeCommand('workbench.action.acceptSelectedQuickOpenItem');
+      await until(() => (/^SELECT \* FROM /i.test(target.getText()) ? true : undefined), 'sql editor: history inserted into the SQL editor', 5000);
+      assert.deepStrictEqual(textTabs(), [], 'sql editor: no text editor tab opened');
+
+      // Switching an unsaved query between the text and the SQL editor keeps one tab.
+      const draft = await vscode.workspace.openTextDocument({ language: 'sql', content: 'select 1;\n' });
+      await vscode.window.showTextDocument(draft);
+      const tabsOfDraft = () => vscode.window.tabGroups.all.flatMap((g) => g.tabs).filter((tab) => tab.input?.uri?.toString() === draft.uri.toString());
+      await vscode.commands.executeCommand('dbclient.openSqlEditor', draft.uri);
+      await until(() => (tabsOfDraft().length === 1 && tabsOfDraft()[0].input instanceof vscode.TabInputCustom ? true : undefined), 'sql editor: text tab replaced by the SQL editor');
+      const draftSession = await until(() => api.sqlEditors.sessions.get(draft.uri.toString()), 'sql editor: draft session');
+      await draftSession.receive({ type: 'openAsText' });
+      await until(() => (tabsOfDraft().length === 1 && tabsOfDraft()[0].input instanceof vscode.TabInputText ? true : undefined), 'sql editor: SQL editor replaced by the text tab');
+      assert.ok(draft.isDirty && !draft.isClosed, 'sql editor: unsaved query kept while switching');
+      console.log('✓ sql editor actions: templates, DDL, Open SQL, Open Data (results in the editor), row SQL, history insert, one tab when switching editors');
+    } finally {
+      if (channelProto?.realPost) {
+        channelProto.post = channelProto.realPost;
+        delete channelProto.realPost;
+      }
+      await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+      await api.manager.disconnect(config.id);
+      await api.store.delete(config.id, []);
+      api.history.clear(config.id);
+    }
   }
 
   if (env.DBCLIENT_PG_HOST) {

@@ -29,3 +29,18 @@ export async function closeDocumentTabs(uri: vscode.Uri, revert = false): Promis
     await vscode.window.tabGroups.close(rest);
   }
 }
+
+/**
+ * Shows `uri` in `viewType` ('default' = the text editor) in place of its tabs in other editors,
+ * so switching between the text and the DB Client SQL editor keeps one tab. Unsaved changes stay
+ * in the document, which the new tab keeps open.
+ */
+export async function reopenWith(uri: vscode.Uri, viewType: string): Promise<void> {
+  const others = tabsOf(uri).filter((tab) => (tab.input instanceof vscode.TabInputCustom ? tab.input.viewType : 'default') !== viewType);
+  const column = others[0]?.group.viewColumn;
+  await vscode.commands.executeCommand('vscode.openWith', uri, viewType, column ? { viewColumn: column } : undefined);
+  const stale = tabsOf(uri).filter((tab) => (tab.input instanceof vscode.TabInputCustom ? tab.input.viewType : 'default') !== viewType);
+  if (stale.length) {
+    await vscode.window.tabGroups.close(stale, true);
+  }
+}

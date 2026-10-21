@@ -122,9 +122,31 @@ body {
   color: var(--vscode-descriptionForeground);
 }
 
+/* SQL + splitter + results; the results go below (default), above, left or right of the SQL. */
+.work {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+}
+
+.work[data-position='top'] {
+  flex-direction: column-reverse;
+}
+
+.work[data-position='right'] {
+  flex-direction: row;
+}
+
+.work[data-position='left'] {
+  flex-direction: row-reverse;
+}
+
 .editor {
   flex: 0 0 55%;
   min-height: 60px;
+  min-width: 120px;
   overflow: hidden;
 }
 
@@ -143,6 +165,11 @@ body {
   opacity: 0.7;
 }
 
+.work[data-position='left'] .splitter,
+.work[data-position='right'] .splitter {
+  cursor: col-resize;
+}
+
 .splitter:hover {
   background: var(--vscode-sash-hoverBorder, var(--vscode-focusBorder));
   opacity: 1;
@@ -153,5 +180,6 @@ body {
   flex-direction: column;
   flex: 1 1 0;
   min-height: 0;
+  min-width: 0;
   background: var(--vscode-panel-background, var(--vscode-editor-background));
 }

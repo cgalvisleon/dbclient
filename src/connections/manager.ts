@@ -114,8 +114,10 @@ export class ConnectionManager implements vscode.Disposable {
       return;
     }
     this.active.delete(id);
-    await driver.disconnect().catch(() => undefined);
+    // Announced before closing: a driver may wait for the query in flight, and a run listening for
+    // this ends at once (SqlRunner) instead of waiting for it.
     this.changed.fire(id);
+    await driver.disconnect().catch(() => undefined);
   }
 
   /** Connects a throwaway driver with the given values; used by "Test Connection" and the form. */

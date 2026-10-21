@@ -74,5 +74,6 @@
   "config.dbclient.language.auto": "Igual que el editor",
   "command.openSqlEditor": "Abrir en el editor SQL de DB Client",
   "customEditor.sqlEditor": "Editor SQL de DB Client",
-  "config.dbclient.sqlEditor.openByDefault.description": "Abrir las consultas nuevas y los archivos SQL guardados del árbol de conexiones en el editor SQL de DB Client (barra, SQL y resultados en una pestaña) en lugar del editor de texto. Para usarlo con todos los archivos .sql, elige Reopen Editor With… → Configure default editor for '*.sql'."
+  "config.dbclient.sqlEditor.openByDefault.description": "Abrir las consultas nuevas y los archivos SQL guardados del árbol de conexiones en el editor SQL de DB Client (barra, SQL y resultados en una pestaña) en lugar del editor de texto. Para usarlo con todos los archivos .sql, elige Reopen Editor With… → Configure default editor for '*.sql'.",
+  "config.dbclient.sqlEditor.resultsPosition.description": "Dónde muestra el editor SQL de DB Client sus resultados (Output y pestañas de resultados) respecto al SQL: abajo, arriba, a la izquierda o a la derecha. También se cambia con el botón de diseño de su barra."
 }

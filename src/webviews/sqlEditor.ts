@@ -3,13 +3,14 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
 import { DocumentBindings } from '../editor/bindings';
-import { HistoryPicker } from '../editor/historyPicker';
+import { HistoryPicker, HistoryTarget } from '../editor/historyPicker';
+import { reopenWith } from '../editor/tabs';
 import { RunMode, SqlRunner } from '../editor/sqlRunner';
 import { t } from '../l10n';
 import { mediaRoots, webviewHtml } from './html';
 import { ResultsChannel, ResultsView } from './resultsView';
 
-export const SQL_EDITOR_VIEW_TYPE = 'dbclient.sqlEditor';
+export { SQL_EDITOR_VIEW_TYPE, showSqlDocument } from '../editor/sqlDocument';
 
 /** A place in the document as CodeMirror and VS Code both count it (0-based line, UTF-16 column). */
 interface Pos {
@@ -30,9 +31,32 @@ type FromEditor =
   | { type: 'edit'; changes: Change[]; text: string }
   /** `auto`: the selection, or the statement at the caret. */
   | { type: 'run'; mode: 'auto' | 'statement' | 'file'; anchor: Pos; head: Pos }
-  | { type: 'cancel' | 'connect' | 'disconnect' | 'history' | 'saveToFolder' | 'paste' | 'export' | 'import' | 'addConnection' | 'openAsText' }
+  | { type: 'cancel' | 'connect' | 'disconnect' | 'history' | 'saveToFolder' | 'paste' | 'export' | 'import' | 'addConnection' | 'openAsText' | 'resultsPosition' }
   | { type: 'setConnection'; connectionId: string }
   | { type: 'setDatabase'; database: string };
+
+/** Where the results go around the SQL: `dbclient.sqlEditor.resultsPosition`. */
+export type ResultsPosition = 'bottom' | 'top' | 'left' | 'right';
+
+const resultsPosition = (): ResultsPosition => vscode.workspace.getConfiguration('dbclient').get<ResultsPosition>('sqlEditor.resultsPosition', 'bottom');
+
+/** Asks where to put the results and saves it for every DB Client SQL editor. */
+async function pickResultsPosition(): Promise<void> {
+  const current = resultsPosition();
+  const items: (vscode.QuickPickItem & { position: ResultsPosition })[] = [
+    { position: 'bottom', label: `$(layout-panel) ${t('Bottom')}` },
+    { position: 'top', label: `$(layout-menubar) ${t('Top')}` },
+    { position: 'left', label: `$(layout-sidebar-left) ${t('Left')}` },
+    { position: 'right', label: `$(layout-sidebar-right) ${t('Right')}` },
+  ];
+  for (const item of items) {
+    item.description = item.position === current ? t('current') : undefined;
+  }
+  const picked = await vscode.window.showQuickPick(items, { placeHolder: t('Where should the results of the SQL editor go?') });
+  if (picked && picked.position !== current) {
+    await vscode.workspace.getConfiguration('dbclient').update('sqlEditor.resultsPosition', picked.position, vscode.ConfigurationTarget.Global);
+  }
+}
 
 export interface SqlEditorState {
   connections: { id: string; name: string; engine: string; folder?: string }[];
@@ -80,15 +104,6 @@ export class SqlEditorProvider implements vscode.CustomTextEditorProvider {
       }
     });
   }
-}
-
-/** Opens a SQL document in the DB Client SQL editor when `dbclient.sqlEditor.openByDefault` is on (the default), else in the text editor. */
-export async function showSqlDocument(doc: vscode.TextDocument): Promise<void> {
-  if (doc.languageId === 'sql' && vscode.workspace.getConfiguration('dbclient').get<boolean>('sqlEditor.openByDefault', true)) {
-    await vscode.commands.executeCommand('vscode.openWith', doc.uri, SQL_EDITOR_VIEW_TYPE);
-    return;
-  }
-  await vscode.window.showTextDocument(doc);
 }
 
 export class SqlEditorSession implements vscode.Disposable {
@@ -145,6 +160,7 @@ export class SqlEditorSession implements vscode.Disposable {
       manager.onDidChangeState(refresh),
       manager.store.onDidChange(refresh),
       runner.onDidChangeRunning(refresh),
+      vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('dbclient.sqlEditor.resultsPosition') && this.post({ type: 'position', position: resultsPosition() })),
     );
   }
 
@@ -182,6 +198,7 @@ export class SqlEditorSession implements vscode.Disposable {
           eol: this.document.eol === vscode.EndOfLine.CRLF ? '\r\n' : '\n',
           placeholder: t('Write SQL here. Ctrl/Cmd+Enter runs the statement at the caret or the selection; Ctrl/Cmd+Shift+Enter runs everything.'),
         });
+        this.post({ type: 'position', position: resultsPosition() });
         await this.pushState();
         return;
       case 'editorLoaded':
@@ -226,8 +243,8 @@ export class SqlEditorSession implements vscode.Disposable {
         return;
       }
       case 'history': {
-        const id = binding()?.connectionId;
-        await history.show(id, { connectionId: id, insert: (text) => this.post({ type: 'insert', text }) });
+        const target = this.historyTarget();
+        await history.show(target.connectionId, target);
         return;
       }
       case 'saveToFolder':
@@ -275,10 +292,18 @@ export class SqlEditorSession implements vscode.Disposable {
       case 'addConnection':
         await vscode.commands.executeCommand('dbclient.addConnection');
         return;
+      case 'resultsPosition':
+        await pickResultsPosition();
+        return;
       case 'openAsText':
-        await vscode.commands.executeCommand('vscode.openWith', this.document.uri, 'default');
+        await reopenWith(this.document.uri, 'default');
         return;
     }
+  }
+
+  /** Query History inserts a statement of this editor's connection at its caret. */
+  historyTarget(): HistoryTarget {
+    return { connectionId: this.services.bindings.get(this.document)?.connectionId, insert: (text) => this.post({ type: 'insert', text }) };
   }
 
   /** Sends changes that did not come from the webview (undo, another editor, a file reload). */

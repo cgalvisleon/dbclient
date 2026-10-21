@@ -113,89 +113,104 @@ export class SqlRunner implements vscode.Disposable {
         },
         async (progress, token) => {
           const driver = await this.manager.connectSql(binding.connectionId);
+          // Disconnecting ends the run: a closed driver may never answer the query in flight.
+          let dropConnection!: (err: Error) => void;
+          const dropped = new Promise<never>((_, reject) => (dropConnection = reject));
+          const droppedSettled = dropped.catch(() => undefined);
           state.cancel = () => {
             if (!state.cancelling) {
               state.cancelled = true;
-              state.cancelling = driver.cancel(binding.database).catch((err) => {
+              const cancelled = driver.cancel(binding.database).catch((err) => {
                 this.log(sink, config.name, t('Cancel'), false, (err as Error).message);
               });
+              state.cancelling = Promise.race([cancelled, droppedSettled]);
             }
             return state.cancelling;
           };
           token.onCancellationRequested(() => void state.cancel());
-
-          for (const [i, stmt] of statements.entries()) {
-            if (state.cancelled) {
-              const skipped = statements.length - i;
-              this.log(sink, config.name, preview(stmt.text, 200), false, skipped > 1 ? t('Cancelled: {0} statements not run.', skipped) : t('Cancelled: statement not run.'), this.locate(doc, stmt.start));
-              break;
+          const watch = this.manager.onDidChangeState((id) => {
+            if (id === binding.connectionId && this.manager.driver(id) !== driver) {
+              // Ask the server to stop the query too (best effort), then let the run go.
+              void state.cancel();
+              dropConnection(new Error(t('The connection was closed.')));
             }
-            if (statements.length > 1) {
-              progress.report({ message: `${i + 1}/${statements.length}`, increment: 100 / statements.length });
-            }
-            state.offset = stmt.start;
-            if (i > 0) {
-              // The Run/Cancel lenses follow the statement being executed.
-              this.runningChanged.fire();
-            }
-            const location = this.locate(doc, stmt.start);
-            const started = Date.now();
-            const record = (ok: boolean, extra: { rows?: number; error?: string }) =>
-              this.history.add({
-                time: new Date(started).toISOString(),
-                connectionId: binding.connectionId,
-                database: binding.database,
-                language: 'sql',
-                text: stmt.text,
-                ok,
-                durationMs: Date.now() - started,
-                ...extra,
-              });
-            try {
-              const results = await driver.execute(stmt.text, { database: binding.database, maxRows });
-              const counted = results.filter((r) => r.rowCount !== null && r.rowCount !== undefined);
-              record(true, { rows: counted.length ? counted.reduce((n, r) => n + (r.rowCount ?? 0), 0) : undefined });
-              if (/^\s*(create|alter|drop|rename|truncate|comment)\b/i.test(stmt.text)) {
-                // Tables or columns may have changed: completion and grid editing re-read them.
-                this.catalog.invalidate(binding.connectionId);
-                ddl = true;
-              }
-              const sets = results.filter((r) => r.columns.length);
-              for (const result of results) {
-                if (result.columns.length) {
-                  const editing = sets.length === 1 ? await this.grid.prepare(binding, driver.dialect, stmt.text, result) : {};
-                  sink.post({
-                    type: 'result',
-                    tab: {
-                      ...result,
-                      title: preview(stmt.text, 40),
-                      rows: result.rows.map((r) => r.map(toCell)),
-                      ...editing,
-                    },
-                  });
-                }
-                this.log(sink, config.name, stmt.text, true, describe(result.command, result.rowCount, result.columns.length > 0, result.truncated), location, result.durationMs);
-              }
-            } catch (err) {
-              record(false, { error: (err as Error).message });
+          });
+          try {
+            for (const [i, stmt] of statements.entries()) {
               if (state.cancelled) {
-                // The interruption the user asked for, not an error in the SQL.
-                this.log(sink, config.name, stmt.text, false, t('Cancelled: {0}', (err as Error).message), location);
+                const skipped = statements.length - i;
+                this.log(sink, config.name, preview(stmt.text, 200), false, skipped > 1 ? t('Cancelled: {0} statements not run.', skipped) : t('Cancelled: statement not run.'), this.locate(doc, stmt.start));
                 break;
               }
-              failed = true;
-              const at = errorOffset(stmt, err);
-              this.log(sink, config.name, stmt.text, false, (err as Error).message, at === undefined ? location : this.locate(doc, at.offset));
-              this.diagnostics.set(doc.uri, [
-                new vscode.Diagnostic(
-                  this.errorRange(doc, stmt, at),
-                  (err as Error).message,
-                  vscode.DiagnosticSeverity.Error,
-                ),
-              ]);
-              // Stop at the first error, like NetBeans' default.
-              break;
+              if (statements.length > 1) {
+                progress.report({ message: `${i + 1}/${statements.length}`, increment: 100 / statements.length });
+              }
+              state.offset = stmt.start;
+              if (i > 0) {
+                // The Run/Cancel lenses follow the statement being executed.
+                this.runningChanged.fire();
+              }
+              const location = this.locate(doc, stmt.start);
+              const started = Date.now();
+              const record = (ok: boolean, extra: { rows?: number; error?: string }) =>
+                this.history.add({
+                  time: new Date(started).toISOString(),
+                  connectionId: binding.connectionId,
+                  database: binding.database,
+                  language: 'sql',
+                  text: stmt.text,
+                  ok,
+                  durationMs: Date.now() - started,
+                  ...extra,
+                });
+              try {
+                const results = await Promise.race([driver.execute(stmt.text, { database: binding.database, maxRows }), dropped]);
+                const counted = results.filter((r) => r.rowCount !== null && r.rowCount !== undefined);
+                record(true, { rows: counted.length ? counted.reduce((n, r) => n + (r.rowCount ?? 0), 0) : undefined });
+                if (/^\s*(create|alter|drop|rename|truncate|comment)\b/i.test(stmt.text)) {
+                  // Tables or columns may have changed: completion and grid editing re-read them.
+                  this.catalog.invalidate(binding.connectionId);
+                  ddl = true;
+                }
+                const sets = results.filter((r) => r.columns.length);
+                for (const result of results) {
+                  if (result.columns.length) {
+                    const editing = sets.length === 1 ? await this.grid.prepare(binding, driver.dialect, stmt.text, result) : {};
+                    sink.post({
+                      type: 'result',
+                      tab: {
+                        ...result,
+                        title: preview(stmt.text, 40),
+                        rows: result.rows.map((r) => r.map(toCell)),
+                        ...editing,
+                      },
+                    });
+                  }
+                  this.log(sink, config.name, stmt.text, true, describe(result.command, result.rowCount, result.columns.length > 0, result.truncated), location, result.durationMs);
+                }
+              } catch (err) {
+                record(false, { error: (err as Error).message });
+                if (state.cancelled) {
+                  // The interruption the user asked for, not an error in the SQL.
+                  this.log(sink, config.name, stmt.text, false, t('Cancelled: {0}', (err as Error).message), location);
+                  break;
+                }
+                failed = true;
+                const at = errorOffset(stmt, err);
+                this.log(sink, config.name, stmt.text, false, (err as Error).message, at === undefined ? location : this.locate(doc, at.offset));
+                this.diagnostics.set(doc.uri, [
+                  new vscode.Diagnostic(
+                    this.errorRange(doc, stmt, at),
+                    (err as Error).message,
+                    vscode.DiagnosticSeverity.Error,
+                  ),
+                ]);
+                // Stop at the first error, like NetBeans' default.
+                break;
+              }
             }
+          } finally {
+            watch.dispose();
           }
         },
       );

@@ -187,4 +187,28 @@ describe('SQL editor webview', () => {
     (doc.querySelector('[aria-label="Query History…"]') as HTMLElement).focus();
     assert.ok(!tip.hidden && tip.textContent === 'Query History…', 'keyboard focus shows it at once');
   });
+
+  it('moves the results to the top, left, right or bottom of the SQL', () => {
+    const { doc, posted, send } = load();
+    const work = doc.querySelector('.work') as HTMLElement;
+    const splitter = doc.querySelector('.splitter') as HTMLElement;
+    const layout = doc.querySelector('[aria-label="Move the results: bottom, top, left or right"]') as HTMLButtonElement;
+    assert.strictEqual(work.dataset.position, 'bottom', 'below the SQL by default');
+    assert.deepStrictEqual([...work.children].map((c) => c.className), ['editor', 'splitter', 'results']);
+    for (const [position, icon, orientation] of [
+      ['left', 'layout-sidebar-left', 'vertical'],
+      ['right', 'layout-sidebar-right', 'vertical'],
+      ['top', 'layout-menubar', 'horizontal'],
+      ['bottom', 'layout-panel', 'horizontal'],
+    ]) {
+      send({ type: 'position', position });
+      assert.strictEqual(work.dataset.position, position);
+      assert.ok(layout.firstElementChild!.classList.contains(`codicon-${icon}`), `${position}: button icon`);
+      assert.strictEqual(splitter.getAttribute('aria-orientation'), orientation, `${position}: splitter orientation`);
+    }
+    send({ type: 'position', position: 'diagonal' });
+    assert.strictEqual(work.dataset.position, 'bottom', 'unknown positions fall back to bottom');
+    layout.click();
+    assert.strictEqual(posted.at(-1).type, 'resultsPosition', 'the button asks the extension');
+  });
 });

@@ -7,7 +7,8 @@ import { qualifiedName } from '../sql/identifiers';
 import { NodeItem } from '../tree/connectionsTree';
 import { ResultsView } from '../webviews/resultsView';
 import { DocumentBindings } from './bindings';
-import { SqlRunner } from './sqlRunner';
+import { showSqlDocument } from './sqlDocument';
+import { RunTarget, SqlRunner } from './sqlRunner';
 import { t } from '../l10n';
 
 export type TemplateKind = 'select' | 'insert' | 'update' | 'delete';
@@ -46,11 +47,11 @@ export class TableActions {
     return info;
   }
 
-  /** New SQL editor bound to the node's connection and database. */
-  private async open(item: NodeItem, content: string): Promise<vscode.TextEditor> {
+  /** New SQL editor bound to the node's connection and database (the DB Client SQL editor by default). */
+  private async open(item: NodeItem, content: string): Promise<RunTarget> {
     const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: `${content}\n` });
     await this.bindings.set(doc, { connectionId: item.connectionId, database: item.node.database });
-    return vscode.window.showTextDocument(doc);
+    return showSqlDocument(doc);
   }
 
   /** Opens `SELECT * FROM table` in an editor and runs it; the result grid is editable for tables with a primary key. */

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
 import { HistoryEntry, QueryHistory } from '../store/queryHistory';
 import { DocumentBindings, EDITOR_CATEGORIES } from './bindings';
+import { showSqlDocument } from './sqlDocument';
 import { t } from '../l10n';
 
 interface EntryItem extends vscode.QuickPickItem {
@@ -161,7 +162,8 @@ export class HistoryPicker {
     }
     const doc = await vscode.workspace.openTextDocument({ language: entry.language, content: `${this.statementText(entry)}\n` });
     await this.bindings.set(doc, { connectionId: entry.connectionId, database: entry.database });
-    await vscode.window.showTextDocument(doc);
+    // showSqlDocument opens SQL in the DB Client SQL editor by default; Redis stays in the text editor.
+    await showSqlDocument(doc);
   }
 
   /** SQL comes back without its terminator (the splitter drops it); add one so statements stay separate. */

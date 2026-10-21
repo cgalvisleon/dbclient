@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.20.2 — 2026-10-21
+
+- DB Client SQL editor: the results (Output and result tabs) can go below, above, left or right of the SQL — layout button in its toolbar, or `dbclient.sqlEditor.resultsPosition`; every open SQL editor follows the change, and the divider turns vertical beside the SQL.
+- Output tab: the entries keep the arrow pointer instead of the hand (a click still goes to the statement).
+- Disconnecting a connection while a query runs on it ends that run at once (logged as `Cancelled: The connection was closed.`, the server is asked to stop the query). Before, the editor waited for the query to finish on the server and refused to run anything else until then, so after connecting again it looked like it had lost its connection.
+- Clicking a SQL file in the tree (SQL folder, linked folders, a database's SQL folder) opens it in the DB Client SQL editor; 0.20.1 still opened it in the text editor.
+- **Open Data**, **Open SQL**, **Show DDL**, **Generate SQL**, the SQL generated from a result row and the statements Query History opens now use the DB Client SQL editor (when `dbclient.sqlEditor.openByDefault` is on, the default); Open Data shows its results inside that editor.
+- **Query History…** from the Command Palette inserts the statement at the caret of the active DB Client SQL editor instead of opening a new editor.
+- One tab per query: **Open in DB Client SQL Editor** and 📄 (open as text) replace the tab instead of opening a second one next to it, and opening a SQL file that is already open as text moves it to the SQL editor.
+
 ## 0.20.1 — 2026-10-21
 
 - The DB Client SQL editor is now the default for new queries and saved SQL files of the tree (`dbclient.sqlEditor.openByDefault` defaults to `true`; turn it off to keep the text editor).

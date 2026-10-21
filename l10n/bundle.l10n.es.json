@@ -423,5 +423,12 @@
   "~/.ssh/id_ed25519": "~/.ssh/id_ed25519",
   "Cancelled: {0}": "Cancelada: {0}",
   "Cancelled: {0} statements not run.": "Cancelada: {0} sentencias sin ejecutar.",
-  "Cancelled: statement not run.": "Cancelada: sentencia sin ejecutar."
+  "Cancelled: statement not run.": "Cancelada: sentencia sin ejecutar.",
+  "The connection was closed.": "Se cerró la conexión.",
+  "Move the results: bottom, top, left or right": "Mover los resultados: abajo, arriba, izquierda o derecha",
+  "Bottom": "Abajo",
+  "Top": "Arriba",
+  "Left": "Izquierda",
+  "Right": "Derecha",
+  "Where should the results of the SQL editor go?": "¿Dónde van los resultados del editor SQL?"
 }

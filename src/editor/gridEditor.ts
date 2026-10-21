@@ -8,6 +8,7 @@ import { singleTableSelect } from '../sql/parse';
 import { toCell } from '../webviews/cells';
 import { ResultsSink, ResultsView } from '../webviews/resultsView';
 import { Binding, DocumentBindings } from './bindings';
+import { showSqlDocument } from './sqlDocument';
 import { t } from '../l10n';
 
 export interface GridEdit {
@@ -106,7 +107,7 @@ export class GridEditor {
     });
     const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: `${rowSql(kind, context.info, context.dialect, values)}\n` });
     await this.bindings.set(doc, { connectionId: context.connectionId, database: context.database });
-    await vscode.window.showTextDocument(doc);
+    await showSqlDocument(doc);
   }
 
   private async commit(sink: ResultsSink, editId: number, changes: GridRowChange[]): Promise<void> {

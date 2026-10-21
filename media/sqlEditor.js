@@ -52,6 +52,10 @@
   const stop = button('debug-stop', t('Stop the running query'), { type: 'cancel' });
   const connect = button('plug', t('Connect'), { type: 'connect' });
   const disconnect = button('debug-disconnect', t('Disconnect'), { type: 'disconnect' });
+  /** Where the results go around the SQL (`dbclient.sqlEditor.resultsPosition`), and its icon. */
+  const POSITION_ICONS = { bottom: 'layout-panel', top: 'layout-menubar', left: 'layout-sidebar-left', right: 'layout-sidebar-right' };
+  let position = 'bottom';
+  const layoutButton = button(POSITION_ICONS.bottom, t('Move the results: bottom, top, left or right'), { type: 'resultsPosition' });
   const toolbar = el(
     'div',
     { class: 'sql-toolbar', role: 'toolbar' },
@@ -75,6 +79,7 @@
     button('export', t('Save the content to a file of your choice'), { type: 'export' }),
     button('go-to-file', t('Insert a file at the cursor'), { type: 'import' }),
     el('span', { class: 'grow' }),
+    layoutButton,
     button('file-code', t('Open in the text editor'), { type: 'openAsText' }),
   );
 
@@ -123,19 +128,30 @@
   const editorPane = el('div', { class: 'editor' });
   const splitter = el('div', { class: 'splitter', role: 'separator', title: t('Drag to resize') });
   const resultsPane = el('div', { class: 'results' });
-  page.append(toolbar, editorPane, splitter, resultsPane, tooltip);
+  // The SQL and its results, laid out by `position` (CSS flex direction).
+  const work = el('div', { class: 'work', 'data-position': position }, editorPane, splitter, resultsPane);
+  page.append(toolbar, work, tooltip);
 
+  const sideBySide = () => position === 'left' || position === 'right';
   function applySplit() {
     const share = Math.min(0.9, Math.max(0.1, state.split ?? 0.55));
     editorPane.style.flexBasis = `${share * 100}%`;
   }
   applySplit();
+  function applyPosition(next) {
+    position = POSITION_ICONS[next] ? next : 'bottom';
+    work.dataset.position = position;
+    splitter.setAttribute('aria-orientation', sideBySide() ? 'vertical' : 'horizontal');
+    /** @type {HTMLElement} */ (layoutButton.firstChild).className = `codicon codicon-${POSITION_ICONS[position]}`;
+  }
   splitter.addEventListener('pointerdown', (e) => {
     splitter.setPointerCapture(e.pointerId);
     const move = (ev) => {
-      const top = page.getBoundingClientRect().top + toolbar.offsetHeight;
-      const height = page.clientHeight - toolbar.offsetHeight;
-      state.split = (ev.clientY - top) / height;
+      const box = work.getBoundingClientRect();
+      const size = sideBySide() ? box.width : box.height;
+      const at = sideBySide() ? ev.clientX - box.left : ev.clientY - box.top;
+      // `split` is the SQL's share; it comes first unless the results are on top or on the left.
+      state.split = (position === 'top' || position === 'left' ? size - at : at) / size;
       applySplit();
     };
     const up = () => {
@@ -344,6 +360,9 @@
         /** @type {any} */ (window).dbclientResultsHost.document = msg.document;
         if (view) update({ changes: [], text: msg.text });
         else create(msg.text, msg.placeholder);
+        break;
+      case 'position':
+        applyPosition(msg.position);
         break;
       case 'state':
         toolbarState = msg.state;

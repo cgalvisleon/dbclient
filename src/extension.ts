@@ -11,7 +11,8 @@ import { DocumentBindings, EDITOR_CATEGORIES } from './editor/bindings';
 import { ConnectionCodeLens, RunCodeLens } from './editor/codeLens';
 import { HistoryPicker } from './editor/historyPicker';
 import { showSqlDocument, SQL_EDITOR_VIEW_TYPE, SqlEditorProvider } from './webviews/sqlEditor';
-import { closeDocumentTabs } from './editor/tabs';
+import { closeDocumentTabs, reopenWith } from './editor/tabs';
+import { activeSqlEditorUri } from './editor/sqlDocument';
 import { RedisRunner } from './editor/redisRunner';
 import { SqlRunner } from './editor/sqlRunner';
 import { TableActions, TemplateKind } from './editor/tableActions';
@@ -564,6 +565,11 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     await showSqlDocument(doc);
   };
 
+  // Click on a SQL file of the tree (not in package.json: only the tree calls it).
+  command('dbclient.openSqlFile', async (uri: vscode.Uri) => {
+    await showSqlDocument(await vscode.workspace.openTextDocument(uri));
+  });
+
   command('dbclient.newSqlFile', async (item?: SqlItem) => {
     const id = await sqlConnectionOf(item);
     const dir = id && (await targetDir(id, item));
@@ -840,7 +846,15 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     command(`dbclient.generate${kind[0].toUpperCase()}${kind.slice(1)}`, (item: NodeItem) => tableActions.generate(item, kind));
   }
 
-  command('dbclient.showHistory', (item?: ConnectionItem | vscode.Uri) => historyPicker.show(item instanceof ConnectionItem ? item.connectionId : undefined));
+  command('dbclient.showHistory', (item?: ConnectionItem | vscode.Uri) => {
+    if (item instanceof ConnectionItem) {
+      return historyPicker.show(item.connectionId);
+    }
+    // While a DB Client SQL editor is the active tab: insert at its caret.
+    const uri = activeSqlEditorUri();
+    const session = uri && sqlEditors.sessions.get(uri.toString());
+    return session ? historyPicker.show(session.historyTarget().connectionId, session.historyTarget()) : historyPicker.show();
+  });
 
   command('dbclient.openConsole', async (item?: ConnectionItem | NodeItem) => {
     const id = await connectionOf(item);
@@ -984,7 +998,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       vscode.window.showWarningMessage(t('Open a SQL editor first.'));
       return;
     }
-    await vscode.commands.executeCommand('vscode.openWith', target, SQL_EDITOR_VIEW_TYPE);
+    await reopenWith(target, SQL_EDITOR_VIEW_TYPE);
   });
   // From the editor title bar (its document's URI), a statement's Cancel lens, or the palette.
   command('dbclient.cancelQuery', (uri?: vscode.Uri) => {

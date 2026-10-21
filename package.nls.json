@@ -74,5 +74,6 @@
   "config.dbclient.language.auto": "Same as the editor",
   "command.openSqlEditor": "Open in DB Client SQL Editor",
   "customEditor.sqlEditor": "DB Client SQL Editor",
-  "config.dbclient.sqlEditor.openByDefault.description": "Open new queries and saved SQL files of the connections tree in the DB Client SQL editor (toolbar, SQL and results in one tab) instead of the text editor. To use it for every .sql file, choose Reopen Editor With… → Configure default editor for '*.sql'."
+  "config.dbclient.sqlEditor.openByDefault.description": "Open new queries and saved SQL files of the connections tree in the DB Client SQL editor (toolbar, SQL and results in one tab) instead of the text editor. To use it for every .sql file, choose Reopen Editor With… → Configure default editor for '*.sql'.",
+  "config.dbclient.sqlEditor.resultsPosition.description": "Where the DB Client SQL editor shows its results (Output and result tabs) around the SQL: bottom, top, left or right. Also changed with the layout button of its toolbar."
 }
