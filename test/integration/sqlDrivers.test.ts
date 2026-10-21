@@ -183,10 +183,21 @@ for (const c of cases) {
       await driver.cancel(c.database);
       await pending;
       expect(Date.now() - started).toBeLessThan(4000);
-      // Still usable.
+      // Still usable, and on the same session (its state survives the cancel).
       const [r] = await run('select 1 as one' + (c.name === 'oracle' ? ' from dual' : ''));
       expect(String(r.rows[0][0])).toBe('1');
+      if (c.sessionState) {
+        const [, get, expected] = c.sessionState;
+        const [state] = await run(get);
+        expect(String(state.rows[0][0])).toBe(String(expected));
+      }
     }, 15000);
+
+    it.skipIf(!c.sleep)('a cancel while idle does not hit the next statement', async () => {
+      await driver.cancel(c.database);
+      const [r] = await run('select 1 as one' + (c.name === 'oracle' ? ' from dual' : ''));
+      expect(String(r.rows[0][0])).toBe('1');
+    });
 
     it('walks the tree down to the columns', async () => {
       let level: DbNode[] = await driver.children();

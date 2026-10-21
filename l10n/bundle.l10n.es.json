@@ -242,6 +242,7 @@
   "Run the query again to generate SQL from its rows.": "Ejecuta la consulta de nuevo para generar SQL con sus registros.",
   "Run the selected statements": "Ejecutar las sentencias seleccionadas",
   "Run the statement at the cursor": "Ejecutar la sentencia del cursor",
+  "Running…": "Ejecutando…",
   "Running on {0}": "Ejecutando en {0}",
   "SHA256:… (optional)": "SHA256:… (opcional)",
   "SQL Editor": "Editor SQL",
@@ -419,5 +420,8 @@
   "{0}: {1}": "{0}: {1}",
   "{0}: {1} rows affected": "{0}: {1} filas afectadas",
   "{0}–{1} of {2}": "{0}–{1} de {2}",
-  "~/.ssh/id_ed25519": "~/.ssh/id_ed25519"
+  "~/.ssh/id_ed25519": "~/.ssh/id_ed25519",
+  "Cancelled: {0}": "Cancelada: {0}",
+  "Cancelled: {0} statements not run.": "Cancelada: {0} sentencias sin ejecutar.",
+  "Cancelled: statement not run.": "Cancelada: sentencia sin ejecutar."
 }

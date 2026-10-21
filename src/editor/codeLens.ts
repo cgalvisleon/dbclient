@@ -4,16 +4,27 @@ import { DocumentBindings } from './bindings';
 import { splitStatements } from './statements';
 import { t } from '../l10n';
 
-/** "▶ Run" above each statement of SQL editors that are bound to a connection. */
+/** What the Run lenses need from the SQL runner. */
+export interface RunningQueries {
+  readonly onDidChangeRunning: vscode.Event<void>;
+  runningAt(doc: vscode.TextDocument): number | undefined;
+}
+
+/**
+ * "▶ Run" above each statement of SQL editors that are bound to a connection; while a query runs,
+ * the statement being executed shows "Running…" and "■ Cancel" instead.
+ */
 export class RunCodeLens implements vscode.CodeLensProvider {
   readonly onDidChangeCodeLenses: vscode.Event<void>;
 
   constructor(
     private readonly bindings: DocumentBindings,
     private readonly manager: ConnectionManager,
+    private readonly runner: RunningQueries,
   ) {
     const emitter = new vscode.EventEmitter<void>();
     bindings.onDidChange(() => emitter.fire());
+    runner.onDidChangeRunning(() => emitter.fire());
     vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('dbclient.codeLens') && emitter.fire());
     this.onDidChangeCodeLenses = emitter.event;
   }
@@ -24,13 +35,31 @@ export class RunCodeLens implements vscode.CodeLensProvider {
       return [];
     }
     const dialect = this.manager.factoryOf(this.manager.config(binding.connectionId)).dialect;
-    return splitStatements(doc.getText(), dialect).map((stmt) => {
+    const statements = splitStatements(doc.getText(), dialect);
+    const running = this.runner.runningAt(doc);
+    // The statement holding the running offset (edits during the run may have moved it).
+    const current = running === undefined ? undefined : (statements.find((s) => running >= s.start && running < s.terminatorEnd) ?? statements.find((s) => s.start >= running));
+    return statements.flatMap((stmt) => {
       const start = doc.positionAt(stmt.start);
-      return new vscode.CodeLens(new vscode.Range(start, start), {
-        title: `$(play) ${t('Run')}`,
-        command: 'dbclient.runAt',
-        arguments: [doc.uri, stmt.start],
-      });
+      const range = new vscode.Range(start, start);
+      if (stmt === current) {
+        return [
+          new vscode.CodeLens(range, { title: `$(loading~spin) ${t('Running…')}`, command: '' }),
+          new vscode.CodeLens(range, {
+            title: `$(debug-stop) ${t('Cancel')}`,
+            command: 'dbclient.cancelQuery',
+            tooltip: t('Stop the running query'),
+            arguments: [doc.uri],
+          }),
+        ];
+      }
+      return [
+        new vscode.CodeLens(range, {
+          title: `$(play) ${t('Run')}`,
+          command: 'dbclient.runAt',
+          arguments: [doc.uri, stmt.start],
+        }),
+      ];
     });
   }
 }

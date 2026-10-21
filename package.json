@@ -276,7 +276,8 @@
       {
         "command": "dbclient.cancelQuery",
         "title": "%command.cancelQuery%",
-        "category": "DB Client"
+        "category": "DB Client",
+        "icon": "$(debug-stop)"
       },
       {
         "command": "dbclient.runAt",
@@ -847,6 +848,11 @@
       ],
       "editor/title": [
         {
+          "command": "dbclient.cancelQuery",
+          "when": "editorLangId == sql && dbclient.queryRunning",
+          "group": "navigation@0"
+        },
+        {
           "command": "dbclient.runFile",
           "when": "editorLangId == sql || editorLangId == redis",
           "group": "navigation@1"
@@ -875,11 +881,6 @@
           "command": "dbclient.runStatement",
           "when": "editorLangId == sql || editorLangId == redis",
           "group": "0_run@1"
-        },
-        {
-          "command": "dbclient.cancelQuery",
-          "when": "editorLangId == sql && dbclient.queryRunning",
-          "group": "0_run@2"
         },
         {
           "command": "dbclient.selectConnection",

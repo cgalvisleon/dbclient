@@ -129,7 +129,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }),
     vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings, catalog), '.', ' '),
     vscode.languages.registerCodeLensProvider([...sqlDocs, ...redisDocs], new ConnectionCodeLens(bindings, manager)),
-    vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager)),
+    vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager, runner)),
     vscode.languages.registerCompletionItemProvider(redisDocs, new RedisCompletionProvider(manager, bindings), ' ', ':'),
   );
 
@@ -988,7 +988,11 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }
     await vscode.commands.executeCommand('vscode.openWith', target, SQL_EDITOR_VIEW_TYPE);
   });
-  command('dbclient.cancelQuery', () => runner.cancel(vscode.window.activeTextEditor?.document));
+  // From the editor title bar (its document's URI), a statement's Cancel lens, or the palette.
+  command('dbclient.cancelQuery', (uri?: vscode.Uri) => {
+    const doc = uri instanceof vscode.Uri ? vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString()) : vscode.window.activeTextEditor?.document;
+    return runner.cancel(doc);
+  });
 
   return { store, manager, tree, dragAndDrop, bindings, sqlFiles, sqlLocations, history, catalog, results, sqlEditors };
 }

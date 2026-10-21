@@ -17,6 +17,10 @@ export type RunTarget = Pick<vscode.TextEditor, 'document' | 'selection'>;
 
 interface Running {
   cancelled: boolean;
+  /** The driver-side cancel in flight; the run waits for it so a stale cancel cannot hit the next run. */
+  cancelling?: Promise<void>;
+  /** Start offset of the statement being executed. */
+  offset?: number;
   cancel(): Promise<void>;
 }
 
@@ -94,7 +98,8 @@ export class SqlRunner implements vscode.Disposable {
     await sink.reveal();
     sink.post({ type: 'run', title: config.name, pageSize });
 
-    const state: Running = { cancelled: false, cancel: async () => undefined };
+    // Cancelling while the driver connects stops before the first statement.
+    const state: Running = { cancelled: false, offset: statements[0].start, cancel: async () => void (state.cancelled = true) };
     this.running.set(key, state);
     this.runningChanged.fire();
     let failed = false;
@@ -108,18 +113,30 @@ export class SqlRunner implements vscode.Disposable {
         },
         async (progress, token) => {
           const driver = await this.manager.connectSql(binding.connectionId);
-          state.cancel = async () => {
-            state.cancelled = true;
-            await driver.cancel(binding.database);
+          state.cancel = () => {
+            if (!state.cancelling) {
+              state.cancelled = true;
+              state.cancelling = driver.cancel(binding.database).catch((err) => {
+                this.log(sink, config.name, t('Cancel'), false, (err as Error).message);
+              });
+            }
+            return state.cancelling;
           };
           token.onCancellationRequested(() => void state.cancel());
 
           for (const [i, stmt] of statements.entries()) {
             if (state.cancelled) {
+              const skipped = statements.length - i;
+              this.log(sink, config.name, preview(stmt.text, 200), false, skipped > 1 ? t('Cancelled: {0} statements not run.', skipped) : t('Cancelled: statement not run.'), this.locate(doc, stmt.start));
               break;
             }
             if (statements.length > 1) {
               progress.report({ message: `${i + 1}/${statements.length}`, increment: 100 / statements.length });
+            }
+            state.offset = stmt.start;
+            if (i > 0) {
+              // The Run/Cancel lenses follow the statement being executed.
+              this.runningChanged.fire();
             }
             const location = this.locate(doc, stmt.start);
             const started = Date.now();
@@ -160,8 +177,13 @@ export class SqlRunner implements vscode.Disposable {
                 this.log(sink, config.name, stmt.text, true, describe(result.command, result.rowCount, result.columns.length > 0, result.truncated), location, result.durationMs);
               }
             } catch (err) {
-              failed = true;
               record(false, { error: (err as Error).message });
+              if (state.cancelled) {
+                // The interruption the user asked for, not an error in the SQL.
+                this.log(sink, config.name, stmt.text, false, t('Cancelled: {0}', (err as Error).message), location);
+                break;
+              }
+              failed = true;
               const at = errorOffset(stmt, err);
               this.log(sink, config.name, stmt.text, false, (err as Error).message, at === undefined ? location : this.locate(doc, at.offset));
               this.diagnostics.set(doc.uri, [
@@ -181,6 +203,7 @@ export class SqlRunner implements vscode.Disposable {
       failed = true;
       this.log(sink, config.name, preview(statements[0].text, 200), false, (err as Error).message);
     } finally {
+      await state.cancelling;
       this.running.delete(key);
       this.runningChanged.fire();
     }
@@ -188,13 +211,18 @@ export class SqlRunner implements vscode.Disposable {
       // Created, altered or dropped objects show up in the tree without a manual refresh.
       this.manager.contentChangedOf(binding.connectionId);
     }
-    if (failed) {
+    if (failed || state.cancelled) {
       sink.post({ type: 'focusLog' });
     }
   }
 
   isRunning(doc: vscode.TextDocument): boolean {
     return this.running.has(doc.uri.toString());
+  }
+
+  /** Start offset of the statement running in `doc`, if any. */
+  runningAt(doc: vscode.TextDocument): number | undefined {
+    return this.running.get(doc.uri.toString())?.offset;
   }
 
   /** Cancels the query running in `doc`, or the first running one when no document is given. */

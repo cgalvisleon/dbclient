@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Disconnecting a connection collapses its detail in the tree.
+- **■ Cancel** stops the running query from a button in the editor title bar (only while a query runs) and from the lens of the statement being executed, which shows **Running…** and **■ Cancel** instead of ▶ Run.
+- Cancelling is no longer reported as a SQL error (no red underline): the Output tab shows `Cancelled` and how many statements were not run. A cancel pressed while the connection is still opening stops the run before its first statement, and a new run waits until the cancel has reached the server, so it can never interrupt the next query.
+
 ## 0.19.0 — 2026-10-21
 
 - **DB Client SQL editor** (optional, NetBeans style): open a `.sql` file with **Open in DB Client SQL Editor** or **Reopen Editor With…**. It has a toolbar with drop-downs for the connection (grouped by folder) and the database, icon buttons for every action, the SQL with syntax highlighting (CodeMirror), and its own results below in the same tab with a draggable divider. The file stays a normal document (save, undo, Git). `dbclient.sqlEditor.openByDefault` opens new queries and saved SQL files of the tree there. Autocompletion and inline errors come in a later version.

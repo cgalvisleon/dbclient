@@ -40,16 +40,23 @@ const ICONS: Record<NodeKind, string> = {
   info: 'info',
 };
 
+/**
+ * Id prefix of a connection's items. `session` grows with each disconnect: new ids make VS Code
+ * forget the expanded state, so a disconnected connection shows collapsed.
+ */
+const connectionKey = (connectionId: string, session: number) => `conn:${connectionId}${session ? `#${session}` : ''}`;
+
 export class ConnectionItem extends vscode.TreeItem {
   constructor(
     readonly connectionId: string,
     manager: ConnectionManager,
+    session = 0,
   ) {
     const config = manager.config(connectionId);
     const factory = manager.factoryOf(config);
     const connected = manager.isConnected(connectionId);
     super(config.name, vscode.TreeItemCollapsibleState.Collapsed);
-    this.id = `conn:${connectionId}`;
+    this.id = connectionKey(connectionId, session);
     const o = config.options;
     const target = o.file ? path.basename(String(o.file)) : o.servers ? String(o.servers) : o.jdbcUrl ? String(o.jdbcUrl).replace(/^jdbc:oracle:\w+:@?/i, '') : o.host ? `${o.host}${o.port ? `:${o.port}` : ''}` : '';
     this.description = [factory.label, target].filter(Boolean).join(' · ');
@@ -71,12 +78,13 @@ export class NodeItem extends vscode.TreeItem {
     readonly node: DbNode,
     category: string,
     dialect = '',
+    session = 0,
   ) {
     super(
       translated(node.label)!,
       node.expandable ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None,
     );
-    this.id = `conn:${connectionId}:${node.path}`;
+    this.id = `${connectionKey(connectionId, session)}:${node.path}`;
     this.description = translated(node.description);
     this.tooltip = node.tooltip;
     const image = IMAGES[node.kind];
@@ -270,6 +278,8 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
   private readonly sqlFolders = new Map<string, SqlFolderItem>();
   /** SQL nodes of databases by connection, refreshed when that connection's files change. */
   private readonly databaseFolders = new Map<string, Map<string, DatabaseSqlItem>>();
+  /** Disconnects per connection, part of its items' ids (see `connectionKey`). */
+  private readonly sessions = new Map<string, number>();
   /** File items last shown, by path, to flip their unsaved mark. */
   private readonly fileItems = new Map<string, SqlFileItem>();
 
@@ -300,8 +310,14 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
       vscode.workspace.onDidSaveTextDocument((doc) => this.markDirty(doc)),
       vscode.workspace.onDidCloseTextDocument((doc) => this.markDirty(doc)),
       manager.store.onDidChange(() => this.refresh()),
-      // Re-rendering the root keeps item ids, so expanded state survives connect/disconnect.
-      manager.onDidChangeState(() => this.refresh()),
+      // Re-rendering the root keeps item ids, so expanded state survives connecting; a disconnect
+      // gives that connection's items new ids, so its detail collapses.
+      manager.onDidChangeState((id) => {
+        if (!manager.isConnected(id)) {
+          this.sessions.set(id, (this.sessions.get(id) ?? 0) + 1);
+        }
+        this.refresh();
+      }),
       // Only that connection's subtree, so other connections are not re-queried.
       manager.onDidChangeContent((id) => {
         const item = this.roots.get(id);
@@ -372,7 +388,7 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
           return new FolderItem(f.id, f.name, inside.connections.length + inside.folders.length, f.color);
         }),
         ...connections.map((c) => {
-          const item = new ConnectionItem(c.id, this.manager);
+          const item = new ConnectionItem(c.id, this.manager, this.sessions.get(c.id));
           this.roots.set(c.id, item);
           return item;
         }),
@@ -421,7 +437,7 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
       if (!nodes.length) {
         return [...head, new MessageItem(t('(empty)'), 'circle-slash')];
       }
-      return [...head, ...nodes.map((n) => new NodeItem(id, n, category, factory.dialect))];
+      return [...head, ...nodes.map((n) => new NodeItem(id, n, category, factory.dialect, this.sessions.get(id)))];
     } catch (err) {
       return [...head, new MessageItem((err as Error).message)];
     }

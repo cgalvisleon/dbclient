@@ -58,7 +58,7 @@ exports.run = async function () {
     return item;
   }
 
-  async function sqlEngine({ name, type, options, password, database, ok, bad, badLine }) {
+  async function sqlEngine({ name, type, options, password, database, ok, bad, badLine, sleep }) {
     const config = await addConnection(`smoke-${name}`, type, options, password);
     const item = await rootOf(config);
     const children = await api.tree.getChildren(item);
@@ -113,7 +113,35 @@ exports.run = async function () {
     await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
     console.log(`✓ ${name}: history recorded and inserted from Query History`);
 
+    if (sleep) {
+      // Cancel from the running statement's lens, then run again on the same connection.
+      const slow = await vscode.workspace.openTextDocument({ language: 'sql', content: `${sleep};\n${ok};\n` });
+      await vscode.window.showTextDocument(slow);
+      await api.bindings.set(slow, { connectionId: config.id, database });
+      const running = vscode.commands.executeCommand('dbclient.runFile');
+      const cancelLens = await until(async () => {
+        const l = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', slow.uri);
+        return l.find((x) => x.command?.command === 'dbclient.cancelQuery');
+      }, `${name}: Cancel lens`);
+      assert.strictEqual(cancelLens.range.start.line, 0, `${name}: Cancel on the running statement`);
+      const started = Date.now();
+      await vscode.commands.executeCommand('dbclient.cancelQuery', ...cancelLens.command.arguments);
+      await running;
+      assert.ok(Date.now() - started < 5000, `${name}: cancelled in ${Date.now() - started} ms`);
+      assert.strictEqual(vscode.languages.getDiagnostics(slow.uri).length, 0, `${name}: a cancel is not an error diagnostic`);
+      const afterCancel = api.history.list(config.id);
+      assert.deepStrictEqual([afterCancel[0].text, afterCancel[0].ok], [sleep, false], `${name}: cancelled statement in history, next one not run`);
+      const lensesAfter = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', slow.uri);
+      assert.ok(!lensesAfter.some((x) => x.command?.command === 'dbclient.cancelQuery'), `${name}: Run lenses back after the cancel`);
+      await vscode.commands.executeCommand('dbclient.runAt', slow.uri, slow.getText().indexOf(ok));
+      assert.deepStrictEqual([api.history.list(config.id)[0].text, api.history.list(config.id)[0].ok], [ok, true], `${name}: runs again after the cancel`);
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+      console.log(`✓ ${name}: cancel from the lens in ${Date.now() - started} ms, then run again`);
+    }
+
+    const expandedId = (await rootOf(config)).id;
     await vscode.commands.executeCommand('dbclient.disconnect', item);
+    assert.notStrictEqual((await rootOf(config)).id, expandedId, `${name}: new tree id after disconnect (collapsed)`);
     await api.store.delete(config.id, []);
     api.history.clear(config.id);
   }
@@ -647,6 +675,7 @@ exports.run = async function () {
       options: { host: env.DBCLIENT_PG_HOST, port: 5432, database: env.DBCLIENT_PG_DATABASE, user: env.DBCLIENT_PG_USER },
       password: env.DBCLIENT_PG_PASSWORD,
       ok: 'select 1 as one, now()',
+      sleep: 'select pg_sleep(10)',
       bad: 'select\n  nope\nfrom pg_class',
       badLine: 2,
     });
@@ -668,6 +697,7 @@ exports.run = async function () {
       password: env.DBCLIENT_MYSQL_PASSWORD,
       database: 'mysql',
       ok: 'select 1 as one',
+      sleep: 'select sleep(10)',
       bad: 'select 1\nfrom user\nwhere ((',
       badLine: 3,
     });
@@ -679,6 +709,7 @@ exports.run = async function () {
       options: { host: env.DBCLIENT_MSSQL_HOST, port: 1433, database: 'master', user: env.DBCLIENT_MSSQL_USER, encrypt: false, trustServerCertificate: true },
       password: env.DBCLIENT_MSSQL_PASSWORD,
       ok: 'select 1 as one',
+      sleep: "waitfor delay '00:00:10'",
       bad: 'select 1\nfrom sys.objects\nwhere ((',
       badLine: 3,
     });
@@ -690,6 +721,7 @@ exports.run = async function () {
       options: { host: env.DBCLIENT_ORACLE_HOST, port: 1521, service: env.DBCLIENT_ORACLE_SERVICE, user: env.DBCLIENT_ORACLE_USER, autoCommit: true },
       password: env.DBCLIENT_ORACLE_PASSWORD,
       ok: 'select 1 as one from dual',
+      sleep: 'select count(*) from all_objects a, all_objects b, all_objects c',
       bad: 'select 1\nfrom dual\nwhere ((',
       badLine: 3,
     });

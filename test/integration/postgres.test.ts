@@ -85,6 +85,19 @@ describe.skipIf(!enabled)('PostgresDriver (integration)', () => {
     const err = await pending;
     expect(err).toBeInstanceOf(StatementError);
     expect(err.code).toBe('57014');
+    // Resuming: the same session runs again, with its state.
+    await run(`set search_path to ${schema}`);
+    const again = run('select pg_sleep(5)').catch((e) => e);
+    await new Promise((r) => setTimeout(r, 300));
+    await driver.cancel();
+    expect((await again).code).toBe('57014');
+    expect((await run('select count(*)::int from items')).rows[0][0]).toBe(25);
+    await run('reset search_path');
+  });
+
+  it('a cancel while idle does not hit the next statement', async () => {
+    await driver.cancel();
+    expect((await run('select 1, pg_sleep(0.3)')).rows[0][0]).toBe(1);
   });
 
   it('walks the tree: databases > schemas > folders > objects > columns', async () => {
