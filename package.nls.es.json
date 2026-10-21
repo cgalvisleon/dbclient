@@ -63,11 +63,16 @@
   "config.dbclient.maxRows.description": "Número máximo de filas traídas por sentencia. Los resultados más grandes se truncan.",
   "config.dbclient.pageSize.description": "Filas por página en la grilla de resultados.",
   "config.dbclient.codeLens.description": "Mostrar una acción Ejecutar sobre cada sentencia en los editores SQL vinculados a una conexión.",
-  "config.dbclient.connectionLens.description": "Mostrar en la primera línea de los editores SQL y Redis una barra al estilo NetBeans: la conexión del editor como lista desplegable y botones de icono (ejecutar todo, sentencia, selección, detener, conectar/desconectar, historial, guardar, copiar, pegar, exportar, importar).",
+  "config.dbclient.connectionLens.description": "Mostrar en la primera línea de los editores SQL y Redis la conexión y la base del editor, como lista desplegable para elegir otra. Los botones de ejecutar, copiar, pegar y guardar están en la barra de título del editor; las demás acciones, en su menú ….",
   "config.dbclient.sqlFolder.description": "Carpeta donde cada conexión SQL guarda sus archivos .sql (una subcarpeta por conexión). Vacío usa el almacenamiento global de la extensión; apúntala a una carpeta sincronizada o versionada para compartir los archivos.",
   "config.dbclient.historySize.description": "Sentencias y comandos Redis que se guardan en el historial de cada conexión (Historial de consultas…). 0 apaga el historial. Los comandos AUTH, HELLO, ACL, MIGRATE y CONFIG nunca se registran.",
   "viewsWelcome.dbclient.connections": "Aún no hay conexiones.\n[Agregar conexión](command:dbclient.addConnection)",
   "extension.description": "Cliente de bases de datos para PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis y NATS.",
   "command.showSettings": "Configuración y acerca de",
-  "command.setFolderColor": "Cambiar color de la carpeta…"
+  "command.setFolderColor": "Cambiar color de la carpeta…",
+  "config.dbclient.language.description": "Idioma de la interfaz de DB Client: auto sigue el idioma de visualización del editor. Los títulos de los comandos y estos ajustes siempre siguen al editor.",
+  "config.dbclient.language.auto": "Igual que el editor",
+  "command.openSqlEditor": "Abrir en el editor SQL de DB Client",
+  "customEditor.sqlEditor": "Editor SQL de DB Client",
+  "config.dbclient.sqlEditor.openByDefault.description": "Abrir las consultas nuevas y los archivos SQL guardados del árbol de conexiones en el editor SQL de DB Client (barra, SQL y resultados en una pestaña) en lugar del editor de texto. Para usarlo con todos los archivos .sql, elige Reopen Editor With… → Configure default editor for '*.sql'."
 }

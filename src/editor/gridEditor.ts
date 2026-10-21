@@ -6,8 +6,9 @@ import { editMapping, resultColumnMapping } from '../sql/editable';
 import { GridChange, gridStatements, rowSql, RowSqlKind } from '../sql/generate';
 import { singleTableSelect } from '../sql/parse';
 import { toCell } from '../webviews/cells';
-import { ResultsView } from '../webviews/resultsView';
+import { ResultsSink, ResultsView } from '../webviews/resultsView';
 import { Binding, DocumentBindings } from './bindings';
+import { t } from '../l10n';
 
 export interface GridEdit {
   id: number;
@@ -50,10 +51,10 @@ export class GridEditor {
   constructor(
     private readonly manager: ConnectionManager,
     private readonly catalog: CatalogCache,
-    private readonly results: ResultsView,
+    results: ResultsView,
     private readonly bindings: DocumentBindings,
   ) {
-    results.onCommit((editId, changes) => this.commit(editId, changes));
+    results.onCommit((sink, editId, changes) => this.commit(sink, editId, changes));
     results.onRowSql((source, kind, row) => this.rowSql(source, kind, row));
   }
 
@@ -94,7 +95,7 @@ export class GridEditor {
   private async rowSql(source: number, kind: RowSqlKind, row: ParamValue[]): Promise<void> {
     const context = this.contexts.get(source);
     if (!context) {
-      vscode.window.showWarningMessage(vscode.l10n.t('Run the query again to generate SQL from its rows.'));
+      vscode.window.showWarningMessage(t('Run the query again to generate SQL from its rows.'));
       return;
     }
     const values: Record<string, ParamValue> = {};
@@ -108,10 +109,10 @@ export class GridEditor {
     await vscode.window.showTextDocument(doc);
   }
 
-  private async commit(editId: number, changes: GridRowChange[]): Promise<void> {
+  private async commit(sink: ResultsSink, editId: number, changes: GridRowChange[]): Promise<void> {
     const context = this.contexts.get(editId);
     if (!context) {
-      this.results.post({ type: 'committed', editId, ok: false, message: vscode.l10n.t('These rows can no longer be saved; run the query again.') });
+      sink.post({ type: 'committed', editId, ok: false, message: t('These rows can no longer be saved; run the query again.') });
       return;
     }
     const { info, dialect, connectionId, database, columns, table } = context;
@@ -135,14 +136,14 @@ export class GridEditor {
       await driver.transaction(database, statements);
       const counts = { insert: 0, update: 0, delete: 0 };
       changes.forEach((c) => counts[c.kind]++);
-      this.results.post({
+      sink.post({
         type: 'log',
         entry: {
           time: new Date().toLocaleTimeString(),
           connection: config.name,
           sql: statements.map((s) => s.sql).join(';\n').slice(0, 200),
           ok: true,
-          message: vscode.l10n.t('Saved to {0}: {1} updated, {2} inserted, {3} deleted', table, counts.update, counts.insert, counts.delete),
+          message: t('Saved to {0}: {1} updated, {2} inserted, {3} deleted', table, counts.update, counts.insert, counts.delete),
           durationMs: Date.now() - started,
         },
       });
@@ -154,7 +155,7 @@ export class GridEditor {
       } catch {
         refreshed = undefined;
       }
-      this.results.post({
+      sink.post({
         type: 'committed',
         editId,
         ok: true,
@@ -164,12 +165,12 @@ export class GridEditor {
       });
     } catch (err) {
       const message = (err as Error).message;
-      this.results.post({ type: 'committed', editId, ok: false, message });
-      this.results.post({
+      sink.post({ type: 'committed', editId, ok: false, message });
+      sink.post({
         type: 'log',
-        entry: { time: new Date().toLocaleTimeString(), connection: config.name, sql: `-- ${table}`, ok: false, message: vscode.l10n.t('Nothing was saved: {0}', message) },
+        entry: { time: new Date().toLocaleTimeString(), connection: config.name, sql: `-- ${table}`, ok: false, message: t('Nothing was saved: {0}', message) },
       });
-      vscode.window.showErrorMessage(vscode.l10n.t('Could not save the changes: {0}', message));
+      vscode.window.showErrorMessage(t('Could not save the changes: {0}', message));
     }
   }
 }

@@ -4,12 +4,16 @@ import { StatementError } from '../drivers/types';
 import { CatalogCache } from '../connections/catalog';
 import { QueryHistory } from '../store/queryHistory';
 import { toCell } from '../webviews/cells';
-import { LogEntry, ResultsView } from '../webviews/resultsView';
+import { LogEntry, ResultsSink, ResultsView } from '../webviews/resultsView';
 import { DocumentBindings } from './bindings';
 import { GridEditor } from './gridEditor';
 import { splitStatements, Statement, statementAt } from './statements';
+import { t } from '../l10n';
 
 export type RunMode = 'auto' | 'file' | { offset: number };
+
+/** A text editor, or the document and selection of a DB Client SQL editor. */
+export type RunTarget = Pick<vscode.TextEditor, 'document' | 'selection'>;
 
 interface Running {
   cancelled: boolean;
@@ -37,7 +41,7 @@ export class SqlRunner implements vscode.Disposable {
   private readonly grid: GridEditor;
 
   /** Statements to run: the selection, the one under the caret, the one at `offset`, or the whole file. */
-  private statementsFor(editor: vscode.TextEditor, mode: RunMode, dialect: string | undefined): Statement[] {
+  private statementsFor(editor: RunTarget, mode: RunMode, dialect: string | undefined): Statement[] {
     const doc = editor.document;
     if (mode === 'file') {
       return splitStatements(doc.getText(), dialect);
@@ -60,15 +64,15 @@ export class SqlRunner implements vscode.Disposable {
     return stmt ? [stmt] : [];
   }
 
-  async run(editor: vscode.TextEditor | undefined, mode: RunMode): Promise<void> {
+  async run(editor: RunTarget | undefined, mode: RunMode): Promise<void> {
     if (!editor || editor.document.languageId !== 'sql') {
-      vscode.window.showWarningMessage(vscode.l10n.t('Open a SQL editor to run statements.'));
+      vscode.window.showWarningMessage(t('Open a SQL editor to run statements.'));
       return;
     }
     const doc = editor.document;
     const key = doc.uri.toString();
     if (this.running.has(key)) {
-      vscode.window.showWarningMessage(vscode.l10n.t('A query is already running in this editor.'));
+      vscode.window.showWarningMessage(t('A query is already running in this editor.'));
       return;
     }
     const binding = this.bindings.get(doc) ?? (await this.bindings.pick(doc));
@@ -78,15 +82,17 @@ export class SqlRunner implements vscode.Disposable {
     const config = this.manager.config(binding.connectionId);
     const statements = this.statementsFor(editor, mode, this.manager.factoryOf(config).dialect);
     if (!statements.length) {
-      vscode.window.showInformationMessage(vscode.l10n.t('There is no statement to run.'));
+      vscode.window.showInformationMessage(t('There is no statement to run.'));
       return;
     }
 
     const maxRows = vscode.workspace.getConfiguration('dbclient').get<number>('maxRows', 5000);
     const pageSize = vscode.workspace.getConfiguration('dbclient').get<number>('pageSize', 100);
     this.diagnostics.delete(doc.uri);
-    await this.results.reveal();
-    this.results.post({ type: 'run', title: config.name, pageSize });
+    // The editor's own results when it is a DB Client SQL editor, else the bottom panel.
+    const sink = this.results.for(doc);
+    await sink.reveal();
+    sink.post({ type: 'run', title: config.name, pageSize });
 
     const state: Running = { cancelled: false, cancel: async () => undefined };
     this.running.set(key, state);
@@ -97,7 +103,7 @@ export class SqlRunner implements vscode.Disposable {
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: vscode.l10n.t('Running on {0}', config.name),
+          title: t('Running on {0}', config.name),
           cancellable: true,
         },
         async (progress, token) => {
@@ -141,7 +147,7 @@ export class SqlRunner implements vscode.Disposable {
               for (const result of results) {
                 if (result.columns.length) {
                   const editing = sets.length === 1 ? await this.grid.prepare(binding, driver.dialect, stmt.text, result) : {};
-                  this.results.post({
+                  sink.post({
                     type: 'result',
                     tab: {
                       ...result,
@@ -151,13 +157,13 @@ export class SqlRunner implements vscode.Disposable {
                     },
                   });
                 }
-                this.log(config.name, stmt.text, true, describe(result.command, result.rowCount, result.columns.length > 0, result.truncated), location, result.durationMs);
+                this.log(sink, config.name, stmt.text, true, describe(result.command, result.rowCount, result.columns.length > 0, result.truncated), location, result.durationMs);
               }
             } catch (err) {
               failed = true;
               record(false, { error: (err as Error).message });
               const at = errorOffset(stmt, err);
-              this.log(config.name, stmt.text, false, (err as Error).message, at === undefined ? location : this.locate(doc, at.offset));
+              this.log(sink, config.name, stmt.text, false, (err as Error).message, at === undefined ? location : this.locate(doc, at.offset));
               this.diagnostics.set(doc.uri, [
                 new vscode.Diagnostic(
                   this.errorRange(doc, stmt, at),
@@ -173,7 +179,7 @@ export class SqlRunner implements vscode.Disposable {
       );
     } catch (err) {
       failed = true;
-      this.log(config.name, preview(statements[0].text, 200), false, (err as Error).message);
+      this.log(sink, config.name, preview(statements[0].text, 200), false, (err as Error).message);
     } finally {
       this.running.delete(key);
       this.runningChanged.fire();
@@ -183,7 +189,7 @@ export class SqlRunner implements vscode.Disposable {
       this.manager.contentChangedOf(binding.connectionId);
     }
     if (failed) {
-      this.results.post({ type: 'focusLog' });
+      sink.post({ type: 'focusLog' });
     }
   }
 
@@ -191,10 +197,11 @@ export class SqlRunner implements vscode.Disposable {
     return this.running.has(doc.uri.toString());
   }
 
-  async cancel(editor: vscode.TextEditor | undefined): Promise<void> {
-    const running = editor ? this.running.get(editor.document.uri.toString()) : [...this.running.values()][0];
+  /** Cancels the query running in `doc`, or the first running one when no document is given. */
+  async cancel(doc: vscode.TextDocument | undefined): Promise<void> {
+    const running = doc ? this.running.get(doc.uri.toString()) : [...this.running.values()][0];
     if (!running) {
-      vscode.window.setStatusBarMessage(vscode.l10n.t('No query is running.'), 2000);
+      vscode.window.setStatusBarMessage(t('No query is running.'), 2000);
       return;
     }
     await running.cancel();
@@ -219,9 +226,9 @@ export class SqlRunner implements vscode.Disposable {
     return doc.getWordRangeAtPosition(position) ?? new vscode.Range(position, doc.positionAt(at.offset + 1));
   }
 
-  private log(connection: string, sql: string, ok: boolean, message: string, loc?: LogEntry['location'], durationMs?: number): void {
-    const where = loc ? ` [${vscode.l10n.t('line {0}, column {1}', loc.line + 1, loc.character + 1)}]` : '';
-    this.results.post({
+  private log(sink: ResultsSink, connection: string, sql: string, ok: boolean, message: string, loc?: LogEntry['location'], durationMs?: number): void {
+    const where = loc ? ` [${t('line {0}, column {1}', loc.line + 1, loc.character + 1)}]` : '';
+    sink.post({
       type: 'log',
       entry: {
         time: new Date().toLocaleTimeString(),
@@ -268,14 +275,14 @@ function preview(sql: string, length: number): string {
 function describe(command: string | undefined, rowCount: number | null, isQuery: boolean, truncated: boolean): string {
   if (isQuery) {
     return truncated
-      ? vscode.l10n.t('Fetched the first rows (result truncated by dbclient.maxRows)')
-      : vscode.l10n.t('{0} rows fetched', rowCount ?? 0);
+      ? t('Fetched the first rows (result truncated by dbclient.maxRows)')
+      : t('{0} rows fetched', rowCount ?? 0);
   }
   if (rowCount !== null && command === 'DML') {
-    return vscode.l10n.t('{0} rows affected', rowCount);
+    return t('{0} rows affected', rowCount);
   }
   if (rowCount !== null && command && /^(INSERT|UPDATE|DELETE|MERGE|COPY|MOVE|FETCH|REPLACE)$/.test(command)) {
-    return vscode.l10n.t('{0}: {1} rows affected', command, rowCount);
+    return t('{0}: {1} rows affected', command, rowCount);
   }
-  return vscode.l10n.t('{0} executed successfully', command ?? 'Statement');
+  return t('{0} executed successfully', command ?? 'Statement');
 }

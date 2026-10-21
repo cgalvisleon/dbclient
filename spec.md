@@ -23,7 +23,7 @@ Estado: ✅ implementado · ◐ parcial.
 | `src/drivers/redis.ts` | `ioredis`: dbs con número de llaves > llaves agrupadas por separador (SCAN, nunca KEYS, tope 5000 por nivel) con su tipo; un cliente por db. | ✅ |
 | `src/drivers/nats.ts` | `nats`: autenticación ninguna/usuario/token/nkey/credenciales; publicar con headers, request/reply, suscripciones con comodines y cola; árbol con suscripciones activas, streams y consumers de JetStream. | ✅ |
 | `src/drivers/tls.ts` + `src/drivers/sshTunnel.ts` | Campos y opciones SSL/TLS comunes (CA, certificado y clave del cliente, frase) y túnel SSH con `ssh2` (contraseña o clave, huella del host): el driver se conecta a `127.0.0.1:<puerto local>` y el certificado se sigue verificando contra el host real. | ✅ |
-| `l10n/` + `package.nls*.json` + `media/l10n.js` | Traducciones al español del código (`vscode.l10n`), del manifiesto y de los webviews (la extensión inyecta el diccionario del idioma activo). | ◐ (falta verla en el editor) |
+| `l10n/` + `package.nls*.json` + `media/l10n.js` + `src/l10n.ts` | Traducciones al español y al portugués de Brasil del código (`t()` de `src/l10n.ts`, que sigue al editor o al idioma elegido en `dbclient.language`), del manifiesto y de los webviews (la extensión inyecta el diccionario del idioma activo). | ◐ (falta ver el modo automático en el editor) |
 | `src/connections/manager.ts` | Instancias vivas de drivers; conectar, desconectar, probar; cambios del driver refrescan solo su rama del árbol. | ✅ |
 | `src/tree/` | `TreeDataProvider` genérico: SQL, Redis y NATS en el mismo listado, agrupados en carpetas (arrastrar y soltar, mover, renombrar, eliminar); iconos de `img/`. | ✅ |
 | `src/editor/` | `bindings.ts` (conexión de cada editor `.sql`/`.redis`, barra de estado, cambio con confirmación), `statements.ts` (división por dialecto: `GO`, `DELIMITER`, `/` y bloques PL/SQL, triggers), `sqlRunner.ts`, `gridEditor.ts` (edición en la grilla), `tableActions.ts` (acciones de tablas), `historyPicker.ts`, `redisRunner.ts` (una orden por línea, confirma FLUSHDB/FLUSHALL), `codeLens.ts`. | ✅ |
@@ -47,7 +47,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pe
 |---|---|---|---|
 | F1 | Proyecto TypeScript de extensión (manifest `dbclient`, build esbuild, empaquetado `.vsix`, funciona en VS Code y Cursor) | 4 | 1 |
 | F2 | Interfaz común de drivers y registro; agregar un motor no exige tocar árbol, editor ni grilla | 4 | 1 |
-| F3 | Interfaz en español e inglés: textos de la extensión (`vscode.l10n`), manifiesto (`package.nls`), webviews y campos de los formularios; el idioma sigue al de VS Code/Cursor | 2 | 0.5 |
+| F3 | Interfaz en inglés, español y portugués de Brasil: textos de la extensión, manifiesto (`package.nls`), webviews y campos de los formularios; el idioma sigue al de VS Code/Cursor por defecto y se puede elegir en `dbclient.language` o en el panel de configuración | 2 | 0.5 |
 
 ### C — Conexiones y persistencia (29)
 
@@ -73,13 +73,13 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pe
 | D4 | MSSQL | 3 | 1 |
 | D5 | Oracle (por host y servicio o por URL JDBC: servicio, SID, `tcps://`, descriptor o alias de tnsnames.ora) | 3 | 1 |
 
-### S — Editor SQL (45)
+### S — Editor SQL (49)
 
 Referencia funcional: el editor SQL de NetBeans (selector de conexión en el editor, ejecutar archivo o sentencia con atajos, resultados en pestañas bajo el editor, paginación de filas traídas, salida SQL con tiempos y errores navegables, edición de datos en la grilla).
 
 | ID | Requisito | Peso | Estado |
 |---|---|---|---|
-| S1 | Archivo `.sql` asociado a una conexión, visible en la primera línea del editor (barra CodeLens al estilo NetBeans: `Connection:` con selector de conexión y base y botones de icono para ejecutar todo/sentencia/selección, detener, conectar/desconectar, historial, guardar, copiar, pegar, exportar, importar) y en la barra de estado, con cambio de conexión confirmado; ejecutar archivo, selección o sentencia bajo el cursor con atajos; cancelar | 5 | 1 |
+| S1 | Archivo `.sql` asociado a una conexión, visible en la primera línea del editor (CodeLens `Connection:` con selector de conexión y base; en la barra de título botones para ejecutar el archivo o la selección, copiar, pegar y guardar, y en su menú `…` ejecutar la sentencia, cancelar, cambiar/conectar/desconectar, historial, exportar, importar y abrir en el editor SQL propio) y en la barra de estado, con cambio de conexión confirmado; ejecutar archivo, selección o sentencia bajo el cursor con atajos; cancelar | 5 | 1 |
 | S2 | Resultados en pestañas bajo el editor (una por sentencia, conservadas entre ejecuciones hasta 50 salvo que se apague, reordenables arrastrando, con Output fija en primer lugar); grilla con paginación de filas traídas (avance/retroceso), ordenar, copiar, exportar CSV/JSON | 6 | 1 |
 | S3 | Autocompletado de palabras clave y funciones según el dialecto del driver | 4 | 1 |
 | S4 | Autocompletado de objetos reales (esquemas, tablas, vistas, columnas) resolviendo alias | 5 | 1 |
@@ -92,6 +92,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 | S11 | Ubicaciones SQL por conexión: vincular carpetas existentes con archivos `.sql` (subcarpetas, `~` y `${workspaceFolder}`), vínculo automático por la carpeta más específica (empate: se pregunta y se recuerda), ubicación de guardado configurable, vigilancia de cambios externos; desvincular nunca borra archivos | 3 | 1 |
 | S12 | Eliminar desde el árbol según el motor: tablas y vistas en todos los SQL (CASCADE en PostgreSQL, CASCADE CONSTRAINTS en Oracle; vistas materializadas en PostgreSQL) y esquemas en PostgreSQL y SQL Server, bases en MySQL y usuarios en Oracle; confirmación modal con el `DROP`, y para esquemas escribir el nombre | 2 | 0.5 |
 | S13 | Menú contextual de una celda del resultado: copiar valor, copiar registro (TSV o JSON) y generar INSERT/UPDATE/DELETE del registro con literales del dialecto (por clave primaria; sin ella, por todas las columnas con aviso) en un editor vinculado | 2 | 0.5 |
+| S14 | Editor SQL propio de DB Client (opcional, al estilo NetBeans): barra con listas de conexión y base y botones de icono, editor con resaltado (CodeMirror) y resultados en la misma pestaña; el archivo sigue siendo un documento de VS Code. Entrega 1: barra, edición sincronizada, ejecutar archivo/sentencia/selección, detener, conectar, historial, guardar, copiar/pegar/exportar/importar, resultados propios, apertura por defecto opcional. Entrega 2 (pendiente): autocompletado, errores subrayados en el texto y ▶ por sentencia | 4 | 0.5 |
 
 ### R — Redis (11)
 
@@ -113,7 +114,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 ## 4. Cálculo de la brecha
 
 ```
-total   = Σ peso                      (hoy 122)
+total   = Σ peso                      (hoy 126)
 avance  = Σ (peso × estado)
 brecha  = (total − avance) / total × 100 %
 ```
@@ -123,12 +124,12 @@ brecha  = (total − avance) / total × 100 %
 | F — Fundación | 10 | 9 | 1 |
 | C — Conexiones y persistencia | 29 | 28,5 | 0,5 |
 | D — Drivers SQL | 16 | 16 | 0 |
-| S — Editor SQL | 45 | 43 | 2 |
+| S — Editor SQL | 49 | 45 | 4 |
 | R — Redis | 11 | 11 | 0 |
 | N — NATS | 11 | 11 | 0 |
-| **Total** | **122** | **118,5** | **3,5** |
+| **Total** | **126** | **120,5** | **5,5** |
 
-**Brecha actual: 2,9 % (3,5 de 122 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español. Falta: ver la interfaz en español dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento); probar en Cursor la actualización por nodo (C9) y el borrado desde el árbol, y verificar el `DROP` contra MySQL, SQL Server y Oracle (S12: verificado en PostgreSQL y SQLite); verificar contra MySQL, SQL Server y Oracle el SQL generado desde un registro y ver el menú contextual en Cursor (S13: verificado en PostgreSQL y SQLite).
+**Brecha actual: 4,4 % (5,5 de 126 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español y al portugués de Brasil, con idioma elegible. Falta: la segunda entrega del editor SQL propio (S14: autocompletado, errores en el texto y ▶ por sentencia); ver el modo automático (idioma del editor) dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento; el idioma elegido con `dbclient.language` sí está verificado); probar en Cursor la actualización por nodo (C9) y el borrado desde el árbol, y verificar el `DROP` contra MySQL, SQL Server y Oracle (S12: verificado en PostgreSQL y SQLite); verificar contra MySQL, SQL Server y Oracle el SQL generado desde un registro y ver el menú contextual en Cursor (S13: verificado en PostgreSQL y SQLite).
 
 ## 5. Orden sugerido para cerrar la brecha
 
@@ -137,6 +138,10 @@ brecha  = (total − avance) / total × 100 %
 3. ✅ **Redis (+11):** R1–R3.
 4. ✅ **NATS (+11):** N1–N4.
 5. ◐ **Cierre (+8):** ✅ C5 (2), ✅ C6 (4), ◐ F3 (1 de 2: falta verla en el editor).
+
+### Verificación (editor SQL propio, entrega 1)
+
+- S14: prueba de humo en el VS Code de pruebas: el editor se abre con **Open in DB Client SQL Editor**, CodeMirror carga dentro de la webview (con la CSP y el nonce de estilos), la barra muestra la conexión del archivo, una edición de la webview llega al documento (queda sin guardar), ejecutar el archivo y la sentencia del cursor envía los resultados al editor y no al panel inferior, y funciona con documentos sin título. Prueba en jsdom (`test/unit/sqlEditorWebview.test.ts`, CodeMirror simulado): listas agrupadas por carpeta con **Add Connection…**, conectar/desconectar y detener según el estado, ediciones enviadas antes de ejecutar, insertar texto, actualizaciones del documento y resultados incrustados con el documento en el menú contextual. Sin verificar a mano dentro de Cursor (aspecto, atajos, deshacer).
 
 ### Verificación (actualizar y eliminar desde el árbol)
 
@@ -163,7 +168,7 @@ brecha  = (total − avance) / total × 100 %
 - Túnel SSH (C6): `scripts/ssh-fixture.sh` levanta un `sshd` temporal. 4 pruebas de integración: PostgreSQL con contraseña, Redis con clave, NATS con clave cifrada, MySQL con huella del host; rechazos por contraseña, frase o huella incorrectas y archivo inexistente; el puerto local se cierra con el túnel. Prueba de humo: PostgreSQL y Redis por túnel y TLS dentro del túnel, con `ssh2` empaquetado (sin sus módulos nativos opcionales). 6 pruebas unitarias (destino y reescritura del túnel, opciones TLS, campos en todos los motores de red, secciones del formulario en jsdom). Corregido: un campo recién visible del formulario perdía su valor por defecto (el puerto SSH aparecía vacío).
 - URL JDBC de Oracle (D5, v0.9.2): `src/drivers/oracleUrl.ts` traduce la URL a Easy Connect o a un descriptor (`SID`), respeta `tcps://` y `TNS_ADMIN`, y la reescribe para el túnel SSH; el formulario mueve usuario y contraseña de la URL a sus campos antes de probar o guardar (`DriverFactory.prepare`). 10 pruebas unitarias (formatos, SID, TLS, descriptor, alias, credenciales, ida y vuelta, túnel, formulario en jsdom con una conexión guardada sin `connectBy`) y 5 de integración contra un Oracle Free temporal: servicio con y sin `//`, descriptor, SID (aceptado por el listener; uno inexistente se rechaza), credenciales en la URL y descriptor a través del túnel SSH de `scripts/ssh-fixture.sh`. Las pruebas de Oracle por host y servicio siguen pasando. Sin verificar: el alias con `TNS_ADMIN` contra un tnsnames.ora real y el formulario dentro de Cursor.
 - Ver contraseña (C2, v0.9.1): cada campo de contraseña del formulario (base, SSH, frases de clave, NKey…) tiene un botón **Show/Hide** (**Ver/Ocultar**) que alterna el tipo del campo; prueba unitaria en jsdom (un botón por campo, alterna y conserva lo escrito, `aria-pressed`). Una contraseña ya guardada no se envía al formulario, así que solo se ve lo que se escribe.
-- Idiomas (F3): 286 textos en `l10n/bundle.l10n.es.json` y 52 del manifiesto en `package.nls.es.json`; prueba unitaria que extrae todas las claves (`l10n.t` del código, `t()` de los webviews, campos de los drivers y palabras del árbol) y exige traducción completa, sin claves sobrantes y con los mismos marcadores `{n}`; prueba del inyector de traducciones de los webviews. Sin verificar: la interfaz en español dentro de VS Code/Cursor (el VS Code de pruebas siguió en inglés con `--locale es`, incluso con el paquete de idioma instalado).
+- Idiomas (F3): 286 textos en `l10n/bundle.l10n.es.json` y 52 del manifiesto en `package.nls.es.json`; prueba unitaria que extrae todas las claves (`l10n.t` del código, `t()` de los webviews, campos de los drivers y palabras del árbol) y exige traducción completa, sin claves sobrantes y con los mismos marcadores `{n}`; prueba del inyector de traducciones de los webviews. Portugués de Brasil (2026-10-20): `l10n/bundle.l10n.pt-br.json` y `package.nls.pt-br.json` con las mismas pruebas que el español; idioma elegible con `dbclient.language` (prueba de humo: con `pt-br` la barra del editor dice `Conexão:` y vuelve al inglés al quitar el ajuste) y selector en el panel de configuración (prueba en jsdom). Sin verificar: el modo automático (idioma del editor) dentro de VS Code/Cursor (el VS Code de pruebas siguió en inglés con `--locale es`, incluso con el paquete de idioma instalado), y los títulos de comandos del manifiesto, que solo siguen al editor.
 
 ### Verificación (v0.8.0)
 
@@ -251,3 +256,6 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-20 | Carpeta **SQL** por base de datos en el árbol (archivos vinculados a esa base) y botón **Save** en archivos sin guardar (S9); barra en la primera línea del editor con selector de conexión y base, ejecutar todo/sentencia/selección, copiar, pegar, exportar e importar (S1). Sin cambio de puntaje; v0.17.0 | 2,9 % |
 | 2026-10-20 | Barra del editor al estilo NetBeans (S1): `Connection:` con la conexión como lista desplegable y botones solo de icono con descripción emergente; nuevos botones detener (solo mientras corre una consulta), conectar/desconectar, historial y guardar en la carpeta SQL; las mismas acciones en el menú `…` del título del editor. Sin cambio de puntaje; v0.18.0 | 2,9 % |
 | 2026-10-20 | Documentación: versión en portugués de Brasil (`README.pt.md`), enlazada desde los README en inglés y español; la interfaz sigue en inglés y español (sin cambio de puntaje) | 2,9 % |
+| 2026-10-20 | Interfaz en portugués de Brasil (`l10n/bundle.l10n.pt-br.json`, `package.nls.pt-br.json`) y ajuste `dbclient.language` (`auto` por defecto = idioma del editor, `en`, `es`, `pt-br`) con selector en el panel de configuración; prueba de humo del cambio de idioma. F3 sigue en 0,5 (falta ver el modo automático en el editor); sin cambio de puntaje | 2,9 % |
+| 2026-10-21 | Editor SQL propio de DB Client, entrega 1 (nuevo S14, 4 pts, en 0,5): editor opcional con barra de listas de conexión y base y botones de icono, CodeMirror y resultados en la misma pestaña; ajuste `dbclient.sqlEditor.openByDefault`; total 122 → 126 | 4,4 % |
+| 2026-10-21 | Editor de texto SQL/Redis (S1): el CodeLens de la primera línea queda solo con el selector de conexión y base; ejecutar el archivo, ejecutar la selección, copiar, pegar y guardar pasan a la barra de título, y el resto al menú `…` (conectar/desconectar y cancelar según el estado del editor activo); ▶ Run vuelve a la primera sentencia. Sin cambio de puntaje; v0.19.0 | 4,4 % |

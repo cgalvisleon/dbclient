@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client: SQL, Redis & NATS",
   "description": "%extension.description%",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -470,6 +470,12 @@
         "title": "%command.importConnections%",
         "category": "DB Client",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "dbclient.openSqlEditor",
+        "title": "%command.openSqlEditor%",
+        "category": "DB Client",
+        "icon": "$(layout-panel)"
       }
     ],
     "menus": {
@@ -810,60 +816,60 @@
       "webview/context": [
         {
           "command": "dbclient.results.copyValue",
-          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell'",
+          "when": "(webviewId == 'dbclient.results' || webviewId == 'dbclient.sqlEditor') && webviewSection == 'cell'",
           "group": "1_copy@0"
         },
         {
           "command": "dbclient.results.copyRow",
-          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell'",
+          "when": "(webviewId == 'dbclient.results' || webviewId == 'dbclient.sqlEditor') && webviewSection == 'cell'",
           "group": "1_copy@1"
         },
         {
           "command": "dbclient.results.copyRowJson",
-          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell'",
+          "when": "(webviewId == 'dbclient.results' || webviewId == 'dbclient.sqlEditor') && webviewSection == 'cell'",
           "group": "1_copy@2"
         },
         {
           "command": "dbclient.results.generateRowInsert",
-          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell' && rowSql",
+          "when": "(webviewId == 'dbclient.results' || webviewId == 'dbclient.sqlEditor') && webviewSection == 'cell' && rowSql",
           "group": "2_sql@3"
         },
         {
           "command": "dbclient.results.generateRowUpdate",
-          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell' && rowSql",
+          "when": "(webviewId == 'dbclient.results' || webviewId == 'dbclient.sqlEditor') && webviewSection == 'cell' && rowSql",
           "group": "2_sql@4"
         },
         {
           "command": "dbclient.results.generateRowDelete",
-          "when": "webviewId == 'dbclient.results' && webviewSection == 'cell' && rowSql",
+          "when": "(webviewId == 'dbclient.results' || webviewId == 'dbclient.sqlEditor') && webviewSection == 'cell' && rowSql",
           "group": "2_sql@5"
         }
       ],
       "editor/title": [
         {
-          "command": "dbclient.selectConnection",
-          "when": "editorLangId == sql || editorLangId == redis",
-          "group": "navigation@0"
-        },
-        {
-          "command": "dbclient.run",
+          "command": "dbclient.runFile",
           "when": "editorLangId == sql || editorLangId == redis",
           "group": "navigation@1"
         },
         {
-          "command": "dbclient.runFile",
+          "command": "dbclient.runSelection",
           "when": "editorLangId == sql || editorLangId == redis",
           "group": "navigation@2"
         },
         {
-          "command": "dbclient.saveToSqlFolder",
-          "when": "editorLangId == sql",
+          "command": "dbclient.copyQuery",
+          "when": "editorLangId == sql || editorLangId == redis",
           "group": "navigation@3"
         },
         {
-          "command": "dbclient.showHistory",
+          "command": "dbclient.pasteQuery",
           "when": "editorLangId == sql || editorLangId == redis",
-          "group": "1_history@1"
+          "group": "navigation@4"
+        },
+        {
+          "command": "dbclient.saveToSqlFolder",
+          "when": "editorLangId == sql",
+          "group": "navigation@5"
         },
         {
           "command": "dbclient.runStatement",
@@ -871,24 +877,29 @@
           "group": "0_run@1"
         },
         {
-          "command": "dbclient.runSelection",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "command": "dbclient.cancelQuery",
+          "when": "editorLangId == sql && dbclient.queryRunning",
           "group": "0_run@2"
         },
         {
-          "command": "dbclient.cancelQuery",
-          "when": "editorLangId == sql",
-          "group": "0_run@3"
+          "command": "dbclient.selectConnection",
+          "when": "editorLangId == sql || editorLangId == redis",
+          "group": "1_connection@1"
         },
         {
-          "command": "dbclient.copyQuery",
-          "when": "editorLangId == sql || editorLangId == redis",
-          "group": "2_edit@1"
+          "command": "dbclient.connect",
+          "when": "(editorLangId == sql || editorLangId == redis) && dbclient.editorBound && !dbclient.editorConnected",
+          "group": "1_connection@2"
         },
         {
-          "command": "dbclient.pasteQuery",
+          "command": "dbclient.disconnect",
+          "when": "(editorLangId == sql || editorLangId == redis) && dbclient.editorConnected",
+          "group": "1_connection@3"
+        },
+        {
+          "command": "dbclient.showHistory",
           "when": "editorLangId == sql || editorLangId == redis",
-          "group": "2_edit@2"
+          "group": "2_history@1"
         },
         {
           "command": "dbclient.exportQuery",
@@ -899,6 +910,11 @@
           "command": "dbclient.importQuery",
           "when": "editorLangId == sql || editorLangId == redis",
           "group": "3_file@2"
+        },
+        {
+          "command": "dbclient.openSqlEditor",
+          "when": "editorLangId == sql",
+          "group": "4_editor@1"
         }
       ],
       "commandPalette": [
@@ -1126,6 +1142,28 @@
           "default": 500,
           "minimum": 0,
           "description": "%config.dbclient.historySize.description%"
+        },
+        "dbclient.language": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "en",
+            "es",
+            "pt-br"
+          ],
+          "enumDescriptions": [
+            "%config.dbclient.language.auto%",
+            "English",
+            "Español",
+            "Português (Brasil)"
+          ],
+          "default": "auto",
+          "description": "%config.dbclient.language.description%"
+        },
+        "dbclient.sqlEditor.openByDefault": {
+          "type": "boolean",
+          "default": false,
+          "description": "%config.dbclient.sqlEditor.openByDefault.description%"
         }
       }
     },
@@ -1154,6 +1192,18 @@
         "id": "dbclient.generateSql",
         "label": "%submenu.dbclient.generateSql%"
       }
+    ],
+    "customEditors": [
+      {
+        "viewType": "dbclient.sqlEditor",
+        "displayName": "%customEditor.sqlEditor%",
+        "selector": [
+          {
+            "filenamePattern": "*.sql"
+          }
+        ],
+        "priority": "option"
+      }
     ]
   },
   "scripts": {
@@ -1180,6 +1230,11 @@
     "ssh2": "^1.16.0"
   },
   "devDependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
     "@types/jsdom": "^21.1.7",
     "@types/mssql": "^12.3.0",
     "@types/node": "^22.0.0",
@@ -1188,6 +1243,7 @@
     "@types/pg-cursor": "^2.7.2",
     "@types/ssh2": "^1.15.1",
     "@types/vscode": "~1.90.0",
+    "@vscode/codicons": "^0.0.46-24",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "esbuild": "^0.28.2",

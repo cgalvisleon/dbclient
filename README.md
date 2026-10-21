@@ -19,7 +19,7 @@ Search for **DB Client** (`cgalvisleon.dbclient`) in the Extensions view. VS Cod
 
 A database client inside the editor. PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS connections live in one tree, and each kind opens its own editor: a SQL editor modeled on NetBeans, a Redis command editor with a value viewer, and a NATS console.
 
-It is free with no paid tier and MIT licensed. Drivers are pure JavaScript, so no native modules, Oracle Instant Client or database CLI tools are needed. Redis and NATS (with JetStream) sit next to the SQL engines, and the interface is in English and Spanish.
+It is free with no paid tier and MIT licensed. Drivers are pure JavaScript, so no native modules, Oracle Instant Client or database CLI tools are needed. Redis and NATS (with JetStream) sit next to the SQL engines, and the interface is in English, Spanish and Brazilian Portuguese.
 
 Connections are stored once per user, shared by every window and workspace. Passwords and tokens go to the editor's secret storage, never to the settings file. A **Show** button next to each password field reveals what you type.
 
@@ -33,11 +33,12 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | Settings and About | The ⚙ button in the view title opens a panel with where the extension keeps its data (storage folder, `connections.json`, query history, saved SQL files) with **Copy** and **Open folder**, the current `dbclient.*` settings against their defaults, the environment (editor, Node.js, SQLite support) and the author's GitHub links. |
 | SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis and NATS: **disable**, **require** (encrypted) or **verify-full** (certificate and host name), with CA file, client certificate and key (with passphrase). SQL Server: **Encrypt** with or without trusting the certificate, and a CA file. |
 | SSH tunnel | Every engine but SQLite can connect through an SSH server, with password or private key (with passphrase) and an optional host key fingerprint. |
-| Languages | English and Spanish, following the editor's display language. |
+| Languages | English, Spanish and Brazilian Portuguese. By default the interface follows the editor's display language; `dbclient.language` (or the selector in **Settings and About**) picks one. |
 | Export / import | **Export Connections…** writes all connections, one folder (on the folder) or the selected connections (on a connection) to a JSON file without passwords; **Import Connections…** merges it (existing ones kept, identical ones skipped) or replaces the list, and on a folder imports into that folder. |
 | Icons and colors | Each connection can pick its tree icon (database, server, cloud, with gear or magnifier) and one of 7 colors (blue, green, red, orange, purple, yellow, gray) in the form's **Appearance** section — e.g. red for production. Folders take a color too with **Change Color…**. |
 | Explorer (SQL) | Databases/schemas → tables, views, functions, procedures, triggers, indexes (Oracle: packages, sequences) → columns with type, PK and NOT NULL. |
-| SQL editor | A bar on the first line of SQL and Redis editors: NetBeans style, `Connection:` with the connection and database as a drop-down (click to pick a connection, then a database; asks before switching) and icon buttons to run all, the statement or the selection, stop, connect/disconnect, history, save, copy, paste, export and import; ▶ Run above each further statement; cancel. |
+| SQL editor | The first line of SQL and Redis editors shows `Connection:` with the connection and database as a drop-down (click to pick a connection, then a database; asks before switching); ▶ Run above each statement. Title bar buttons run the file or the selection, copy, paste and save; its `…` menu runs the statement at the cursor, cancels, changes/connects/disconnects the connection, opens the history, exports and imports. |
+| DB Client SQL editor | Optional NetBeans-style editor for `.sql` files (**Open With…** or the editor title's button): a toolbar with real drop-downs for the connection (grouped by folder) and the database, larger icon buttons for every action, the SQL with syntax highlighting, and the results below in the same tab with a draggable divider. The file stays a normal document (save, undo, Git). |
 | Saved SQL files | Each SQL connection, and each of its databases, has a **SQL** node with its own `.sql` files; opening one binds it to that connection and database. New, rename, delete, **Save** (on files with unsaved changes), and save the current query there. |
 | SQL locations | Link existing folders of `.sql` files (e.g. a repository's `sql/`) to a connection and browse them with their subfolders; choose where new files are saved. Paths accept `~` and `${workspaceFolder}`; unlinking never deletes files. |
 | Statement splitting | `;` everywhere, plus `GO` (SQL Server), `DELIMITER` (MySQL), `/` and PL/SQL blocks (Oracle), `$$` bodies (PostgreSQL), triggers (SQLite). |
@@ -70,6 +71,8 @@ SSH tunnel: private key   SSH host: bastion.example.com   SSH user: deploy   Pri
 
 **See where your data lives.** Press **⚙ Settings and About** in the view title. **Persistence** lists the storage folder, the connections file, the query history and the saved SQL files folder, each with **Copy** and **Open folder**; passwords are not there but in the editor's secret storage. **Settings** shows each `dbclient.*` value, where it is set and its default (**Open in Settings** to change them), and **About** has the version and the author's GitHub profile, repository and issues.
 
+**Change the language.** DB Client uses the editor's display language by default. To use another one, open **⚙ Settings and About** and pick it in **Interface language** (or set `dbclient.language` to `en`, `es` or `pt-br`), then press **Reload Window**. Command titles in menus and the Settings editor always follow the editor's language; that is a VS Code limitation.
+
 **Share one connection or fill a folder.** Right-click a connection (or several selected) → **Export Connections…** to save just those, without folders or passwords. Right-click a folder → **Import Connections…** to merge a file into that folder: its connections and folders land inside it.
 
 **Tell connections apart.** In the connection form, **Appearance** shows the icon shapes and colors as a live preview; pick, for example, the gear database in red for production and the green one for development. **Automatic** keeps the engine's icon. To color a folder, right-click it → **Change Color…**.
@@ -97,13 +100,26 @@ Linked folders:     ${workspaceFolder}/sql
                     ~/projects/reports
 ```
 
-**See and change the editor's connection.** The first line of every SQL and Redis editor is a NetBeans-style toolbar: `Connection:` with the connection and database it runs against as a drop-down, followed by icon buttons (hover one to see what it does):
+**See and change the editor's connection.** The first line of every SQL and Redis editor shows the connection and database it runs against, NetBeans style; click it (or the status bar) to pick another connection and then, for a SQL connection with several databases, the database. When the editor already had a connection, a dialog asks before switching. ▶ Run sits above every statement.
 
 ```
-Connection: 🛢 prod-pg / sales ▾ | ⏩ | ▶ | ☰ | ■ | 🔌 | 🕘 | 💾 | ⧉ | 📋 | ⇪ | ⇩
+Connection: 🛢 prod-pg / sales ▾
+▶ Run
+select id, name from customers;
 ```
 
-Click the connection (or the status bar) to list your connections; after a SQL connection with several databases, pick the database. When the editor already had a connection, a dialog asks before switching. The buttons, in order: run the whole file, the statement at the cursor, the selection; **stop** (only while a query runs); connect or disconnect the editor's connection; query history; save to the connection's SQL folder (SQL only); copy the selection or the whole file; paste at the cursor; export the content to a file you choose; import a file at the cursor. The same actions are in the editor title bar and its `…` menu. Turn the bar off with `dbclient.connectionLens`.
+The editor title bar has buttons to **run the whole file**, **run the selection**, **copy** (the selection, or the whole file), **paste** and **save** to the connection's SQL folder. Its `…` menu has the rest: run the statement at the cursor, cancel the running query, change the connection, connect or disconnect it, query history, export to a file, import a file at the cursor, and open the file in the DB Client SQL editor. Turn the connection line off with `dbclient.connectionLens`.
+
+**Use the DB Client SQL editor.** In a `.sql` editor press the **Open in DB Client SQL Editor** button in the title bar (or right-click the tab → **Reopen Editor With…** → **DB Client SQL Editor**). The tab shows a toolbar, the SQL and its own results:
+
+```
+Connection: [prod-pg (PostgreSQL) ▾]  Database: [sales ▾] │ ⏩ ▶ ☰ ■ │ 🔌 🕘 💾 │ ⧉ 📋 ⇪ ⇩ │      📄
+select id, name from customers;
+═════════════════════ (drag to resize) ═════════════════════
+Output │ select id, name from…
+```
+
+Pick the connection and database in the drop-downs (they list databases once the connection is open), run with the buttons or `Ctrl/Cmd+Enter` (statement at the caret or the selection) and `Ctrl/Cmd+Shift+Enter` (everything). Results, editing in the grid and exports work as in the bottom panel, but each SQL editor keeps its own. 📄 goes back to the text editor. Set `dbclient.sqlEditor.openByDefault` to open new queries and saved SQL files of the tree there; to use it for every `.sql` file, choose **Configure default editor for '*.sql'** in the **Reopen Editor With…** list. Autocompletion and errors underlined in the text are still only in the text editor (a later version adds them).
 
 **Keep SQL files per database.** Expand a database in the tree: its first child is **SQL**, with the files of that database. **New SQL File** on the database or its **SQL** node creates one there, and opening it runs against that connection and database. A file with unsaved changes shows `● unsaved` and a **Save** button in the tree.
 
@@ -170,9 +186,11 @@ Click a key in the tree to open its value viewer and edit it.
 | `dbclient.maxRows` | 5000 | Rows fetched per statement; larger results are truncated. |
 | `dbclient.pageSize` | 100 | Rows per page in the results grid. |
 | `dbclient.codeLens` | true | Show ▶ Run above each SQL statement. |
-| `dbclient.connectionLens` | true | Show the bar with the editor's connection and its buttons on the first line of SQL and Redis editors. |
+| `dbclient.connectionLens` | true | Show the editor's connection and database on the first line of SQL and Redis editors. |
 | `dbclient.sqlFolder` | (empty) | Folder for saved `.sql` files, one subfolder per connection; empty uses the extension's storage. |
 | `dbclient.historySize` | 500 | Entries kept in each connection's query history; `0` turns it off. Commands that can carry credentials (`AUTH`, `HELLO`, `ACL`, `MIGRATE`, `CONFIG`) are never recorded. |
+| `dbclient.sqlEditor.openByDefault` | false | Open new queries and saved SQL files of the tree in the DB Client SQL editor instead of the text editor. |
+| `dbclient.language` | auto | Interface language: `auto` (same as the editor), `en`, `es` or `pt-br`. |
 
 ## Development
 
@@ -184,7 +202,7 @@ npm run test:smoke   # runs the extension inside a downloaded VS Code
 npm run package      # builds the .vsix
 ```
 
-To test SSL and SSH, `eval "$(scripts/tls-fixture.sh start)"` and `eval "$(scripts/ssh-fixture.sh start)"` start throwaway servers with Docker (fresh certificates and keys) and export their `DBCLIENT_TLS_*` / `DBCLIENT_SSH_*` variables; `stop` removes them. With every server up, run `npm run test:integration` (test files one at a time). Translations live in `l10n/bundle.l10n.es.json` and `package.nls.es.json`; `npx tsx test/unit/l10nKeys.ts l10n/bundle.l10n.es.json` lists the texts still missing.
+To test SSL and SSH, `eval "$(scripts/tls-fixture.sh start)"` and `eval "$(scripts/ssh-fixture.sh start)"` start throwaway servers with Docker (fresh certificates and keys) and export their `DBCLIENT_TLS_*` / `DBCLIENT_SSH_*` variables; `stop` removes them. With every server up, run `npm run test:integration` (test files one at a time). Translations live in `l10n/bundle.l10n.<es|pt-br>.json` and `package.nls.<es|pt-br>.json`; `npx tsx test/unit/l10nKeys.ts l10n/bundle.l10n.pt-br.json` lists the texts still missing.
 
 To test the NATS authentication modes, `eval "$(scripts/nats-auth-fixture.sh start)"` starts throwaway servers (user/password, NKey, token and `.creds`, with Docker) and exports their `DBCLIENT_NATS_AUTH_*` variables; `scripts/nats-auth-fixture.sh stop` removes them.
 
@@ -193,7 +211,7 @@ To test the NATS authentication modes, `eval "$(scripts/nats-auth-fixture.sh sta
 Bump `version` in `package.json`, add its section to `CHANGELOG.md`, commit, then push a tag with the same version:
 
 ```bash
-git tag v0.18.0 && git push origin main v0.18.0
+git tag v0.19.0 && git push origin main v0.19.0
 ```
 
 The **Release** workflow (`.github/workflows/release.yml`) runs the tests, builds the `.vsix`, attaches it to a GitHub Release with the changelog notes and publishes it to Open VSX and the VS Code Marketplace when the repository secrets `OVSX_PAT` and `VSCE_PAT` exist. From this machine: `OVSX_PAT=… npm run publish:ovsx` and `VSCE_PAT=… npm run publish:vsce`.

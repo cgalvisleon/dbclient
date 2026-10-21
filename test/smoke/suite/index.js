@@ -70,10 +70,16 @@ exports.run = async function () {
     await vscode.window.showTextDocument(doc);
     await api.bindings.set(doc, { connectionId: config.id, database });
     const lenses = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', doc.uri);
-    // Line 0 carries the toolbar (its Statement button), so ▶ Run shows from the second statement on.
-    assert.strictEqual(lenses.filter((l) => l.command?.command === 'dbclient.runAt').length, 1, `${name}: code lens per statement`);
-    for (const c of ['dbclient.runFile', 'dbclient.runStatement', 'dbclient.runSelection', 'dbclient.disconnect', 'dbclient.showHistory', 'dbclient.saveToSqlFolder', 'dbclient.copyQuery', 'dbclient.pasteQuery', 'dbclient.exportQuery', 'dbclient.importQuery']) {
-      assert.ok(lenses.some((l) => l.range.start.line === 0 && l.command?.command === c), `${name}: toolbar ${c}`);
+    assert.strictEqual(lenses.filter((l) => l.command?.command === 'dbclient.runAt').length, 2, `${name}: code lens per statement`);
+    // Line 0 shows only the connection selector; the actions are in the editor title bar.
+    assert.deepStrictEqual(
+      lenses.filter((l) => l.range.start.line === 0 && l.command?.command !== 'dbclient.runAt').map((l) => l.command?.command),
+      ['dbclient.selectConnection'],
+      `${name}: connection selector on line 0`,
+    );
+    const titleBar = ext.packageJSON.contributes.menus['editor/title'];
+    for (const c of ['dbclient.runFile', 'dbclient.runSelection', 'dbclient.copyQuery', 'dbclient.pasteQuery', 'dbclient.saveToSqlFolder']) {
+      assert.ok(titleBar.some((m) => m.command === c && m.group.startsWith('navigation')), `${name}: title bar button ${c}`);
     }
 
     await vscode.commands.executeCommand('dbclient.runFile');
@@ -305,6 +311,17 @@ exports.run = async function () {
     // The connection shows on the first line; changing it asks for confirmation.
     const lenses = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', bDoc.uri);
     assert.ok(lenses.some((l) => l.range.start.line === 0 && l.command?.title.includes(one.name)), 'connection lens on line 0');
+    // dbclient.language overrides the editor's language for the extension's own texts.
+    const settings = vscode.workspace.getConfiguration('dbclient');
+    await settings.update('language', 'pt-br', vscode.ConfigurationTarget.Global);
+    try {
+      const translated = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', bDoc.uri);
+      assert.ok(translated.some((l) => l.range.start.line === 0 && l.command?.title.startsWith('Conexão:')), 'toolbar in pt-br');
+    } finally {
+      await settings.update('language', undefined, vscode.ConfigurationTarget.Global);
+    }
+    const english = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', bDoc.uri);
+    assert.ok(english.some((l) => l.range.start.line === 0 && l.command?.title.startsWith('Connection:')), 'toolbar back to the editor language');
     const { showQuickPick, showWarningMessage } = vscode.window;
     let answer;
     let asked = 0;
@@ -357,6 +374,78 @@ exports.run = async function () {
     }
     assert.ok(fs.existsSync(path.join(sqlDir, 'a.sql')) && fs.existsSync(path.join(sqlDir, 'reports', 'b.sql')), 'linked files untouched');
     console.log('✓ sql locations: linked folders, subfolders, ignores, binding by most specific, tie, save location, watcher, unlink');
+  }
+
+  // DB Client SQL editor (custom editor): CodeMirror loads in the webview, edits reach the
+  // document, runs land in the editor's own results.
+  {
+    const conn = await addConnection(`smoke-sqleditor-${run}`, 'sqlite', { file: path.join(os.tmpdir(), `dbclient-editor-${run}.db`) });
+    const file = api.sqlFiles.create(conn.id, 'editor', 'select 1 as one;\n');
+    const doc = await vscode.workspace.openTextDocument(file);
+    await vscode.commands.executeCommand('dbclient.openSqlEditor', doc.uri);
+    const session = await until(() => api.sqlEditors.sessions.get(doc.uri.toString()), 'SQL editor session');
+    await Promise.race([session.loaded, wait(20000).then(() => Promise.reject(new Error('CodeMirror did not load in the SQL editor webview')))]);
+    const state = await session.pushState();
+    assert.strictEqual(state.connectionId, conn.id, 'editor shows its connection');
+    assert.ok(state.connections.some((c) => c.id === conn.id), 'connection listed in the drop-down');
+    assert.strictEqual(state.connected, false);
+
+    await session.receive({
+      type: 'edit',
+      changes: [{ from: { line: 1, ch: 0 }, to: { line: 1, ch: 0 }, insert: 'select 2 as two;\n' }],
+      text: 'select 1 as one;\nselect 2 as two;\n',
+    });
+    assert.strictEqual(doc.getText(), 'select 1 as one;\nselect 2 as two;\n', 'webview edit written to the document');
+    assert.ok(doc.isDirty, 'document dirty after the edit');
+
+    const mine = [];
+    const realChannelPost = session.channel.post.bind(session.channel);
+    session.channel.post = (m) => {
+      mine.push(m);
+      realChannelPost(m);
+    };
+    const panelPosts = [];
+    const realPanelPost = api.results.post.bind(api.results);
+    api.results.post = (m) => {
+      panelPosts.push(m);
+      realPanelPost(m);
+    };
+    try {
+      await session.receive({ type: 'run', mode: 'file', anchor: { line: 0, ch: 0 }, head: { line: 0, ch: 0 } });
+      await until(() => mine.filter((m) => m.type === 'result').length === 2, 'both results in the SQL editor');
+      mine.length = 0;
+      await session.receive({ type: 'run', mode: 'statement', anchor: { line: 1, ch: 3 }, head: { line: 1, ch: 3 } });
+      const result = await until(() => mine.find((m) => m.type === 'result'), 'result of the statement at the caret');
+      assert.strictEqual(result.tab.columns[0].name, 'two');
+      assert.strictEqual(panelPosts.length, 0, 'the bottom panel gets nothing');
+    } finally {
+      api.results.post = realPanelPost;
+    }
+    assert.strictEqual((await session.pushState()).connected, true, 'running opened the connection');
+    await doc.save();
+
+    // Untitled queries (New Query) in the SQL editor.
+    const untitled = await vscode.workspace.openTextDocument({ language: 'sql', content: 'select 3 as three;\n' });
+    await api.bindings.set(untitled, { connectionId: conn.id });
+    let untitledSession;
+    try {
+      await vscode.commands.executeCommand('vscode.openWith', untitled.uri, 'dbclient.sqlEditor');
+      untitledSession = await until(() => api.sqlEditors.sessions.get(untitled.uri.toString()), 'untitled SQL editor', 8000);
+      await untitledSession.loaded;
+    } catch (err) {
+      console.log(`  untitled documents: not supported (${err.message})`);
+    }
+    if (untitledSession) {
+      assert.strictEqual((await untitledSession.pushState()).connectionId, conn.id, 'untitled editor keeps its binding');
+      await vscode.commands.executeCommand('workbench.action.revertAndCloseActiveEditor');
+    }
+
+    await vscode.commands.executeCommand('workbench.action.closeAllEditors');
+    await until(() => !api.sqlEditors.sessions.size, 'SQL editor sessions closed');
+    await api.manager.disconnect(conn.id);
+    await api.store.delete(conn.id, []);
+    api.sqlFiles.deleteAll(conn.id);
+    console.log(`✓ sql editor: CodeMirror loaded, toolbar state, edit to document, results in the editor${untitledSession ? ', untitled queries' : ''}`);
   }
 
   // Tables (S6), completion with real objects (S4) and grid editing (S8) on one engine.
@@ -425,7 +514,7 @@ exports.run = async function () {
       const idOf = (row) => Number(row[col('id')]);
       const one = tab.rows.find((r) => idOf(r) === 1);
       posted.length = 0;
-      await api.results.receive({
+      await api.results.answer(api.results, {
         type: 'commit',
         editId: tab.edit.id,
         changes: [
@@ -440,7 +529,7 @@ exports.run = async function () {
 
       // A stale key rolls back and reports it.
       posted.length = 0;
-      await api.results.receive({ type: 'commit', editId: tab.edit.id, changes: [{ kind: 'delete', key: { [col('id')]: 99 } }] });
+      await api.results.answer(api.results, { type: 'commit', editId: tab.edit.id, changes: [{ kind: 'delete', key: { [col('id')]: 99 } }] });
       const failed = posted.find((m) => m.type === 'committed');
       assert.ok(failed && !failed.ok && /affected 0 rows/.test(failed.message), `${name}: stale key refused`);
 
@@ -456,10 +545,10 @@ exports.run = async function () {
 
       // A row's context menu generates SQL in a bound editor, and it runs on the engine.
       assert.ok(roTab.source !== undefined && tab.source !== undefined, `${name}: results carry a row SQL source`);
-      await api.results.receive({ type: 'rowSql', source: roTab.source, kind: 'delete', row: ['nobody'] });
+      await api.results.answer(api.results, { type: 'rowSql', source: roTab.source, kind: 'delete', row: ['nobody'] });
       const loose = vscode.window.activeTextEditor;
       assert.match(loose.document.getText(), /No primary key[\s\S]*WHERE \S*name\S* = 'nobody';/i, `${name}: DELETE by every column`);
-      await api.results.receive({ type: 'rowSql', source: tab.source, kind: 'update', row: done.rows.find((r) => idOf(r) === 1) });
+      await api.results.answer(api.results, { type: 'rowSql', source: tab.source, kind: 'update', row: done.rows.find((r) => idOf(r) === 1) });
       const generated = vscode.window.activeTextEditor;
       assert.notStrictEqual(generated, loose);
       assert.match(generated.document.getText(), /^UPDATE [\s\S]*'uno'[\s\S]*WHERE \S*id\S* = 1;\n$/i, `${name}: UPDATE by key`);

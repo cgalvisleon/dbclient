@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
 import { DriverCategory } from '../drivers/types';
+import { t } from '../l10n';
 
 export interface Binding {
   connectionId: string;
@@ -81,12 +82,12 @@ export class DocumentBindings implements vscode.Disposable {
       .map((c) => ({
         label: c.name,
         description: [this.manager.factoryOf(c).label, c.options.database ?? c.options.host ?? c.options.jdbcUrl].filter(Boolean).join(' · '),
-        detail: c.id === current?.connectionId ? vscode.l10n.t('current') : undefined,
+        detail: c.id === current?.connectionId ? t('current') : undefined,
         id: c.id,
       }));
     if (!items.length) {
-      const add = vscode.l10n.t('Add Connection');
-      const message = category === 'kv' ? vscode.l10n.t('There are no Redis connections yet.') : vscode.l10n.t('There are no SQL connections yet.');
+      const add = t('Add Connection');
+      const message = category === 'kv' ? t('There are no Redis connections yet.') : t('There are no SQL connections yet.');
       if ((await vscode.window.showInformationMessage(message, add)) === add) {
         await vscode.commands.executeCommand('dbclient.addConnection');
       }
@@ -95,8 +96,8 @@ export class DocumentBindings implements vscode.Disposable {
     const picked = await vscode.window.showQuickPick(items, {
       placeHolder:
         tie.length > 1
-          ? vscode.l10n.t('This file is in a folder linked to several connections; choose one (it is remembered)')
-          : vscode.l10n.t('Connection for this editor'),
+          ? t('This file is in a folder linked to several connections; choose one (it is remembered)')
+          : t('Connection for this editor'),
     });
     if (!picked) {
       return undefined;
@@ -111,11 +112,11 @@ export class DocumentBindings implements vscode.Disposable {
         const inUse = current?.connectionId === picked.id ? selected : undefined;
         const items = databases.map((name) => ({
           label: name,
-          description: [name === config.options.database ? vscode.l10n.t('default') : undefined, name === inUse ? vscode.l10n.t('current') : undefined].filter(Boolean).join(' · '),
+          description: [name === config.options.database ? t('default') : undefined, name === inUse ? t('current') : undefined].filter(Boolean).join(' · '),
         }));
         const quick = vscode.window.createQuickPick<(typeof items)[number]>();
         quick.items = items;
-        quick.placeholder = vscode.l10n.t('Database of {0} for this editor', config.name);
+        quick.placeholder = t('Database of {0} for this editor', config.name);
         quick.activeItems = items.filter((i) => i.label === selected);
         const db = await new Promise<string | undefined>((resolve) => {
           quick.onDidAccept(() => resolve(quick.selectedItems[0]?.label));
@@ -133,7 +134,7 @@ export class DocumentBindings implements vscode.Disposable {
     if (category === 'kv') {
       const config = this.manager.config(picked.id);
       const dbs = Array.from({ length: 16 }, (_, i) => ({ label: `db${i}`, db: String(i), picked: i === Number(config.options.db ?? 0) }));
-      const db = await vscode.window.showQuickPick(dbs, { placeHolder: vscode.l10n.t('Redis database') });
+      const db = await vscode.window.showQuickPick(dbs, { placeHolder: t('Redis database') });
       if (!db) {
         return undefined;
       }
@@ -145,10 +146,10 @@ export class DocumentBindings implements vscode.Disposable {
     if (current) {
       const from = this.describe(current).label;
       const to = this.describe(binding).label;
-      const change = vscode.l10n.t('Change Connection');
+      const change = t('Change Connection');
       const answer = await vscode.window.showWarningMessage(
-        vscode.l10n.t('Change the connection of this editor from {0} to {1}?', from, to),
-        { modal: true, detail: vscode.l10n.t('From now on its statements run against {0}.', to) },
+        t('Change the connection of this editor from {0} to {1}?', from, to),
+        { modal: true, detail: t('From now on its statements run against {0}.', to) },
         change,
       );
       if (answer !== change) {
@@ -156,15 +157,28 @@ export class DocumentBindings implements vscode.Disposable {
       }
     }
     await this.set(doc, binding);
-    vscode.window.setStatusBarMessage(vscode.l10n.t('This editor now runs against {0}.', this.describe(binding).label), 4000);
+    vscode.window.setStatusBarMessage(t('This editor now runs against {0}.', this.describe(binding).label), 4000);
     return binding;
+  }
+
+  /** Databases of an open SQL connection (its top-level `database` nodes); empty when closed or single-database. */
+  async openDatabases(connectionId: string): Promise<string[]> {
+    if (!this.manager.isConnected(connectionId)) {
+      return [];
+    }
+    try {
+      const driver = await this.manager.connect(connectionId);
+      return (await driver.children()).filter((n) => n.kind === 'database' && n.database).map((n) => n.database!);
+    } catch {
+      return [];
+    }
   }
 
   /** Databases of a SQL connection from its top-level tree nodes; empty when offline or single-database. */
   private async databasesOf(connectionId: string): Promise<string[]> {
     try {
       const driver = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Window, title: vscode.l10n.t('Connecting to {0}…', this.manager.config(connectionId).name) },
+        { location: vscode.ProgressLocation.Window, title: t('Connecting to {0}…', this.manager.config(connectionId).name) },
         () => this.manager.connect(connectionId),
       );
       return (await driver.children()).filter((n) => n.kind === 'database' && n.database).map((n) => n.database!);
@@ -211,12 +225,12 @@ export class DocumentBindings implements vscode.Disposable {
     }
     const binding = this.get(doc);
     if (!binding) {
-      this.status.text = `$(database) ${vscode.l10n.t('Select connection')}`;
-      this.status.tooltip = vscode.l10n.t('Choose the connection this SQL editor runs against');
+      this.status.text = `$(database) ${t('Select connection')}`;
+      this.status.tooltip = t('Choose the connection this SQL editor runs against');
     } else {
       const { label, engine, connected } = this.describe(binding);
       this.status.text = `$(${connected ? 'database' : 'debug-disconnect'}) ${label}`;
-      this.status.tooltip = vscode.l10n.t('Connection for this editor: {0} ({1}, {2}). Click to change.', label, engine, connected ? vscode.l10n.t('connected') : vscode.l10n.t('not connected'));
+      this.status.tooltip = t('Connection for this editor: {0} ({1}, {2}). Click to change.', label, engine, connected ? t('connected') : t('not connected'));
     }
     this.status.show();
   }

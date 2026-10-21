@@ -14,6 +14,7 @@ import {
   SqlDriver,
 } from '../drivers/types';
 import { ConnectionStore } from '../store/connectionStore';
+import { t } from '../l10n';
 
 /** Owns the live driver instance of each connected connection. */
 export class ConnectionManager implements vscode.Disposable {
@@ -39,7 +40,7 @@ export class ConnectionManager implements vscode.Disposable {
   config(id: string): ConnectionConfig {
     const config = this.store.get(id);
     if (!config) {
-      throw new Error(vscode.l10n.t('Connection not found. It may have been deleted.'));
+      throw new Error(t('Connection not found. It may have been deleted.'));
     }
     return config;
   }
@@ -74,7 +75,7 @@ export class ConnectionManager implements vscode.Disposable {
   async connectSql(id: string): Promise<SqlDriver> {
     const driver = await this.connect(id);
     if (!isSqlDriver(driver)) {
-      throw new Error(vscode.l10n.t('{0} is not a SQL connection.', this.config(id).name));
+      throw new Error(t('{0} is not a SQL connection.', this.config(id).name));
     }
     return driver;
   }
@@ -82,7 +83,7 @@ export class ConnectionManager implements vscode.Disposable {
   async connectKv(id: string): Promise<KvDriver> {
     const driver = await this.connect(id);
     if (!isKvDriver(driver)) {
-      throw new Error(vscode.l10n.t('{0} is not a Redis connection.', this.config(id).name));
+      throw new Error(t('{0} is not a Redis connection.', this.config(id).name));
     }
     return driver;
   }
@@ -90,7 +91,7 @@ export class ConnectionManager implements vscode.Disposable {
   async connectPubSub(id: string): Promise<PubSubDriver> {
     const driver = await this.connect(id);
     if (!isPubSubDriver(driver)) {
-      throw new Error(vscode.l10n.t('{0} is not a NATS connection.', this.config(id).name));
+      throw new Error(t('{0} is not a NATS connection.', this.config(id).name));
     }
     return driver;
   }

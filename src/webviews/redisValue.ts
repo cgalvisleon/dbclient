@@ -3,6 +3,7 @@ import { ConnectionManager } from '../connections/manager';
 import { KvDriver } from '../drivers/types';
 import { icon } from '../icons';
 import { mediaRoots, webviewHtml } from './html';
+import { t } from '../l10n';
 
 const LIMIT = 1000;
 const STRING_LIMIT = 1024 * 1024;
@@ -73,9 +74,9 @@ export async function readKey(driver: KvDriver, db: number, key: string): Promis
       return { ...base, length, value, truncated: length > 200 };
     }
     case 'none':
-      throw new Error(vscode.l10n.t('The key "{0}" no longer exists.', key));
+      throw new Error(t('The key "{0}" no longer exists.', key));
     default:
-      return { ...base, length: 0, value: vscode.l10n.t('Values of type "{0}" are not supported by the viewer; use a .redis editor.', type) };
+      return { ...base, length: 0, value: t('Values of type "{0}" are not supported by the viewer; use a .redis editor.', type) };
   }
 }
 
@@ -183,8 +184,8 @@ export function openValueViewer(extensionUri: vscode.Uri, manager: ConnectionMan
       return;
     }
     if (m.edit.op === 'delete') {
-      const del = vscode.l10n.t('Delete');
-      if ((await vscode.window.showWarningMessage(vscode.l10n.t('Delete key "{0}"?', key), { modal: true }, del)) !== del) {
+      const del = t('Delete');
+      if ((await vscode.window.showWarningMessage(t('Delete key "{0}"?', key), { modal: true }, del)) !== del) {
         return;
       }
     }
@@ -193,7 +194,7 @@ export function openValueViewer(extensionUri: vscode.Uri, manager: ConnectionMan
       for (const command of editCommands(m.valueType, key, m.edit)) {
         const reply = await driver.command(db, command);
         if (m.edit.op === 'rename' && Number(reply) === 0) {
-          throw new Error(vscode.l10n.t('A key named "{0}" already exists.', m.edit.name));
+          throw new Error(t('A key named "{0}" already exists.', m.edit.name));
         }
       }
       if (m.edit.op === 'delete') {

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { DriverCategory } from './drivers/types';
+import { t } from './l10n';
 
 /** PNG icons generated from img/ by scripts/build-icons.mjs (`npm run icons`). */
 export type IconName =
@@ -39,13 +40,13 @@ export const DEFAULT_SHAPES: Record<DriverCategory, ConnectionShape> = {
 };
 
 const COLOR_LABELS: Record<ConnectionColor, () => string> = {
-  blue: () => vscode.l10n.t('Blue'),
-  green: () => vscode.l10n.t('Green'),
-  red: () => vscode.l10n.t('Red'),
-  orange: () => vscode.l10n.t('Orange'),
-  purple: () => vscode.l10n.t('Purple'),
-  yellow: () => vscode.l10n.t('Yellow'),
-  gray: () => vscode.l10n.t('Gray'),
+  blue: () => t('Blue'),
+  green: () => t('Green'),
+  red: () => t('Red'),
+  orange: () => t('Orange'),
+  purple: () => t('Purple'),
+  yellow: () => t('Yellow'),
+  gray: () => t('Gray'),
 };
 
 /** Translated name of a color. */

@@ -6,6 +6,7 @@ import { DbNode, NodeKind } from '../drivers/types';
 import { connectionIcon, DEFAULT_SHAPES, folderIcon, icon, IconName } from '../icons';
 import { SqlLocations } from '../connections/sqlLocations';
 import { displayPath, isInside, listDir, SqlLocation } from '../store/sqlLocations';
+import { t } from '../l10n';
 
 /** Image icons from img/ for the main node kinds; the rest use codicons from ICONS. */
 const IMAGES: Partial<Record<NodeKind, IconName>> = {
@@ -62,7 +63,7 @@ export class ConnectionItem extends vscode.TreeItem {
 }
 
 const treeWords = new Set(TREE_WORDS);
-const translated = (text: string | undefined) => (text && treeWords.has(text) ? vscode.l10n.t(text) : text);
+const translated = (text: string | undefined) => (text && treeWords.has(text) ? t(text) : text);
 
 export class NodeItem extends vscode.TreeItem {
   constructor(
@@ -83,7 +84,7 @@ export class NodeItem extends vscode.TreeItem {
     // `<kind> <category> <dialect>`: menus match kinds and categories, drops also the engine.
     this.contextValue = `${node.kind} ${category}${dialect ? ` ${dialect}` : ''}`;
     if (node.kind === 'key') {
-      this.command = { command: 'dbclient.openValue', title: vscode.l10n.t('Open Value'), arguments: [this] };
+      this.command = { command: 'dbclient.openValue', title: t('Open Value'), arguments: [this] };
     }
   }
 }
@@ -114,7 +115,7 @@ export class SqlFolderItem extends vscode.TreeItem {
     this.id = `sqlfiles:${connectionId}`;
     this.iconPath = icon('sql-file');
     this.description = description;
-    this.tooltip = vscode.l10n.t('SQL files of this connection');
+    this.tooltip = t('SQL files of this connection');
     this.contextValue = 'sqlFolder';
   }
 }
@@ -127,9 +128,9 @@ export class SqlLocationItem extends vscode.TreeItem {
     display: string,
   ) {
     const missing = !location.path;
-    super(location.kind === 'internal' ? vscode.l10n.t('Saved') : location.label, missing ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed);
+    super(location.kind === 'internal' ? t('Saved') : location.label, missing ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Collapsed);
     this.id = `sqlloc:${connectionId}:${location.kind}:${location.raw ?? ''}`;
-    const notes = [location.isSave ? vscode.l10n.t('save location') : undefined, missing ? vscode.l10n.t('needs an open workspace') : undefined];
+    const notes = [location.isSave ? t('save location') : undefined, missing ? t('needs an open workspace') : undefined];
     this.description = [location.kind === 'internal' ? undefined : display, ...notes].filter(Boolean).join(' · ');
     this.tooltip = location.path ?? location.raw;
     this.iconPath = missing ? new vscode.ThemeIcon('warning') : location.isSave ? icon('import') : icon('explorer');
@@ -169,7 +170,7 @@ export class DatabaseSqlItem extends SqlDirItem {
     this.resourceUri = undefined;
     this.iconPath = icon('sql-file');
     this.description = String(count);
-    this.tooltip = vscode.l10n.t('SQL files of database {0}', database);
+    this.tooltip = t('SQL files of database {0}', database);
   }
 }
 
@@ -185,13 +186,13 @@ export class SqlFileItem extends vscode.TreeItem {
     this.resourceUri = vscode.Uri.file(file);
     this.iconPath = icon('query');
     this.tooltip = file;
-    this.command = { command: 'vscode.open', title: vscode.l10n.t('Open'), arguments: [vscode.Uri.file(file)] };
+    this.command = { command: 'vscode.open', title: t('Open'), arguments: [vscode.Uri.file(file)] };
     this.setDirty(vscode.workspace.textDocuments.some((d) => d.isDirty && d.uri.fsPath === file));
   }
 
   /** Unsaved changes in an open editor show as "● unsaved" and enable the inline Save button. */
   setDirty(dirty: boolean): void {
-    this.description = dirty ? `● ${vscode.l10n.t('unsaved')}` : new Date(this.modified).toLocaleString();
+    this.description = dirty ? `● ${t('unsaved')}` : new Date(this.modified).toLocaleString();
     this.contextValue = dirty ? 'sqlFile dirty' : 'sqlFile';
   }
 }
@@ -331,7 +332,7 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
     const locations = this.sqlLocations.of(connectionId);
     return locations.length === 1
       ? String(listDir(locations[0].path!).files.length)
-      : vscode.l10n.t('{0} locations', locations.length);
+      : t('{0} locations', locations.length);
   }
 
   /** Subfolders and .sql files of a folder in a SQL location. */
@@ -340,8 +341,8 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
     if (listing.missing) {
       // The internal folder (and each database folder) is only created with its first file.
       return isInside(dir, this.sqlLocations.files.dir(connectionId))
-        ? [new MessageItem(vscode.l10n.t('No SQL files yet'), 'circle-slash')]
-        : [new MessageItem(vscode.l10n.t('Folder not found: {0}', dir))];
+        ? [new MessageItem(t('No SQL files yet'), 'circle-slash')]
+        : [new MessageItem(t('Folder not found: {0}', dir))];
     }
     const nodes: TreeNode[] = [
       ...listing.folders.map((f) => new SqlDirItem(connectionId, f.path, f.name)),
@@ -352,9 +353,9 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
       }),
     ];
     if (listing.truncated) {
-      nodes.push(new MessageItem(vscode.l10n.t('Showing the first {0} entries', nodes.length), 'info'));
+      nodes.push(new MessageItem(t('Showing the first {0} entries', nodes.length), 'info'));
     }
-    return nodes.length ? nodes : [new MessageItem(vscode.l10n.t('No SQL files yet'), 'circle-slash')];
+    return nodes.length ? nodes : [new MessageItem(t('No SQL files yet'), 'circle-slash')];
   }
 
   getTreeItem(element: TreeNode): vscode.TreeItem {
@@ -387,7 +388,7 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
         const listing = listDir(locations[0].path!);
         return listing.files.length || listing.folders.length
           ? this.sqlEntries(element.connectionId, locations[0].path!)
-          : [new MessageItem(vscode.l10n.t('No saved SQL files yet'), 'circle-slash')];
+          : [new MessageItem(t('No saved SQL files yet'), 'circle-slash')];
       }
       const env = this.sqlLocations.env();
       return locations.map((l) => new SqlLocationItem(element.connectionId, l, l.raw ? displayPath(l.raw, env) : ''));
@@ -418,7 +419,7 @@ export class ConnectionsTree implements vscode.TreeDataProvider<TreeNode>, vscod
       const driver = await this.manager.connect(id);
       const nodes = await driver.children(element instanceof NodeItem ? element.node : undefined);
       if (!nodes.length) {
-        return [...head, new MessageItem(vscode.l10n.t('(empty)'), 'circle-slash')];
+        return [...head, new MessageItem(t('(empty)'), 'circle-slash')];
       }
       return [...head, ...nodes.map((n) => new NodeItem(id, n, category, factory.dialect))];
     } catch (err) {

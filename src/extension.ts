@@ -10,6 +10,7 @@ import { SqlLocations } from './connections/sqlLocations';
 import { DocumentBindings, EDITOR_CATEGORIES } from './editor/bindings';
 import { ConnectionCodeLens, RunCodeLens } from './editor/codeLens';
 import { HistoryPicker } from './editor/historyPicker';
+import { showSqlDocument, SQL_EDITOR_VIEW_TYPE, SqlEditorProvider } from './webviews/sqlEditor';
 import { RedisRunner } from './editor/redisRunner';
 import { SqlRunner } from './editor/sqlRunner';
 import { TableActions, TemplateKind } from './editor/tableActions';
@@ -35,6 +36,7 @@ import { NatsConsoles } from './webviews/natsConsole';
 import { openValueViewer } from './webviews/redisValue';
 import { openSettingsPanel } from './webviews/settings';
 import { RESULTS_VIEW_ID, ResultsView, RowAction } from './webviews/resultsView';
+import { loadLanguage, t } from './l10n';
 
 /** Returned from activate() so the smoke test can drive the extension; not a public API. */
 export interface DbClientInternals {
@@ -48,10 +50,25 @@ export interface DbClientInternals {
   history: QueryHistory;
   catalog: CatalogCache;
   results: ResultsView;
+  sqlEditors: SqlEditorProvider;
 }
 
 export function activate(context: vscode.ExtensionContext): DbClientInternals {
   initIcons(context.extensionUri);
+  loadLanguage(context.extensionPath);
+  // Texts already shown (tree, editor bars, open panels) keep their language until the window reloads.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(async (e) => {
+      if (!e.affectsConfiguration('dbclient.language')) {
+        return;
+      }
+      loadLanguage(context.extensionPath);
+      const reload = t('Reload Window');
+      if ((await vscode.window.showInformationMessage(t('Reload the window to show DB Client in the new language everywhere.'), reload)) === reload) {
+        await vscode.commands.executeCommand('workbench.action.reloadWindow');
+      }
+    }),
+  );
   const store = new ConnectionStore(vscode.Uri.joinPath(context.globalStorageUri, 'connections.json').fsPath, context.secrets);
   const manager = new ConnectionManager(store);
   const sqlRoot = () => {
@@ -75,6 +92,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   const historyPicker = new HistoryPicker(manager, bindings, history);
   const catalog = new CatalogCache(manager);
   const runner = new SqlRunner(manager, bindings, results, history, catalog);
+  const sqlEditors = new SqlEditorProvider(context.extensionUri, { manager, bindings, runner, results, history: historyPicker });
   const tableActions = new TableActions(manager, bindings, catalog, results, runner);
   const redisRunner = new RedisRunner(manager, bindings, results, history);
   const natsConsoles = new NatsConsoles(context.extensionUri, manager);
@@ -105,10 +123,30 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       dragAndDropController: dragAndDrop,
     }),
     vscode.window.registerWebviewViewProvider(RESULTS_VIEW_ID, results, { webviewOptions: { retainContextWhenHidden: true } }),
+    vscode.window.registerCustomEditorProvider(SQL_EDITOR_VIEW_TYPE, sqlEditors, {
+      webviewOptions: { retainContextWhenHidden: true, enableFindWidget: true },
+      supportsMultipleEditorsPerDocument: false,
+    }),
     vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings, catalog), '.', ' '),
-    vscode.languages.registerCodeLensProvider([...sqlDocs, ...redisDocs], new ConnectionCodeLens(bindings, manager, runner)),
+    vscode.languages.registerCodeLensProvider([...sqlDocs, ...redisDocs], new ConnectionCodeLens(bindings, manager)),
     vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager)),
     vscode.languages.registerCompletionItemProvider(redisDocs, new RedisCompletionProvider(manager, bindings), ' ', ':'),
+  );
+
+  // Editor title bar: Connect or Disconnect, and Cancel, follow the active editor's connection and run.
+  const updateEditorContext = () => {
+    const doc = vscode.window.activeTextEditor?.document;
+    const binding = doc && bindings.get(doc);
+    void vscode.commands.executeCommand('setContext', 'dbclient.editorBound', Boolean(binding));
+    void vscode.commands.executeCommand('setContext', 'dbclient.editorConnected', Boolean(binding && manager.isConnected(binding.connectionId)));
+    void vscode.commands.executeCommand('setContext', 'dbclient.queryRunning', Boolean(doc && runner.isRunning(doc)));
+  };
+  updateEditorContext();
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(updateEditorContext),
+    bindings.onDidChange(updateEditorContext),
+    manager.onDidChangeState(updateEditorContext),
+    runner.onDidChangeRunning(updateEditorContext),
   );
 
   const command = (id: string, handler: (...args: any[]) => unknown) =>
@@ -122,14 +160,20 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       }),
     );
 
-  /** Connection id from a tree item, or asked with a quick pick when run from the palette. */
-  const connectionOf = async (item?: ConnectionItem | NodeItem): Promise<string | undefined> => {
-    if (item) {
+  /** Connection id from a tree item, the editor's (title bar: a document URI), or asked with a quick pick from the palette. */
+  const connectionOf = async (item?: ConnectionItem | NodeItem | vscode.Uri): Promise<string | undefined> => {
+    if (item instanceof vscode.Uri) {
+      const doc = vscode.workspace.textDocuments.find((d) => d.uri.toString() === item.toString());
+      const id = doc && bindings.get(doc)?.connectionId;
+      if (id) {
+        return id;
+      }
+    } else if (item) {
       return item.connectionId;
     }
     const picked = await vscode.window.showQuickPick(
       store.list().map((c) => ({ label: c.name, description: manager.factoryOf(c).label, id: c.id })),
-      { placeHolder: vscode.l10n.t('Select a connection') },
+      { placeHolder: t('Select a connection') },
     );
     return picked?.id;
   };
@@ -142,9 +186,9 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
 
   const askFolderName = (value = '') =>
     vscode.window.showInputBox({
-      prompt: vscode.l10n.t('Folder name'),
+      prompt: t('Folder name'),
       value,
-      validateInput: (v) => (v.trim() ? undefined : vscode.l10n.t('Folder name is required.')),
+      validateInput: (v) => (v.trim() ? undefined : t('Folder name is required.')),
     });
 
   /** Quick pick of folders (plus the top level); `exclude` hides a folder and everything below it. */
@@ -158,14 +202,14 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       return false;
     };
     const items = [
-      { label: `$(root-folder) ${vscode.l10n.t('Top level')}`, id: undefined as string | undefined },
+      { label: `$(root-folder) ${t('Top level')}`, id: undefined as string | undefined },
       ...store
         .listFolders()
         .filter((f) => !below(f.id))
         .map((f) => ({ label: `$(folder) ${store.folderPath(f.id)}`, id: f.id as string | undefined }))
         .sort((a, b) => a.label.localeCompare(b.label)),
     ];
-    return vscode.window.showQuickPick(items, { placeHolder: vscode.l10n.t('Move to folder') });
+    return vscode.window.showQuickPick(items, { placeHolder: t('Move to folder') });
   };
 
   command('dbclient.addFolder', async (item?: FolderItem) => {
@@ -191,9 +235,9 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (!folder) {
       return;
     }
-    const remove = vscode.l10n.t('Delete');
+    const remove = t('Delete');
     const answer = await vscode.window.showWarningMessage(
-      vscode.l10n.t('Delete folder "{0}"? Its connections and subfolders move up one level; nothing else is deleted.', folder.name),
+      t('Delete folder "{0}"? Its connections and subfolders move up one level; nothing else is deleted.', folder.name),
       { modal: true },
       remove,
     );
@@ -215,7 +259,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
           .listFolders()
           .map((f) => ({ label: `$(folder) ${store.folderPath(f.id)}`, id: f.id }))
           .sort((a, b) => a.label.localeCompare(b.label)),
-        { placeHolder: vscode.l10n.t('Folder to color') },
+        { placeHolder: t('Folder to color') },
       );
       folder = picked && store.getFolder(picked.id);
     }
@@ -225,8 +269,8 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (!color) {
       const current = folder.color ?? 'blue';
       const picked = await vscode.window.showQuickPick(
-        CONNECTION_COLORS.map((c) => ({ label: `${COLOR_DOTS[c]} ${colorLabel(c)}`, description: c === current ? vscode.l10n.t('current') : undefined, color: c })),
-        { placeHolder: vscode.l10n.t('Icon color for "{0}"', folder.name) },
+        CONNECTION_COLORS.map((c) => ({ label: `${COLOR_DOTS[c]} ${colorLabel(c)}`, description: c === current ? t('current') : undefined, color: c })),
+        { placeHolder: t('Icon color for "{0}"', folder.name) },
       );
       color = picked?.color;
     }
@@ -304,16 +348,16 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       return;
     }
     const config = manager.config(id);
-    const remove = vscode.l10n.t('Delete');
+    const remove = t('Delete');
     const saved = sqlFiles.list(id).length;
     const external = sqlLocations.of(id).filter((l) => l.kind !== 'internal').length;
     const answer = await vscode.window.showWarningMessage(
       saved
-        ? vscode.l10n.t('Delete connection "{0}"? Its saved password and its {1} saved SQL files are removed too.', config.name, saved)
-        : vscode.l10n.t('Delete connection "{0}"? Its saved password is removed too.', config.name),
+        ? t('Delete connection "{0}"? Its saved password and its {1} saved SQL files are removed too.', config.name, saved)
+        : t('Delete connection "{0}"? Its saved password is removed too.', config.name),
       {
         modal: true,
-        detail: external ? vscode.l10n.t('Linked folders and other save locations are not touched.') : undefined,
+        detail: external ? t('Linked folders and other save locations are not touched.') : undefined,
       },
       remove,
     );
@@ -344,7 +388,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
           : undefined;
       const data = store.exportData((type) => (fieldsOf(type) ?? []).filter((f) => f.secret).map((f) => f.key), folderId, connectionIds);
       if (!data.connections.length && !data.folders.length) {
-        vscode.window.showInformationMessage(vscode.l10n.t('There are no connections to export.'));
+        vscode.window.showInformationMessage(t('There are no connections to export.'));
         return;
       }
       const name = folderId
@@ -357,14 +401,14 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       target ??= await vscode.window.showSaveDialog({
         defaultUri: vscode.Uri.file(path.join(os.homedir(), `${name.replace(/[\\/:*?"<>|]+/g, '-')}.json`)),
         filters: { JSON: ['json'] },
-        title: vscode.l10n.t('Export Connections'),
+        title: t('Export Connections'),
       });
       if (!target) {
         return;
       }
       await vscode.workspace.fs.writeFile(target, Buffer.from(JSON.stringify(data, null, 2) + '\n', 'utf8'));
       vscode.window.showInformationMessage(
-        vscode.l10n.t('Exported {0} connections to {1}. Passwords and other secrets are not included.', data.connections.length, target.fsPath),
+        t('Exported {0} connections to {1}. Passwords and other secrets are not included.', data.connections.length, target.fsPath),
       );
     },
   );
@@ -379,7 +423,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       await vscode.window.showOpenDialog({
         canSelectMany: false,
         filters: { JSON: ['json'] },
-        title: folder ? vscode.l10n.t('Import Connections into "{0}"', folder.name) : vscode.l10n.t('Import Connections'),
+        title: folder ? t('Import Connections into "{0}"', folder.name) : t('Import Connections'),
       })
     )?.[0];
     if (!source) {
@@ -389,10 +433,10 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (!mode) {
       const picked = await vscode.window.showQuickPick(
         [
-          { label: vscode.l10n.t('Merge'), detail: vscode.l10n.t('Add the connections; existing ones are kept and identical ones skipped.'), mode: 'merge' as const },
-          { label: vscode.l10n.t('Replace'), detail: vscode.l10n.t('Make the list exactly the file: connections not in it are deleted.'), mode: 'replace' as const },
+          { label: t('Merge'), detail: t('Add the connections; existing ones are kept and identical ones skipped.'), mode: 'merge' as const },
+          { label: t('Replace'), detail: t('Make the list exactly the file: connections not in it are deleted.'), mode: 'replace' as const },
         ],
-        { title: vscode.l10n.t('Import {0} connections', data.connections.length) },
+        { title: t('Import {0} connections', data.connections.length) },
       );
       if (!picked) {
         return;
@@ -402,12 +446,12 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
         const keep = new Set(data.connections.map((c) => c.id));
         const removed = store.list().filter((c) => !keep.has(c.id));
         if (removed.length) {
-          const replace = vscode.l10n.t('Replace');
+          const replace = t('Replace');
           const answer = await vscode.window.showWarningMessage(
-            vscode.l10n.t('Delete {0} connections that are not in the file?', removed.length),
+            t('Delete {0} connections that are not in the file?', removed.length),
             {
               modal: true,
-              detail: `${removed.map((c) => c.name).join(', ')}\n\n${vscode.l10n.t('Their saved passwords and saved SQL files are deleted too; linked folders are not touched.')}`,
+              detail: `${removed.map((c) => c.name).join(', ')}\n\n${t('Their saved passwords and saved SQL files are deleted too; linked folders are not touched.')}`,
             },
             replace,
           );
@@ -428,23 +472,23 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }
     const parts = [
       folder
-        ? vscode.l10n.t('{0} imported into "{1}"', result.added.length + result.renamed.length, folder.name)
-        : vscode.l10n.t('{0} imported', result.added.length + result.renamed.length),
+        ? t('{0} imported into "{1}"', result.added.length + result.renamed.length, folder.name)
+        : t('{0} imported', result.added.length + result.renamed.length),
     ];
     if (result.renamed.length) {
-      parts.push(vscode.l10n.t('{0} as copies ({1})', result.renamed.length, result.renamed.join(', ')));
+      parts.push(t('{0} as copies ({1})', result.renamed.length, result.renamed.join(', ')));
     }
     if (result.skipped.length) {
-      parts.push(vscode.l10n.t('{0} already present', result.skipped.length));
+      parts.push(t('{0} already present', result.skipped.length));
     }
     if (result.removed.length) {
-      parts.push(vscode.l10n.t('{0} deleted', result.removed.length));
+      parts.push(t('{0} deleted', result.removed.length));
     }
     if (result.invalid.length) {
-      parts.push(vscode.l10n.t('{0} ignored (unknown engine): {1}', result.invalid.length, result.invalid.join(', ')));
+      parts.push(t('{0} ignored (unknown engine): {1}', result.invalid.length, result.invalid.join(', ')));
     }
     vscode.window.showInformationMessage(
-      `${parts.join(' · ')}. ${vscode.l10n.t('Passwords are not part of the file: enter them with Edit Connection where needed.')}`,
+      `${parts.join(' · ')}. ${t('Passwords are not part of the file: enter them with Edit Connection where needed.')}`,
     );
   });
 
@@ -462,7 +506,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
         .list()
         .filter((c) => manager.factoryOf(c).category === 'sql')
         .map((c) => ({ label: c.name, description: manager.factoryOf(c).label, id: c.id })),
-      { placeHolder: vscode.l10n.t('SQL connection') },
+      { placeHolder: t('SQL connection') },
     );
     return picked?.id;
   };
@@ -491,23 +535,23 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const items = locations
       .sort((a, b) => Number(b.isSave) - Number(a.isSave))
       .map((l) => ({
-        label: `${l.isSave ? '$(star-full) ' : ''}${l.kind === 'internal' ? vscode.l10n.t('Saved (extension storage)') : l.label}`,
+        label: `${l.isSave ? '$(star-full) ' : ''}${l.kind === 'internal' ? t('Saved (extension storage)') : l.label}`,
         description: l.raw ? displayPath(l.raw, env) : undefined,
         dir: l.path!,
       }));
-    return (await vscode.window.showQuickPick(items, { placeHolder: vscode.l10n.t('Where to save the file') }))?.dir;
+    return (await vscode.window.showQuickPick(items, { placeHolder: t('Where to save the file') }))?.dir;
   };
 
   const askFileName = (dir: string, value?: string) =>
     vscode.window.showInputBox({
-      prompt: vscode.l10n.t('SQL file name'),
+      prompt: t('SQL file name'),
       value: value ?? sqlFiles.nextNameIn(dir),
       validateInput: (v) => {
         try {
           sqlFileName(v);
           return undefined;
         } catch {
-          return vscode.l10n.t('Enter a valid file name.');
+          return t('Enter a valid file name.');
         }
       },
     });
@@ -516,7 +560,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   const openBound = async (file: string, connectionId: string, database?: string) => {
     const doc = await vscode.workspace.openTextDocument(file);
     await bindings.set(doc, { connectionId, database });
-    await vscode.window.showTextDocument(doc);
+    await showSqlDocument(doc);
   };
 
   command('dbclient.newSqlFile', async (item?: SqlItem) => {
@@ -532,13 +576,13 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   });
 
   // Saves the active SQL editor (usually an untitled query) into a location of its connection.
-  command('dbclient.saveToSqlFolder', async () => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || editor.document.languageId !== 'sql') {
-      vscode.window.showWarningMessage(vscode.l10n.t('Open a SQL editor first.'));
+  // `uri` comes from the editor title bar or a DB Client SQL editor; otherwise the active text editor.
+  command('dbclient.saveToSqlFolder', async (uri?: vscode.Uri) => {
+    const doc = uri instanceof vscode.Uri ? vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString()) : vscode.window.activeTextEditor?.document;
+    if (!doc || doc.languageId !== 'sql') {
+      vscode.window.showWarningMessage(t('Open a SQL editor first.'));
       return;
     }
-    const doc = editor.document;
     const binding = bindings.get(doc) ?? (await bindings.pick(doc));
     if (!binding) {
       return;
@@ -571,7 +615,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (doc?.isDirty) {
       await doc.save();
     } else if (item) {
-      vscode.window.setStatusBarMessage(vscode.l10n.t('{0} has no unsaved changes.', path.basename(item.file)), 3000);
+      vscode.window.setStatusBarMessage(t('{0} has no unsaved changes.', path.basename(item.file)), 3000);
     }
   });
 
@@ -600,9 +644,9 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (!item) {
       return;
     }
-    const remove = vscode.l10n.t('Delete');
+    const remove = t('Delete');
     const answer = await vscode.window.showWarningMessage(
-      vscode.l10n.t('Delete "{0}"?', path.basename(item.file)),
+      t('Delete "{0}"?', path.basename(item.file)),
       { modal: true, detail: item.file },
       remove,
     );
@@ -641,10 +685,10 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const asVariable = relative ? `\${workspaceFolder}/${relative}` : '${workspaceFolder}';
     const choice = await vscode.window.showQuickPick(
       [
-        { label: asVariable, description: vscode.l10n.t('Relative to whichever project is open'), value: asVariable },
-        { label: folder, description: vscode.l10n.t('This exact folder'), value: folder },
+        { label: asVariable, description: t('Relative to whichever project is open'), value: asVariable },
+        { label: folder, description: t('This exact folder'), value: folder },
       ],
-      { placeHolder: vscode.l10n.t('The folder is inside the open project. How should it be stored?') },
+      { placeHolder: t('The folder is inside the open project. How should it be stored?') },
     );
     return choice?.value;
   };
@@ -658,7 +702,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       canSelectFiles: false,
       canSelectFolders: true,
       canSelectMany: true,
-      openLabel: vscode.l10n.t('Link Folder'),
+      openLabel: t('Link Folder'),
       defaultUri: vscode.workspace.workspaceFolders?.[0]?.uri,
     });
     if (!picked?.length) {
@@ -691,7 +735,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       sqlLocations: (config.sqlLocations ?? []).filter((l) => l.path !== raw),
       sqlSaveLocation: config.sqlSaveLocation === raw ? undefined : config.sqlSaveLocation,
     });
-    vscode.window.setStatusBarMessage(vscode.l10n.t('Unlinked {0}; its files were not touched.', item.location.label), 4000);
+    vscode.window.setStatusBarMessage(t('Unlinked {0}; its files were not touched.', item.location.label), 4000);
   });
 
   command('dbclient.setSaveLocation', async (item?: SqlItem) => {
@@ -706,19 +750,19 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const env = sqlLocations.env();
     const options = [
       ...sqlLocations.of(id).map((l) => ({
-        label: `${l.isSave ? '$(star-full) ' : ''}${l.kind === 'internal' ? vscode.l10n.t('Saved (extension storage)') : l.label}`,
+        label: `${l.isSave ? '$(star-full) ' : ''}${l.kind === 'internal' ? t('Saved (extension storage)') : l.label}`,
         description: l.raw ? displayPath(l.raw, env) : undefined,
         raw: l.kind === 'internal' ? null : l.raw!,
       })),
-      { label: `$(folder-opened) ${vscode.l10n.t('Other folder…')}`, description: undefined, raw: undefined as string | null | undefined },
+      { label: `$(folder-opened) ${t('Other folder…')}`, description: undefined, raw: undefined as string | null | undefined },
     ];
-    const choice = await vscode.window.showQuickPick(options, { placeHolder: vscode.l10n.t('Where new SQL files of this connection are saved') });
+    const choice = await vscode.window.showQuickPick(options, { placeHolder: t('Where new SQL files of this connection are saved') });
     if (!choice) {
       return;
     }
     let raw = choice.raw;
     if (raw === undefined) {
-      const picked = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, openLabel: vscode.l10n.t('Save Here') });
+      const picked = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, openLabel: t('Save Here') });
       raw = picked?.[0] ? await storedPath(picked[0].fsPath) : undefined;
       if (!raw) {
         return;
@@ -734,29 +778,29 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }
     const config = manager.config(id);
     await vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Testing {0}…', config.name) },
+      { location: vscode.ProgressLocation.Notification, title: t('Testing {0}…', config.name) },
       async () => {
         try {
           await manager.test(config, await store.getSecrets(id, manager.factoryOf(config).fields));
-          vscode.window.showInformationMessage(vscode.l10n.t('{0}: connection succeeded.', config.name));
+          vscode.window.showInformationMessage(t('{0}: connection succeeded.', config.name));
         } catch (err) {
-          vscode.window.showErrorMessage(vscode.l10n.t('{0}: {1}', config.name, (err as Error).message));
+          vscode.window.showErrorMessage(t('{0}: {1}', config.name, (err as Error).message));
         }
       },
     );
   });
 
-  command('dbclient.connect', async (item?: ConnectionItem) => {
+  command('dbclient.connect', async (item?: ConnectionItem | vscode.Uri) => {
     const id = await connectionOf(item);
     if (id) {
       await vscode.window.withProgress(
-        { location: { viewId: 'dbclient.connections' }, title: vscode.l10n.t('Connecting…') },
+        { location: { viewId: 'dbclient.connections' }, title: t('Connecting…') },
         () => manager.connect(id),
       );
     }
   });
 
-  command('dbclient.disconnect', async (item?: ConnectionItem) => {
+  command('dbclient.disconnect', async (item?: ConnectionItem | vscode.Uri) => {
     const id = await connectionOf(item);
     if (id) {
       await manager.disconnect(id);
@@ -778,6 +822,10 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const content = category === 'kv' ? '# One command per line. Ctrl/Cmd+Enter runs the current line or the selection.\n' : '';
     const doc = await vscode.workspace.openTextDocument({ language, content });
     await bindings.set(doc, { connectionId: id, database: item instanceof NodeItem ? item.node.database : undefined });
+    if (language === 'sql' && vscode.workspace.getConfiguration('dbclient').get<boolean>('sqlEditor.openByDefault', false)) {
+      await showSqlDocument(doc);
+      return;
+    }
     const editor = await vscode.window.showTextDocument(doc);
     const end = doc.lineAt(doc.lineCount - 1).range.end;
     editor.selection = new vscode.Selection(end, end);
@@ -794,7 +842,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     command(`dbclient.generate${kind[0].toUpperCase()}${kind.slice(1)}`, (item: NodeItem) => tableActions.generate(item, kind));
   }
 
-  command('dbclient.showHistory', (item?: ConnectionItem) => historyPicker.show(item?.connectionId));
+  command('dbclient.showHistory', (item?: ConnectionItem | vscode.Uri) => historyPicker.show(item instanceof ConnectionItem ? item.connectionId : undefined));
 
   command('dbclient.openConsole', async (item?: ConnectionItem | NodeItem) => {
     const id = await connectionOf(item);
@@ -822,7 +870,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (editor && EDITOR_CATEGORIES[editor.document.languageId]) {
       await bindings.pick(editor.document);
     } else {
-      vscode.window.showWarningMessage(vscode.l10n.t('Open a SQL or Redis editor first.'));
+      vscode.window.showWarningMessage(t('Open a SQL or Redis editor first.'));
     }
   });
 
@@ -837,7 +885,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   const queryEditor = () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor || !EDITOR_CATEGORIES[editor.document.languageId]) {
-      vscode.window.showWarningMessage(vscode.l10n.t('Open a SQL or Redis editor first.'));
+      vscode.window.showWarningMessage(t('Open a SQL or Redis editor first.'));
       return undefined;
     }
     return editor;
@@ -861,7 +909,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       return;
     }
     if (editor.selection.isEmpty) {
-      vscode.window.showInformationMessage(vscode.l10n.t('Select the statements to run first.'));
+      vscode.window.showInformationMessage(t('Select the statements to run first.'));
       return;
     }
     await run('auto');
@@ -872,7 +920,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       // The selection, or the whole file when nothing is selected.
       const text = editor.document.getText(editor.selection.isEmpty ? undefined : editor.selection);
       await vscode.env.clipboard.writeText(text);
-      vscode.window.setStatusBarMessage(editor.selection.isEmpty ? vscode.l10n.t('Copied the whole file.') : vscode.l10n.t('Copied the selection.'), 2000);
+      vscode.window.setStatusBarMessage(editor.selection.isEmpty ? t('Copied the whole file.') : t('Copied the selection.'), 2000);
     }
   });
   command('dbclient.pasteQuery', async () => {
@@ -894,7 +942,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const target = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(os.homedir(), name)), filters: queryFilters(doc.languageId) });
     if (target) {
       await vscode.workspace.fs.writeFile(target, Buffer.from(doc.getText(), 'utf8'));
-      vscode.window.setStatusBarMessage(vscode.l10n.t('Saved {0}', target.fsPath), 3000);
+      vscode.window.setStatusBarMessage(t('Saved {0}', target.fsPath), 3000);
     }
   });
   command('dbclient.importQuery', async () => {
@@ -902,7 +950,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (!editor) {
       return;
     }
-    const [source] = (await vscode.window.showOpenDialog({ canSelectMany: false, filters: queryFilters(editor.document.languageId), openLabel: vscode.l10n.t('Import') })) ?? [];
+    const [source] = (await vscode.window.showOpenDialog({ canSelectMany: false, filters: queryFilters(editor.document.languageId), openLabel: t('Import') })) ?? [];
     if (!source) {
       return;
     }
@@ -924,15 +972,25 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     generateRowDelete: 'delete',
   };
   for (const [name, action] of Object.entries(rowActions)) {
-    command(`dbclient.results.${name}`, (cell?: { seq?: number; row?: number; col?: number }) => {
+    command(`dbclient.results.${name}`, (cell?: { seq?: number; row?: number; col?: number; document?: string }) => {
       if (cell?.seq !== undefined && cell.row !== undefined) {
-        results.post({ type: 'rowAction', action, seq: cell.seq, row: cell.row, col: cell.col ?? 0 });
+        // `document` is set when the grid is embedded in a DB Client SQL editor.
+        results.for(cell.document).post({ type: 'rowAction', action, seq: cell.seq, row: cell.row, col: cell.col ?? 0 });
       }
     });
   }
-  command('dbclient.cancelQuery', () => runner.cancel(vscode.window.activeTextEditor));
+  // The DB Client SQL editor for a .sql document (the editor title's button, or the palette).
+  command('dbclient.openSqlEditor', async (uri?: vscode.Uri) => {
+    const target = uri instanceof vscode.Uri ? uri : vscode.window.activeTextEditor?.document.uri;
+    if (!target) {
+      vscode.window.showWarningMessage(t('Open a SQL editor first.'));
+      return;
+    }
+    await vscode.commands.executeCommand('vscode.openWith', target, SQL_EDITOR_VIEW_TYPE);
+  });
+  command('dbclient.cancelQuery', () => runner.cancel(vscode.window.activeTextEditor?.document));
 
-  return { store, manager, tree, dragAndDrop, bindings, sqlFiles, sqlLocations, history, catalog, results };
+  return { store, manager, tree, dragAndDrop, bindings, sqlFiles, sqlLocations, history, catalog, results, sqlEditors };
 }
 
 export function deactivate(): void {

@@ -5,6 +5,7 @@ import { toCell } from '../webviews/cells';
 import { ResultsView } from '../webviews/resultsView';
 import { DocumentBindings } from './bindings';
 import { CommandLine, commandLines, replyTable } from './redisCommands';
+import { t } from '../l10n';
 
 const DANGEROUS = new Set(['FLUSHDB', 'FLUSHALL', 'SHUTDOWN', 'DEBUG', 'SWAPDB']);
 
@@ -48,14 +49,14 @@ export class RedisRunner implements vscode.Disposable {
       return;
     }
     if (!lines.length) {
-      vscode.window.showInformationMessage(vscode.l10n.t('There is no command to run.'));
+      vscode.window.showInformationMessage(t('There is no command to run.'));
       return;
     }
     const dangerous = lines.filter((l) => DANGEROUS.has(l.args[0]?.toUpperCase()));
     if (dangerous.length) {
-      const run = vscode.l10n.t('Run');
+      const run = t('Run');
       const answer = await vscode.window.showWarningMessage(
-        vscode.l10n.t('This runs {0}. Continue?', dangerous.map((l) => l.args[0].toUpperCase()).join(', ')),
+        t('This runs {0}. Continue?', dangerous.map((l) => l.args[0].toUpperCase()).join(', ')),
         { modal: true },
         run,
       );
@@ -110,7 +111,7 @@ export class RedisRunner implements vscode.Disposable {
               durationMs,
             },
           });
-          const summary = Array.isArray(reply) ? vscode.l10n.t('{0} items', reply.length) : reply === null ? '(nil)' : String(reply).split('\n')[0].slice(0, 120);
+          const summary = Array.isArray(reply) ? t('{0} items', reply.length) : reply === null ? '(nil)' : String(reply).split('\n')[0].slice(0, 120);
           this.log(config.name, line.text, true, summary, location, durationMs);
         } catch (err) {
           failed = true;

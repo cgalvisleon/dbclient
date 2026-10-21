@@ -63,11 +63,16 @@
   "config.dbclient.maxRows.description": "Maximum number of rows fetched per statement. Larger result sets are truncated.",
   "config.dbclient.pageSize.description": "Rows per page in the results grid.",
   "config.dbclient.codeLens.description": "Show a Run action above each statement in SQL editors bound to a connection.",
-  "config.dbclient.connectionLens.description": "Show a NetBeans-style toolbar on the first line of SQL and Redis editors: the editor's connection as a drop-down and icon buttons (run all, statement, selection, stop, connect/disconnect, history, save, copy, paste, export, import).",
+  "config.dbclient.connectionLens.description": "Show the editor's connection and database on the first line of SQL and Redis editors, as a drop-down that picks another. The run, copy, paste and save buttons are in the editor title bar; the other actions in its … menu.",
   "config.dbclient.sqlFolder.description": "Folder where each SQL connection keeps its saved .sql files (one subfolder per connection). Empty uses the extension's global storage; point it at a synced or versioned folder to share the files.",
   "config.dbclient.historySize.description": "Statements and Redis commands kept in each connection's query history (Query History…). 0 turns the history off. AUTH, HELLO, ACL, MIGRATE and CONFIG commands are never recorded.",
   "viewsWelcome.dbclient.connections": "No connections yet.\n[Add Connection](command:dbclient.addConnection)",
   "extension.description": "Database client for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS.",
   "command.showSettings": "Settings and About",
-  "command.setFolderColor": "Change Folder Color…"
+  "command.setFolderColor": "Change Folder Color…",
+  "config.dbclient.language.description": "Language of the DB Client interface: auto follows the editor's display language. Command titles and these settings always follow the editor.",
+  "config.dbclient.language.auto": "Same as the editor",
+  "command.openSqlEditor": "Open in DB Client SQL Editor",
+  "customEditor.sqlEditor": "DB Client SQL Editor",
+  "config.dbclient.sqlEditor.openByDefault.description": "Open new queries and saved SQL files of the connections tree in the DB Client SQL editor (toolbar, SQL and results in one tab) instead of the text editor. To use it for every .sql file, choose Reopen Editor With… → Configure default editor for '*.sql'."
 }

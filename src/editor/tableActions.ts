@@ -8,6 +8,7 @@ import { NodeItem } from '../tree/connectionsTree';
 import { ResultsView } from '../webviews/resultsView';
 import { DocumentBindings } from './bindings';
 import { SqlRunner } from './sqlRunner';
+import { t } from '../l10n';
 
 export type TemplateKind = 'select' | 'insert' | 'update' | 'delete';
 
@@ -40,7 +41,7 @@ export class TableActions {
     const ref = this.refOf(item);
     const info = await this.catalog.describe(item.connectionId, ref);
     if (!info) {
-      throw new Error(vscode.l10n.t('{0} no longer exists. Refresh the tree.', ref.name));
+      throw new Error(t('{0} no longer exists. Refresh the tree.', ref.name));
     }
     return info;
   }
@@ -121,17 +122,17 @@ export class TableActions {
     const name = qualifiedName(target, dialect);
     switch (target.kind) {
       case 'table':
-        return vscode.l10n.t('Drop table {0}? Its data is lost.', name);
+        return t('Drop table {0}? Its data is lost.', name);
       case 'view':
-        return vscode.l10n.t('Drop view {0}?', name);
+        return t('Drop view {0}?', name);
       case 'materialized':
-        return vscode.l10n.t('Drop materialized view {0}?', name);
+        return t('Drop materialized view {0}?', name);
       case 'schema':
         return dialect === 'mysql'
-          ? vscode.l10n.t('Drop database {0} with all its tables and data?', name)
+          ? t('Drop database {0} with all its tables and data?', name)
           : dialect === 'oracle'
-            ? vscode.l10n.t('Drop user {0} and its schema?', name)
-            : vscode.l10n.t('Drop schema {0}?', name);
+            ? t('Drop user {0} and its schema?', name)
+            : t('Drop schema {0}?', name);
     }
   }
 
@@ -142,8 +143,8 @@ export class TableActions {
       return;
     }
     const dialect = this.dialectOf(item);
-    const drop = vscode.l10n.t('Drop');
-    const cascade = vscode.l10n.t('Drop with CASCADE');
+    const drop = t('Drop');
+    const cascade = t('Drop with CASCADE');
     const cascades = canCascade(target, dialect);
     const answer = await vscode.window.showWarningMessage(
       this.dropQuestion(target, dialect),
@@ -151,8 +152,8 @@ export class TableActions {
         modal: true,
         detail: [
           dropSql(target, dialect),
-          cascades ? vscode.l10n.t('CASCADE also drops the objects that depend on it.') : undefined,
-          vscode.l10n.t('This cannot be undone.'),
+          cascades ? t('CASCADE also drops the objects that depend on it.') : undefined,
+          t('This cannot be undone.'),
         ].filter(Boolean).join('\n\n'),
       },
       ...(cascades ? [drop, cascade] : [drop]),
@@ -163,8 +164,8 @@ export class TableActions {
     if (target.kind === 'schema') {
       const typed = await vscode.window.showInputBox({
         title: this.dropQuestion(target, dialect),
-        prompt: vscode.l10n.t('Type {0} to confirm.', target.name),
-        validateInput: (value) => (value === target.name ? undefined : vscode.l10n.t('Type {0} to confirm.', target.name)),
+        prompt: t('Type {0} to confirm.', target.name),
+        validateInput: (value) => (value === target.name ? undefined : t('Type {0} to confirm.', target.name)),
       });
       if (typed !== target.name) {
         return;
@@ -174,7 +175,7 @@ export class TableActions {
     const id = item.connectionId;
     try {
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Dropping {0}…', target.name) },
+        { location: vscode.ProgressLocation.Notification, title: t('Dropping {0}…', target.name) },
         async () => {
           const driver = await this.manager.connectSql(id);
           // A MySQL database is dropped from the connection's default one, not from inside itself.
@@ -183,12 +184,12 @@ export class TableActions {
         },
       );
     } catch (err) {
-      vscode.window.showErrorMessage(vscode.l10n.t('Could not drop {0}: {1}', target.name, (err as Error).message));
+      vscode.window.showErrorMessage(t('Could not drop {0}: {1}', target.name, (err as Error).message));
       return;
     } finally {
       this.catalog.invalidate(id);
       this.manager.contentChangedOf(id);
     }
-    vscode.window.setStatusBarMessage(vscode.l10n.t('Dropped {0}.', qualifiedName(target, dialect)), 4000);
+    vscode.window.setStatusBarMessage(t('Dropped {0}.', qualifiedName(target, dialect)), 4000);
   }
 }

@@ -2,14 +2,21 @@ import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
 import { HistoryEntry, QueryHistory } from '../store/queryHistory';
 import { DocumentBindings, EDITOR_CATEGORIES } from './bindings';
+import { t } from '../l10n';
 
 interface EntryItem extends vscode.QuickPickItem {
   entry: HistoryEntry;
 }
 
-const OPEN: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('go-to-file'), tooltip: vscode.l10n.t('Open in New Editor') };
-const COPY: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('copy'), tooltip: vscode.l10n.t('Copy') };
-const CLEAR: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('clear-all'), tooltip: vscode.l10n.t('Clear History') };
+const OPEN: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('go-to-file'), tooltip: t('Open in New Editor') };
+const COPY: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('copy'), tooltip: t('Copy') };
+const CLEAR: vscode.QuickInputButton = { iconPath: new vscode.ThemeIcon('clear-all'), tooltip: t('Clear History') };
+
+/** A DB Client SQL editor that takes the picked statement at its caret. */
+export interface HistoryTarget {
+  connectionId?: string;
+  insert(text: string): void;
+}
 
 /**
  * NetBeans-style SQL history: statements already run on a connection (or on every one), newest
@@ -23,10 +30,13 @@ export class HistoryPicker {
     private readonly history: QueryHistory,
   ) {}
 
-  /** History of `connectionId`, of the active editor's connection, or of every SQL/Redis connection. */
-  async show(connectionId?: string): Promise<void> {
+  /**
+   * History of `connectionId`, of the active editor's connection, or of every SQL/Redis connection.
+   * `target` is a DB Client SQL editor: a statement of its connection is inserted there.
+   */
+  async show(connectionId?: string, target?: HistoryTarget): Promise<void> {
     if (!this.history.enabled) {
-      vscode.window.showInformationMessage(vscode.l10n.t('The query history is off (dbclient.historySize is 0).'));
+      vscode.window.showInformationMessage(t('The query history is off (dbclient.historySize is 0).'));
       return;
     }
     const editor = vscode.window.activeTextEditor;
@@ -41,15 +51,15 @@ export class HistoryPicker {
     if (!entries.length) {
       vscode.window.showInformationMessage(
         scope
-          ? vscode.l10n.t('No queries have been run on {0} yet.', this.manager.config(scope).name)
-          : vscode.l10n.t('No queries have been run yet.'),
+          ? t('No queries have been run on {0} yet.', this.manager.config(scope).name)
+          : t('No queries have been run yet.'),
       );
       return;
     }
 
     const pick = vscode.window.createQuickPick<EntryItem>();
-    pick.title = scope ? vscode.l10n.t('Query History · {0}', this.manager.config(scope).name) : vscode.l10n.t('Query History');
-    pick.placeholder = vscode.l10n.t('Search statements; Enter inserts into the editor or opens a new one');
+    pick.title = scope ? t('Query History · {0}', this.manager.config(scope).name) : t('Query History');
+    pick.placeholder = t('Search statements; Enter inserts into the editor or opens a new one');
     pick.matchOnDescription = true;
     pick.matchOnDetail = true;
     pick.buttons = scope ? [CLEAR] : [];
@@ -58,17 +68,17 @@ export class HistoryPicker {
     pick.onDidTriggerItemButton(async ({ item, button }) => {
       if (button === COPY) {
         await vscode.env.clipboard.writeText(item.entry.text);
-        vscode.window.setStatusBarMessage(vscode.l10n.t('Copied to the clipboard.'), 2000);
+        vscode.window.setStatusBarMessage(t('Copied to the clipboard.'), 2000);
       } else {
         pick.hide();
         await this.openNew(item.entry);
       }
     });
     pick.onDidTriggerButton(async () => {
-      const clear = vscode.l10n.t('Clear');
+      const clear = t('Clear');
       pick.hide();
       const answer = await vscode.window.showWarningMessage(
-        vscode.l10n.t('Clear the query history of {0}?', this.manager.config(scope!).name),
+        t('Clear the query history of {0}?', this.manager.config(scope!).name),
         { modal: true },
         clear,
       );
@@ -80,7 +90,7 @@ export class HistoryPicker {
       const item = pick.selectedItems[0];
       pick.hide();
       if (item) {
-        await this.use(item.entry);
+        await this.use(item.entry, target);
       }
     });
     pick.onDidHide(() => pick.dispose());
@@ -96,7 +106,7 @@ export class HistoryPicker {
       facts.push(`${entry.durationMs} ms`);
     }
     if (entry.ok && entry.rows !== undefined) {
-      facts.push(vscode.l10n.t('{0} rows', entry.rows));
+      facts.push(t('{0} rows', entry.rows));
     }
     return {
       label: `${entry.ok ? '' : '$(error) '}${flat.length > 150 ? `${flat.slice(0, 149)}…` : flat}`,
@@ -116,7 +126,15 @@ export class HistoryPicker {
   }
 
   /** Inserts into the active editor when it runs on the same connection; otherwise opens a new editor. */
-  private async use(entry: HistoryEntry): Promise<void> {
+  private async use(entry: HistoryEntry, target?: HistoryTarget): Promise<void> {
+    if (target) {
+      if (entry.language === 'sql' && target.connectionId === entry.connectionId) {
+        target.insert(this.statementText(entry));
+      } else {
+        await this.openNew(entry);
+      }
+      return;
+    }
     const editor = vscode.window.activeTextEditor;
     const binding = editor ? this.bindings.get(editor.document) : undefined;
     if (!editor || editor.document.languageId !== entry.language || binding?.connectionId !== entry.connectionId) {
@@ -138,7 +156,7 @@ export class HistoryPicker {
 
   private async openNew(entry: HistoryEntry): Promise<void> {
     if (!this.manager.store.list().some((c) => c.id === entry.connectionId)) {
-      vscode.window.showWarningMessage(vscode.l10n.t('The connection of this statement no longer exists.'));
+      vscode.window.showWarningMessage(t('The connection of this statement no longer exists.'));
       return;
     }
     const doc = await vscode.workspace.openTextDocument({ language: entry.language, content: `${this.statementText(entry)}\n` });

@@ -2,7 +2,9 @@ import * as fs from 'fs';
 import * as nodePath from 'path';
 import * as vscode from 'vscode';
 import { icon } from '../icons';
+import { configuredLanguage, Language, LANGUAGE_NAMES, LANGUAGES } from '../l10n';
 import { mediaRoots, webviewHtml } from './html';
+import { t } from '../l10n';
 
 /** Where the extension keeps its data; resolved by activate() so the panel shows what is in use. */
 export interface StoragePaths {
@@ -42,6 +44,8 @@ interface LinkRow {
 }
 
 export interface SettingsData {
+  /** `dbclient.language` and the choices of its selector. */
+  language: { value: Language; options: { value: Language; label: string }[] };
   paths: PathRow[];
   secrets: string;
   settings: SettingRow[];
@@ -50,11 +54,12 @@ export interface SettingsData {
 }
 
 const SETTING_LABELS: Record<string, () => string> = {
-  'dbclient.maxRows': () => vscode.l10n.t('Maximum rows fetched per result'),
-  'dbclient.pageSize': () => vscode.l10n.t('Rows per page in the results grid'),
-  'dbclient.codeLens': () => vscode.l10n.t('Run links above each statement'),
-  'dbclient.sqlFolder': () => vscode.l10n.t('Folder for saved SQL files'),
-  'dbclient.historySize': () => vscode.l10n.t('Query history entries per connection'),
+  'dbclient.maxRows': () => t('Maximum rows fetched per result'),
+  'dbclient.pageSize': () => t('Rows per page in the results grid'),
+  'dbclient.codeLens': () => t('Run links above each statement'),
+  'dbclient.sqlFolder': () => t('Folder for saved SQL files'),
+  'dbclient.historySize': () => t('Query history entries per connection'),
+  'dbclient.language': () => t('Interface language'),
 };
 
 /** `https://github.com/<user>/<repo>(.git)` → user and repo; undefined for other hosts. */
@@ -95,11 +100,11 @@ export function settingsData(extension: vscode.Extension<unknown>, info: Setting
     const inspected = config.inspect(key);
     const source =
       inspected?.workspaceFolderValue !== undefined
-        ? vscode.l10n.t('Workspace folder')
+        ? t('Workspace folder')
         : inspected?.workspaceValue !== undefined
-          ? vscode.l10n.t('Workspace')
+          ? t('Workspace')
           : inspected?.globalValue !== undefined
-            ? vscode.l10n.t('User')
+            ? t('User')
             : undefined;
     return { key, label: SETTING_LABELS[key]?.() ?? key, value: config.get(key), defaultValue: prop.default, source };
   });
@@ -108,48 +113,52 @@ export function settingsData(extension: vscode.Extension<unknown>, info: Setting
   const repoPage = github ? `https://github.com/${github.user}/${github.repo}` : undefined;
   const links: LinkRow[] = [];
   if (github) {
-    links.push({ label: vscode.l10n.t('GitHub profile'), url: `https://github.com/${github.user}` });
-    links.push({ label: vscode.l10n.t('Repositories'), url: `https://github.com/${github.user}?tab=repositories` });
-    links.push({ label: vscode.l10n.t('Source code'), url: repoPage! });
-    links.push({ label: vscode.l10n.t('Releases'), url: `${repoPage}/releases` });
+    links.push({ label: t('GitHub profile'), url: `https://github.com/${github.user}` });
+    links.push({ label: t('Repositories'), url: `https://github.com/${github.user}?tab=repositories` });
+    links.push({ label: t('Source code'), url: repoPage! });
+    links.push({ label: t('Releases'), url: `${repoPage}/releases` });
   }
   if (pkg.bugs?.url) {
-    links.push({ label: vscode.l10n.t('Report an issue'), url: pkg.bugs.url });
+    links.push({ label: t('Report an issue'), url: pkg.bugs.url });
   }
   return {
+    language: {
+      value: configuredLanguage(),
+      options: LANGUAGES.map((value) => ({ value, label: value === 'auto' ? t('Same as the editor ({0})', vscode.env.language) : LANGUAGE_NAMES[value] })),
+    },
     paths: [
-      pathRow(vscode.l10n.t('Extension storage'), paths.globalStorage, 'dir', vscode.l10n.t('User level, shared by every window and workspace.')),
+      pathRow(t('Extension storage'), paths.globalStorage, 'dir', t('User level, shared by every window and workspace.')),
       pathRow(
-        vscode.l10n.t('Connections file'),
+        t('Connections file'),
         paths.connectionsFile,
         'file',
-        vscode.l10n.t('{0} connections in {1} folders, without passwords.', counts.connections, counts.folders),
+        t('{0} connections in {1} folders, without passwords.', counts.connections, counts.folders),
       ),
-      pathRow(vscode.l10n.t('Query history'), paths.historyDir, 'dir', vscode.l10n.t('One .jsonl file per connection.')),
+      pathRow(t('Query history'), paths.historyDir, 'dir', t('One .jsonl file per connection.')),
       pathRow(
-        vscode.l10n.t('Saved SQL files'),
+        t('Saved SQL files'),
         paths.sqlFolder,
         'dir',
-        paths.sqlFolderCustom ? vscode.l10n.t('Set by dbclient.sqlFolder.') : vscode.l10n.t('Default; change it with dbclient.sqlFolder.'),
+        paths.sqlFolderCustom ? t('Set by dbclient.sqlFolder.') : t('Default; change it with dbclient.sqlFolder.'),
       ),
     ],
-    secrets: vscode.l10n.t(
+    secrets: t(
       'Passwords, tokens and key passphrases are kept in the editor secret storage (the operating system keychain) as dbclient.<connection id>.<field>, never in the connections file.',
     ),
     settings,
     environment: [
-      [vscode.l10n.t('Extension'), `${pkg.publisher}.${pkg.name} ${pkg.version}`],
-      [vscode.l10n.t('Editor'), `${vscode.env.appName} ${vscode.version}`],
-      [vscode.l10n.t('Node.js'), process.versions.node],
-      [vscode.l10n.t('Platform'), `${process.platform} ${process.arch}`],
-      [vscode.l10n.t('Language'), vscode.env.language],
-      [vscode.l10n.t('Remote'), vscode.env.remoteName ?? vscode.l10n.t('(none)')],
-      [vscode.l10n.t('SQLite (node:sqlite)'), sqliteAvailable() ? vscode.l10n.t('available') : vscode.l10n.t('not available (needs Node 22.13 or later)')],
-      [vscode.l10n.t('Oracle'), vscode.l10n.t('thin mode, no Oracle Client needed')],
+      [t('Extension'), `${pkg.publisher}.${pkg.name} ${pkg.version}`],
+      [t('Editor'), `${vscode.env.appName} ${vscode.version}`],
+      [t('Node.js'), process.versions.node],
+      [t('Platform'), `${process.platform} ${process.arch}`],
+      [t('Language'), vscode.env.language],
+      [t('Remote'), vscode.env.remoteName ?? t('(none)')],
+      [t('SQLite (node:sqlite)'), sqliteAvailable() ? t('available') : t('not available (needs Node 22.13 or later)')],
+      [t('Oracle'), t('thin mode, no Oracle Client needed')],
     ],
     about: {
       name: pkg.displayName ?? pkg.name,
-      description: vscode.l10n.t('Database client for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS.'),
+      description: t('Database client for PostgreSQL, MySQL, SQL Server, Oracle, SQLite, Redis and NATS.'),
       version: pkg.version,
       author: typeof pkg.author === 'string' ? pkg.author : (pkg.author?.name ?? pkg.publisher),
       github: github && { user: github.user, profile: `https://github.com/${github.user}` },
@@ -166,13 +175,13 @@ export function openSettingsPanel(context: vscode.ExtensionContext, info: Settin
     panel.reveal();
     return;
   }
-  const current = vscode.window.createWebviewPanel('dbclient.settings', vscode.l10n.t('DB Client Settings'), vscode.ViewColumn.Active, {
+  const current = vscode.window.createWebviewPanel('dbclient.settings', t('DB Client Settings'), vscode.ViewColumn.Active, {
     enableScripts: true,
     localResourceRoots: mediaRoots(context.extensionUri),
   });
   panel = current;
   current.iconPath = icon('settings');
-  current.webview.html = webviewHtml(current.webview, context.extensionUri, 'settings', vscode.l10n.t('DB Client Settings'));
+  current.webview.html = webviewHtml(current.webview, context.extensionUri, 'settings', t('DB Client Settings'));
   let data = settingsData(context.extension, info);
   const send = () => {
     data = settingsData(context.extension, info);
@@ -187,14 +196,14 @@ export function openSettingsPanel(context: vscode.ExtensionContext, info: Settin
     disposables.forEach((d) => d.dispose());
   });
   current.webview.onDidReceiveMessage(
-    async (m: { type: 'ready' } | { type: 'copy'; text: string } | { type: 'reveal'; path: string } | { type: 'link'; url: string } | { type: 'openSettings' }) => {
+    async (m: { type: 'ready' } | { type: 'copy'; text: string } | { type: 'reveal'; path: string } | { type: 'link'; url: string } | { type: 'openSettings' } | { type: 'setLanguage'; value: string }) => {
       switch (m.type) {
         case 'ready':
           send();
           break;
         case 'copy':
           await vscode.env.clipboard.writeText(m.text);
-          vscode.window.setStatusBarMessage(vscode.l10n.t('Copied to the clipboard.'), 2500);
+          vscode.window.setStatusBarMessage(t('Copied to the clipboard.'), 2500);
           break;
         case 'reveal': {
           // Only the paths the panel shows. Folders are created on first use, so a missing one is
@@ -213,6 +222,11 @@ export function openSettingsPanel(context: vscode.ExtensionContext, info: Settin
         case 'link':
           if (data.about.links.some((l) => l.url === m.url) || data.about.github?.profile === m.url) {
             await vscode.env.openExternal(vscode.Uri.parse(m.url));
+          }
+          break;
+        case 'setLanguage':
+          if ((LANGUAGES as readonly string[]).includes(m.value)) {
+            await vscode.workspace.getConfiguration('dbclient').update('language', m.value === 'auto' ? undefined : m.value, vscode.ConfigurationTarget.Global);
           }
           break;
         case 'openSettings':

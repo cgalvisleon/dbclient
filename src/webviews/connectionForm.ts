@@ -5,6 +5,7 @@ import { ConnectionConfig, ConnectionSecrets, FieldSpec } from '../drivers/types
 import { SecretUpdate } from '../store/connectionStore';
 import { colorLabel, CONNECTION_COLORS, CONNECTION_SHAPES, ConnectionColor, ConnectionShape, DEFAULT_SHAPES, icon } from '../icons';
 import { mediaRoots, webviewHtml } from './html';
+import { t } from '../l10n';
 
 interface FormValue {
   name: string;
@@ -18,12 +19,12 @@ interface FormValue {
 }
 
 const SHAPE_LABELS: Record<ConnectionShape, () => string> = {
-  database: () => vscode.l10n.t('Database'),
-  server: () => vscode.l10n.t('Server'),
-  'cloud-database': () => vscode.l10n.t('Cloud'),
-  'database-settings': () => vscode.l10n.t('Database with gear'),
-  'server-settings': () => vscode.l10n.t('Server with gear'),
-  'search-database': () => vscode.l10n.t('Database with magnifier'),
+  database: () => t('Database'),
+  server: () => t('Server'),
+  'cloud-database': () => t('Cloud'),
+  'database-settings': () => t('Database with gear'),
+  'server-settings': () => t('Server with gear'),
+  'search-database': () => t('Database with magnifier'),
 };
 
 
@@ -52,7 +53,7 @@ export async function openConnectionForm(
 
   const config = connectionId ? manager.config(connectionId) : undefined;
   const savedSecrets = config ? await manager.store.getSecrets(config.id, getDriver(config.type).fields) : {};
-  const title = config ? vscode.l10n.t('Edit {0}', config.name) : vscode.l10n.t('New Connection');
+  const title = config ? t('Edit {0}', config.name) : t('New Connection');
   const panel = vscode.window.createWebviewPanel('dbclient.connectionForm', title, vscode.ViewColumn.Active, {
     enableScripts: true,
     retainContextWhenHidden: true,
@@ -78,7 +79,7 @@ export async function openConnectionForm(
   /** Lets the driver normalize the values (shown back in the form), then checks required fields. */
   const validate = (value: FormValue, secrets: ConnectionSecrets): string | undefined => {
     if (!value.name.trim()) {
-      return vscode.l10n.t('Name is required.');
+      return t('Name is required.');
     }
     const fields = getDriver(value.type).fields;
     try {
@@ -95,7 +96,7 @@ export async function openConnectionForm(
     const current = (key: string) => value.options[key] ?? fields.find((f) => f.key === key)?.default;
     const applies = (f: FieldSpec) => !f.showWhen || f.showWhen.values.includes(current(f.showWhen.field) as string | boolean);
     const missing = fields.filter((f) => f.required && !f.secret && applies(f) && (value.options[f.key] ?? '') === '');
-    return missing.length ? vscode.l10n.t('Required: {0}', missing.map((f) => vscode.l10n.t(f.label)).join(', ')) : undefined;
+    return missing.length ? t('Required: {0}', missing.map((f) => t(f.label)).join(', ')) : undefined;
   };
 
   panel.webview.onDidReceiveMessage(async (message: FromWebview) => {
@@ -129,26 +130,26 @@ export async function openConnectionForm(
             .sort((a, b) => a.path.localeCompare(b.path)),
           savedSecrets: Object.fromEntries(Object.entries(savedSecrets).map(([k, v]) => [k, Boolean(v)])),
           labels: {
-            name: vscode.l10n.t('Name'),
-            type: vscode.l10n.t('Type'),
-            test: vscode.l10n.t('Test'),
-            save: vscode.l10n.t('Save'),
-            cancel: vscode.l10n.t('Cancel'),
-            saved: vscode.l10n.t('saved — leave empty to keep'),
-            testing: vscode.l10n.t('Testing…'),
-            browse: vscode.l10n.t('Browse…'),
-            folder: vscode.l10n.t('Folder'),
-            sqlFiles: vscode.l10n.t('SQL files'),
-            sqlSave: vscode.l10n.t('Save new files in'),
-            sqlSaveDefault: vscode.l10n.t('Extension storage (default)'),
-            sqlLinked: vscode.l10n.t('Linked folders'),
-            sqlAddFolder: vscode.l10n.t('Add folder…'),
-            sqlHint: vscode.l10n.t('One folder per line. Paths may start with ~ or ${workspaceFolder}. Unlinking never deletes files.'),
-            noFolder: vscode.l10n.t('(none)'),
-            appearance: vscode.l10n.t('Appearance'),
-            icon: vscode.l10n.t('Icon'),
-            color: vscode.l10n.t('Color'),
-            automatic: vscode.l10n.t('Automatic (by engine)'),
+            name: t('Name'),
+            type: t('Type'),
+            test: t('Test'),
+            save: t('Save'),
+            cancel: t('Cancel'),
+            saved: t('saved — leave empty to keep'),
+            testing: t('Testing…'),
+            browse: t('Browse…'),
+            folder: t('Folder'),
+            sqlFiles: t('SQL files'),
+            sqlSave: t('Save new files in'),
+            sqlSaveDefault: t('Extension storage (default)'),
+            sqlLinked: t('Linked folders'),
+            sqlAddFolder: t('Add folder…'),
+            sqlHint: t('One folder per line. Paths may start with ~ or ${workspaceFolder}. Unlinking never deletes files.'),
+            noFolder: t('(none)'),
+            appearance: t('Appearance'),
+            icon: t('Icon'),
+            color: t('Color'),
+            automatic: t('Automatic (by engine)'),
           },
         });
         return;
@@ -160,7 +161,7 @@ export async function openConnectionForm(
           canSelectMany: false,
           canSelectFiles: !message.folder,
           canSelectFolders: Boolean(message.folder),
-          openLabel: vscode.l10n.t('Select'),
+          openLabel: t('Select'),
         });
         if (picked?.[0]) {
           post({ type: 'browsed', field: message.field, path: picked[0].fsPath, append: message.append });
@@ -175,7 +176,7 @@ export async function openConnectionForm(
         }
         try {
           await manager.test({ id: config?.id ?? 'test', ...message.value }, effectiveSecrets(message.secrets));
-          post({ type: 'status', ok: true, message: vscode.l10n.t('Connection succeeded.') });
+          post({ type: 'status', ok: true, message: t('Connection succeeded.') });
         } catch (err) {
           post({ type: 'status', ok: false, message: (err as Error).message });
         }

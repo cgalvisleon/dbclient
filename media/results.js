@@ -1,7 +1,12 @@
 // @ts-check
 (function () {
-  const vscode = acquireVsCodeApi();
-  const app = /** @type {HTMLElement} */ (document.getElementById('app'));
+  // A DB Client SQL editor embeds the results: it sets window.dbclientResultsHost with its webview
+  // API, the element to render in, its own slice of the webview state and the document's URI.
+  const host = window.dbclientResultsHost;
+  const vscode = host ? host.api : acquireVsCodeApi();
+  const app = /** @type {HTMLElement} */ (host ? host.root : document.getElementById('app'));
+  const getState = () => (host ? host.getState() : vscode.getState());
+  const setState = (state) => (host ? host.setState(state) : vscode.setState(state));
 
   /**
    * @typedef {{ title: string, sql: string, command?: string, columns: {name: string, type?: string}[],
@@ -12,7 +17,7 @@
    *   pending?: Pending, focus?: {row: number, col: number}, committing?: boolean, editError?: string }} TabState
    */
 
-  const saved = vscode.getState() || {};
+  const saved = getState() || {};
   /** @type {TabState[]} */
   let tabs = saved.tabs || [];
   /** @type {any[]} */
@@ -31,7 +36,7 @@
   const MAX_TABS = 50;
 
   function persist() {
-    vscode.setState({ tabs, log: log.slice(-500), active, keepTabs: keep, pageSize, seq });
+    setState({ tabs, log: log.slice(-500), active, keepTabs: keep, pageSize, seq });
   }
 
   function el(tag, attrs = {}, ...children) {
@@ -439,7 +444,7 @@
               class: [untouched ? 'null default' : v === null ? 'null' : typeof v === 'number' ? 'num' : '', dirty ? 'dirty' : '', focused ? 'focus' : '', editableCol(tab, col) ? 'editable' : ''].join(' '),
               title: untouched ? 'DEFAULT' : v === null ? 'NULL' : String(v).slice(0, 2000),
               // Read by VS Code for the context menu (webview/context in package.json).
-              'data-vscode-context': JSON.stringify({ webviewSection: 'cell', seq: tab.seq, row: rowIndex, col, rowSql: tab.source !== undefined, preventDefaultContextMenuItems: true }),
+              'data-vscode-context': JSON.stringify({ webviewSection: 'cell', seq: tab.seq, row: rowIndex, col, rowSql: tab.source !== undefined, document: host?.document, preventDefaultContextMenuItems: true }),
               // Double clicks are detected by hand: the first click re-renders the grid, so the
               // browser would not see both clicks on the same element.
               on: { click: () => cellClick(tab, rowIndex, col, v) },
@@ -645,6 +650,9 @@
   }
 
   document.addEventListener('keydown', (e) => {
+    // Embedded next to the SQL editor, keys typed there are not for the grid.
+    const focused = document.activeElement;
+    if (focused && focused !== document.body && !app.contains(focused)) return;
     if (e.key === 'F2' && typeof active === 'number' && tabs[active] && tabs[active].focus && !editing) {
       const tab = tabs[active];
       startEdit(tab, tab.focus.row, tab.focus.col);
@@ -689,6 +697,9 @@
         break;
       case 'rowAction':
         rowAction(msg);
+        return;
+      default:
+        // The SQL editor's own messages share this webview.
         return;
     }
     persist();

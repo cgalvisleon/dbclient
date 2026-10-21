@@ -27,6 +27,13 @@ describe('settings webview', () => {
         data: {
           type: 'data',
           data: {
+            language: {
+              value: 'auto',
+              options: [
+                { value: 'auto', label: 'Same as the editor (en)' },
+                { value: 'pt-br', label: 'Português (Brasil)' },
+              ],
+            },
             paths: [
               { label: 'Extension storage', path: '/g', kind: 'dir', exists: true },
               { label: 'Connections file', path: '/g/connections.json', kind: 'file', exists: false, hint: '2 connections' },
@@ -65,5 +72,11 @@ describe('settings webview', () => {
       { type: 'openSettings' },
       { type: 'link', url: 'https://github.com/cgalvisleon' },
     ]);
+    posted.length = 0;
+    const language = doc.getElementById('language') as HTMLSelectElement;
+    assert.strictEqual(language.value, 'auto');
+    language.value = 'pt-br';
+    language.dispatchEvent(new window.Event('change'));
+    assert.deepStrictEqual(posted, [{ type: 'setLanguage', value: 'pt-br' }]);
   });
 });

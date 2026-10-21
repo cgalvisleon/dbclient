@@ -35,7 +35,7 @@ export function l10nKeys(): { keys: string[]; dynamic: string[] } {
   const dynamic: string[] = [];
   const keys = new Set<string>();
   for (const file of files(path.join(root, 'src'), '.ts')) {
-    literals(fs.readFileSync(file, 'utf8'), /\bl10n\.t/, file, dynamic).forEach((k) => keys.add(k));
+    literals(fs.readFileSync(file, 'utf8'), /(?<![\w.])t/, file, dynamic).forEach((k) => keys.add(k));
   }
   for (const file of files(path.join(root, 'media'), '.js')) {
     literals(fs.readFileSync(file, 'utf8'), /(?<![\w.])t/, file, dynamic).forEach((k) => keys.add(k));

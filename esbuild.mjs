@@ -1,4 +1,5 @@
 import * as esbuild from 'esbuild';
+import * as fs from 'fs';
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -27,9 +28,28 @@ const ctx = await esbuild.context({
   logLevel: 'info',
 });
 
+// CodeMirror for the SQL editor webview: one browser script in media/vendor/ (webviews load
+// plain scripts from media/ under their CSP).
+const webview = await esbuild.context({
+  entryPoints: ['webview-src/codemirror.mjs'],
+  bundle: true,
+  format: 'iife',
+  platform: 'browser',
+  target: 'es2020',
+  outfile: 'media/vendor/codemirror.js',
+  minify: production,
+  logLevel: 'info',
+});
+
+// VS Code's icon font for the SQL editor toolbar.
+fs.mkdirSync('media/vendor', { recursive: true });
+for (const file of ['codicon.css', 'codicon.ttf']) {
+  fs.copyFileSync(`node_modules/@vscode/codicons/dist/${file}`, `media/vendor/${file}`);
+}
+
 if (watch) {
-  await ctx.watch();
+  await Promise.all([ctx.watch(), webview.watch()]);
 } else {
-  await ctx.rebuild();
-  await ctx.dispose();
+  await Promise.all([ctx.rebuild(), webview.rebuild()]);
+  await Promise.all([ctx.dispose(), webview.dispose()]);
 }

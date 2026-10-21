@@ -3,6 +3,7 @@ import { ConnectionManager } from '../connections/manager';
 import { PubSubMessage } from '../drivers/types';
 import { icon } from '../icons';
 import { mediaRoots, webviewHtml } from './html';
+import { t } from '../l10n';
 
 const BUFFER = 1000;
 
@@ -135,7 +136,7 @@ export class NatsConsoles implements vscode.Disposable {
           return;
         case 'copy':
           await vscode.env.clipboard.writeText(m.text);
-          vscode.window.setStatusBarMessage(vscode.l10n.t('Copied to clipboard'), 2000);
+          vscode.window.setStatusBarMessage(t('Copied to clipboard'), 2000);
           return;
       }
     } catch (err) {

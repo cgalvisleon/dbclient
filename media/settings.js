@@ -1,6 +1,7 @@
 // @ts-check
 // Settings and About panel: where the extension keeps its data, the dbclient.* settings, the
-// environment and the author's GitHub links. Read-only; changes go through the editor settings.
+// environment and the author's GitHub links. Only the interface language is changed here; the other
+// settings go through the editor settings.
 (function () {
   const vscode = acquireVsCodeApi();
   const app = /** @type {HTMLElement} */ (document.getElementById('app'));
@@ -68,7 +69,13 @@
         ),
       ),
     );
-    return section(t('Settings'), table, el('div', { class: 'actions' }, button(t('Open in Settings'), { type: 'openSettings' })));
+    const language = el(
+      'select',
+      { id: 'language', on: { change: (e) => post({ type: 'setLanguage', value: e.target.value }) } },
+      ...data.language.options.map((o) => el('option', { value: o.value, selected: o.value === data.language.value }, o.label)),
+    );
+    const languageRow = el('div', { class: 'language' }, el('label', { for: 'language' }, t('Interface language')), language);
+    return section(t('Settings'), languageRow, table, el('div', { class: 'actions' }, button(t('Open in Settings'), { type: 'openSettings' })));
   }
 
   function environment(data) {
