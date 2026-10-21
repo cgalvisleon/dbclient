@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.20.0 — 2026-10-21
 
 - Disconnecting a connection collapses its detail in the tree.
 - **■ Cancel** stops the running query from a button in the editor title bar (only while a query runs) and from the lens of the statement being executed, which shows **Running…** and **■ Cancel** instead of ▶ Run.
