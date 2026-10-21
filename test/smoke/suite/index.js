@@ -78,9 +78,11 @@ exports.run = async function () {
       `${name}: connection selector on line 0`,
     );
     const titleBar = ext.packageJSON.contributes.menus['editor/title'];
-    for (const c of ['dbclient.runFile', 'dbclient.runSelection', 'dbclient.copyQuery', 'dbclient.pasteQuery', 'dbclient.saveToSqlFolder']) {
+    for (const c of ['dbclient.runFile', 'dbclient.runStatement', 'dbclient.connect', 'dbclient.disconnect', 'dbclient.saveToSqlFolder', 'dbclient.copyQuery', 'dbclient.pasteQuery']) {
       assert.ok(titleBar.some((m) => m.command === c && m.group.startsWith('navigation')), `${name}: title bar button ${c}`);
     }
+    // editorLangId is not in the title bar's context (the buttons never showed); resourceLangId is.
+    assert.ok(titleBar.every((m) => !/editorLangId/.test(m.when) && /resourceLangId/.test(m.when)), `${name}: title bar buttons use resourceLangId`);
 
     await vscode.commands.executeCommand('dbclient.runFile');
     const diags = await until(() => {
@@ -258,13 +260,23 @@ exports.run = async function () {
     await until(() => sqlNode.description === '1', 'SQL node count updated');
     const files = await api.tree.getChildren(sqlNode);
     assert.strictEqual(files[0].label, 'report');
-    // A click opens it in the DB Client SQL editor (the default), in one tab.
+    // A click opens it in the text editor (the default), or in the DB Client SQL editor when
+    // dbclient.sqlEditor.openByDefault is on; either way in one tab.
     assert.strictEqual(files[0].command.command, 'dbclient.openSqlFile');
-    await vscode.commands.executeCommand(files[0].command.command, ...files[0].command.arguments);
     const fileTabs = () => vscode.window.tabGroups.all.flatMap((g) => g.tabs).filter((tab) => tab.input?.uri?.fsPath === file);
-    await until(() => (fileTabs().length === 1 && fileTabs()[0].input instanceof vscode.TabInputCustom ? true : undefined), 'tree SQL file opened in the SQL editor');
     await vscode.commands.executeCommand(files[0].command.command, ...files[0].command.arguments);
-    assert.strictEqual(fileTabs().length, 1, 'a second click keeps one tab');
+    await until(() => (fileTabs().length === 1 && fileTabs()[0].input instanceof vscode.TabInputText ? true : undefined), 'tree SQL file opened in the text editor');
+    await vscode.window.tabGroups.close(fileTabs());
+    const smokeSettings = vscode.workspace.getConfiguration('dbclient');
+    await smokeSettings.update('sqlEditor.openByDefault', true, vscode.ConfigurationTarget.Global);
+    try {
+      await vscode.commands.executeCommand(files[0].command.command, ...files[0].command.arguments);
+      await until(() => (fileTabs().length === 1 && fileTabs()[0].input instanceof vscode.TabInputCustom ? true : undefined), 'tree SQL file opened in the SQL editor');
+      await vscode.commands.executeCommand(files[0].command.command, ...files[0].command.arguments);
+      assert.strictEqual(fileTabs().length, 1, 'a second click keeps one tab');
+    } finally {
+      await smokeSettings.update('sqlEditor.openByDefault', undefined, vscode.ConfigurationTarget.Global);
+    }
     await vscode.window.tabGroups.close(fileTabs());
 
     const doc = await vscode.workspace.openTextDocument(file);
@@ -607,7 +619,7 @@ exports.run = async function () {
       await vscode.commands.executeCommand('dbclient.generateDelete', item);
       assert.match(editorText(), /^DELETE FROM [^]*WHERE id = 0;/i, `${name}: DELETE template`);
       await vscode.commands.executeCommand('dbclient.showDdl', item);
-      assert.match(editorText(), /create table/i, `${name}: DDL`);
+      assert.match(editorText(), /create table/i, `${name}: DDL (${editorText().slice(0, 120)})`);
       assert.ok(api.bindings.get(vscode.window.activeTextEditor.document)?.connectionId === config.id, `${name}: DDL editor bound`);
 
       posted.length = 0;
@@ -766,9 +778,9 @@ exports.run = async function () {
     });
   }
 
-  // DB Client SQL editor (the default): tree actions, row SQL and Query History open or insert there,
+  // DB Client SQL editor (opt-in): tree actions, row SQL and Query History open or insert there,
   // and Open Data shows its results in the editor, not in the bottom panel.
-  await dbSettings.update('sqlEditor.openByDefault', undefined, vscode.ConfigurationTarget.Global);
+  await dbSettings.update('sqlEditor.openByDefault', true, vscode.ConfigurationTarget.Global);
   {
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dbclient-sqleditor-')), 'actions.db');
     const config = await addConnection('smoke-sqleditor-actions', 'sqlite', { file });
@@ -854,6 +866,7 @@ exports.run = async function () {
       await api.manager.disconnect(config.id);
       await api.store.delete(config.id, []);
       api.history.clear(config.id);
+      await dbSettings.update('sqlEditor.openByDefault', undefined, vscode.ConfigurationTarget.Global);
     }
   }
 

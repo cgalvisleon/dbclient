@@ -10,7 +10,7 @@ import { t } from '../l10n';
 import { mediaRoots, webviewHtml } from './html';
 import { ResultsChannel, ResultsView } from './resultsView';
 
-export { SQL_EDITOR_VIEW_TYPE, showSqlDocument } from '../editor/sqlDocument';
+export { inSqlEditor, SQL_EDITOR_VIEW_TYPE, showSqlDocument } from '../editor/sqlDocument';
 
 /** A place in the document as CodeMirror and VS Code both count it (0-based line, UTF-16 column). */
 interface Pos {

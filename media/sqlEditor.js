@@ -186,7 +186,8 @@
     if (!s.connectionId) options.push(el('option', { value: '', selected: true, disabled: true }, t('Select connection')));
     const groups = new Map();
     for (const c of s.connections) {
-      const option = el('option', { value: c.id, selected: c.id === s.connectionId }, `${c.name} (${c.engine})`);
+      // The folder goes in the text too, so the closed select shows where the connection is.
+      const option = el('option', { value: c.id, selected: c.id === s.connectionId }, `${c.folder ? `${c.folder} / ` : ''}${c.name} (${c.engine})`);
       if (!c.folder) options.push(option);
       else {
         if (!groups.has(c.folder)) groups.set(c.folder, el('optgroup', { label: c.folder }));

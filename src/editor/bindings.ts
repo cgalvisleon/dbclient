@@ -79,8 +79,11 @@ export class DocumentBindings implements vscode.Disposable {
     const items = this.manager.store
       .list()
       .filter((c) => this.manager.factoryOf(c).category === category && (tie.length < 2 || tie.includes(c.id)))
-      .map((c) => ({
-        label: c.name,
+      .map((c) => ({ c, folder: c.folderId ? this.manager.store.folderPath(c.folderId) : '' }))
+      .sort((a, b) => a.folder.localeCompare(b.folder) || a.c.name.localeCompare(b.c.name))
+      .map(({ c, folder }) => ({
+        // The folder path goes first, so connections with the same name in different folders tell apart.
+        label: folder ? `${folder} / ${c.name}` : c.name,
         description: [this.manager.factoryOf(c).label, c.options.database ?? c.options.host ?? c.options.jdbcUrl].filter(Boolean).join(' · '),
         detail: c.id === current?.connectionId ? t('current') : undefined,
         id: c.id,

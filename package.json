@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client: SQL, Redis & NATS",
   "description": "%extension.description%",
-  "version": "0.20.2",
+  "version": "0.20.3",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -850,72 +850,72 @@
       "editor/title": [
         {
           "command": "dbclient.cancelQuery",
-          "when": "editorLangId == sql && dbclient.queryRunning",
+          "when": "resourceLangId == sql && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor) && dbclient.queryRunning",
           "group": "navigation@0"
         },
         {
           "command": "dbclient.runFile",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "navigation@1"
         },
         {
-          "command": "dbclient.runSelection",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "command": "dbclient.runStatement",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "navigation@2"
         },
         {
-          "command": "dbclient.copyQuery",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "command": "dbclient.connect",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor) && dbclient.editorBound && !dbclient.editorConnected",
           "group": "navigation@3"
         },
         {
-          "command": "dbclient.pasteQuery",
-          "when": "editorLangId == sql || editorLangId == redis",
-          "group": "navigation@4"
+          "command": "dbclient.disconnect",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor) && dbclient.editorConnected",
+          "group": "navigation@3"
         },
         {
           "command": "dbclient.saveToSqlFolder",
-          "when": "editorLangId == sql",
+          "when": "resourceLangId == sql && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
+          "group": "navigation@4"
+        },
+        {
+          "command": "dbclient.copyQuery",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "navigation@5"
         },
         {
-          "command": "dbclient.runStatement",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "command": "dbclient.pasteQuery",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
+          "group": "navigation@6"
+        },
+        {
+          "command": "dbclient.runSelection",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "0_run@1"
         },
         {
           "command": "dbclient.selectConnection",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "1_connection@1"
         },
         {
-          "command": "dbclient.connect",
-          "when": "(editorLangId == sql || editorLangId == redis) && dbclient.editorBound && !dbclient.editorConnected",
-          "group": "1_connection@2"
-        },
-        {
-          "command": "dbclient.disconnect",
-          "when": "(editorLangId == sql || editorLangId == redis) && dbclient.editorConnected",
-          "group": "1_connection@3"
-        },
-        {
           "command": "dbclient.showHistory",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "2_history@1"
         },
         {
           "command": "dbclient.exportQuery",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "3_file@1"
         },
         {
           "command": "dbclient.importQuery",
-          "when": "editorLangId == sql || editorLangId == redis",
+          "when": "(resourceLangId == sql || resourceLangId == redis) && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "3_file@2"
         },
         {
           "command": "dbclient.openSqlEditor",
-          "when": "editorLangId == sql",
+          "when": "resourceLangId == sql && (activeEditor == workbench.editors.files.textFileEditor || activeEditor == workbench.editors.textResourceEditor)",
           "group": "4_editor@1"
         }
       ],
@@ -1164,7 +1164,7 @@
         },
         "dbclient.sqlEditor.openByDefault": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "%config.dbclient.sqlEditor.openByDefault.description%"
         },
         "dbclient.sqlEditor.resultsPosition": {

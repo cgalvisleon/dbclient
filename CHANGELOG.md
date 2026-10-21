@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.3 — 2026-10-21
+
+- Text editor title bar: the DB Client buttons show again. They used `editorLangId`, which the title bar does not see, so in Cursor only the editor's own buttons appeared. Buttons now: **run file**, **run statement** (at the cursor, or the selection), **connect**/**disconnect**, **save** to the SQL folder, **copy** and **paste** (plus **■ Cancel** while a query runs); run selection moved to the `…` menu. The first line keeps the connection/database selector and ▶ Run stays above every statement.
+- The DB Client SQL editor is optional again: `dbclient.sqlEditor.openByDefault` defaults to `false`, so new queries, tree SQL files and table actions open in the text editor. A query saved to the SQL folder or renamed from a SQL editor still reopens in it.
+- The connection list (the `Connection:` selector and the SQL editor's drop-down) shows each connection with the folder it is in, e.g. `Work / Prod / prod-pg`.
+
 ## 0.20.2 — 2026-10-21
 
 - DB Client SQL editor: the results (Output and result tabs) can go below, above, left or right of the SQL — layout button in its toolbar, or `dbclient.sqlEditor.resultsPosition`; every open SQL editor follows the change, and the divider turns vertical beside the SQL.

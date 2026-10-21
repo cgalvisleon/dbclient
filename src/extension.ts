@@ -10,7 +10,7 @@ import { SqlLocations } from './connections/sqlLocations';
 import { DocumentBindings, EDITOR_CATEGORIES } from './editor/bindings';
 import { ConnectionCodeLens, RunCodeLens } from './editor/codeLens';
 import { HistoryPicker } from './editor/historyPicker';
-import { showSqlDocument, SQL_EDITOR_VIEW_TYPE, SqlEditorProvider } from './webviews/sqlEditor';
+import { inSqlEditor, showSqlDocument, SQL_EDITOR_VIEW_TYPE, SqlEditorProvider } from './webviews/sqlEditor';
 import { closeDocumentTabs, reopenWith } from './editor/tabs';
 import { activeSqlEditorUri } from './editor/sqlDocument';
 import { RedisRunner } from './editor/redisRunner';
@@ -559,10 +559,10 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     });
 
   /** Opens a file created for a connection and binds it explicitly (its folder may be shared or unlinked). */
-  const openBound = async (file: string, connectionId: string, database?: string) => {
+  const openBound = async (file: string, connectionId: string, database?: string, sqlEditor?: boolean) => {
     const doc = await vscode.workspace.openTextDocument(file);
     await bindings.set(doc, { connectionId, database });
-    await showSqlDocument(doc);
+    await showSqlDocument(doc, sqlEditor);
   };
 
   // Click on a SQL file of the tree (not in package.json: only the tree calls it).
@@ -608,11 +608,13 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       return;
     }
     const file = sqlFiles.createIn(dir, name, doc.getText());
+    // The saved file opens in the editor the query was in.
+    const fromSqlEditor = inSqlEditor(doc.uri);
     if (doc.isUntitled) {
       // Close the untitled original (text or SQL editor tab) without the "save changes?" prompt.
       await closeDocumentTabs(doc.uri, true);
     }
-    await openBound(file, binding.connectionId, binding.database);
+    await openBound(file, binding.connectionId, binding.database, fromSqlEditor);
   });
 
   // Inline Save on a file of the tree: saves its open editor.
@@ -639,9 +641,10 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     }
     const target = sqlFiles.rename(item.file, name);
     if (open) {
-      // Reopen under the new name in place of the old tab.
+      // Reopen under the new name in place of the old tab, in the same kind of editor.
+      const sqlEditor = inSqlEditor(open.uri);
       await closeDocumentTabs(open.uri);
-      await showSqlDocument(await vscode.workspace.openTextDocument(target));
+      await showSqlDocument(await vscode.workspace.openTextDocument(target), sqlEditor);
     }
   });
 
@@ -826,7 +829,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     const content = category === 'kv' ? '# One command per line. Ctrl/Cmd+Enter runs the current line or the selection.\n' : '';
     const doc = await vscode.workspace.openTextDocument({ language, content });
     await bindings.set(doc, { connectionId: id, database: item instanceof NodeItem ? item.node.database : undefined });
-    if (language === 'sql' && vscode.workspace.getConfiguration('dbclient').get<boolean>('sqlEditor.openByDefault', true)) {
+    if (language === 'sql' && vscode.workspace.getConfiguration('dbclient').get<boolean>('sqlEditor.openByDefault', false)) {
       await showSqlDocument(doc);
       return;
     }
