@@ -47,7 +47,7 @@ export class TableActions {
     return info;
   }
 
-  /** New SQL editor bound to the node's connection and database (the DB Client SQL editor by default). */
+  /** New SQL editor bound to the node's connection and database (the DB Client SQL editor when dbclient.sqlEditor.openByDefault is on). */
   private async open(item: NodeItem, content: string): Promise<RunTarget> {
     const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: `${content}\n` });
     await this.bindings.set(doc, { connectionId: item.connectionId, database: item.node.database });

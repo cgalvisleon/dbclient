@@ -162,7 +162,7 @@ export class HistoryPicker {
     }
     const doc = await vscode.workspace.openTextDocument({ language: entry.language, content: `${this.statementText(entry)}\n` });
     await this.bindings.set(doc, { connectionId: entry.connectionId, database: entry.database });
-    // showSqlDocument opens SQL in the DB Client SQL editor by default; Redis stays in the text editor.
+    // showSqlDocument opens SQL in the DB Client SQL editor when openByDefault is on; Redis stays in the text editor.
     await showSqlDocument(doc);
   }
 

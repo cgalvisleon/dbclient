@@ -194,7 +194,7 @@ export class SqlFileItem extends vscode.TreeItem {
     this.resourceUri = vscode.Uri.file(file);
     this.iconPath = icon('query');
     this.tooltip = file;
-    // The DB Client SQL editor by default (see showSqlDocument), not vscode.open's text editor.
+    // Through showSqlDocument (DB Client SQL editor when openByDefault is on), not vscode.open, which forces the text editor.
     this.command = { command: 'dbclient.openSqlFile', title: t('Open'), arguments: [vscode.Uri.file(file)] };
     this.setDirty(vscode.workspace.textDocuments.some((d) => d.isDirty && d.uri.fsPath === file));
   }
