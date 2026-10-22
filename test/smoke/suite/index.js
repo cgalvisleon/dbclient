@@ -71,11 +71,24 @@ exports.run = async function () {
     await api.bindings.set(doc, { connectionId: config.id, database });
     const lenses = await vscode.commands.executeCommand('vscode.executeCodeLensProvider', doc.uri);
     assert.strictEqual(lenses.filter((l) => l.command?.command === 'dbclient.runAt').length, 2, `${name}: code lens per statement`);
-    // Line 0 shows only the connection selector; the actions are in the editor title bar.
+    // Line 0: the connection selector, then the SQL editor toolbar's buttons and, last, open in it.
     assert.deepStrictEqual(
       lenses.filter((l) => l.range.start.line === 0 && l.command?.command !== 'dbclient.runAt').map((l) => l.command?.command),
-      ['dbclient.selectConnection'],
-      `${name}: connection selector on line 0`,
+      [
+        'dbclient.selectConnection',
+        'dbclient.runFile',
+        'dbclient.runStatement',
+        'dbclient.runSelection',
+        'dbclient.disconnect',
+        'dbclient.showHistory',
+        'dbclient.saveToSqlFolder',
+        'dbclient.copyQuery',
+        'dbclient.pasteQuery',
+        'dbclient.exportQuery',
+        'dbclient.importQuery',
+        'dbclient.openSqlEditor',
+      ],
+      `${name}: connection selector and toolbar on line 0`,
     );
     const titleBar = ext.packageJSON.contributes.menus['editor/title'];
     for (const c of ['dbclient.runFile', 'dbclient.runStatement', 'dbclient.connect', 'dbclient.disconnect', 'dbclient.saveToSqlFolder', 'dbclient.copyQuery', 'dbclient.pasteQuery']) {

@@ -430,5 +430,6 @@
   "Top": "Em cima",
   "Left": "Esquerda",
   "Right": "Direita",
-  "Where should the results of the SQL editor go?": "Onde ficam os resultados do editor SQL?"
+  "Where should the results of the SQL editor go?": "Onde ficam os resultados do editor SQL?",
+  "Open in the DB Client SQL editor": "Abrir no editor SQL do DB Client"
 }

@@ -130,7 +130,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       supportsMultipleEditorsPerDocument: false,
     }),
     vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings, catalog), '.', ' '),
-    vscode.languages.registerCodeLensProvider([...sqlDocs, ...redisDocs], new ConnectionCodeLens(bindings, manager)),
+    vscode.languages.registerCodeLensProvider([...sqlDocs, ...redisDocs], new ConnectionCodeLens(bindings, manager, runner)),
     vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager, runner)),
     vscode.languages.registerCompletionItemProvider(redisDocs, new RedisCompletionProvider(manager, bindings), ' ', ':'),
   );
