@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- DB Client SQL editor: autocompletion, with the same suggestions as the text editor — keywords, types and functions of the connection's dialect and, with the connection open, its schemas, tables, views and columns (resolving aliases). It opens as you type, after `.` or a space, or with `Ctrl+Space`.
+
 ## 0.20.4 — 2026-10-22
 
 - Text editor: the first line (CodeLens) now has the same buttons as the DB Client SQL editor's toolbar after the `Connection:` selector — run file, run statement, run selection, ■ Cancel while a query runs, connect/disconnect, query history, save to the SQL folder, copy, paste, export and import — and, last, a button that opens the file in the DB Client SQL editor (the SQL editor's last button goes the other way, to the text editor). ▶ Run stays above every statement.

@@ -211,4 +211,30 @@ describe('SQL editor webview', () => {
     layout.click();
     assert.strictEqual(posted.at(-1).type, 'resultsPosition', 'the button asks the extension');
   });
+
+  it('asks the extension for completions after sending the pending edits', async () => {
+    const { posted, cm, send } = load();
+    send({ type: 'state', state: STATE });
+    send({ type: 'init', text: 'select 1;\n', eol: '\n', document: 'file:///q.sql', placeholder: 'Write SQL' });
+    const view = cm.created[0];
+    const before = view.state.doc;
+    view.dispatch({ changes: { from: 10, insert: 'select * from ' } });
+    view.options.onChange({
+      startState: { doc: before },
+      changes: { iterChanges: (f: Function) => f(10, 10, 10, 24, textDoc('select * from ')), compose: () => undefined },
+    });
+    posted.length = 0;
+    const answer = view.options.complete(24, false);
+    assert.deepStrictEqual(
+      posted.map((m) => m.type),
+      ['edit', 'complete'],
+      'typed text first, then the request',
+    );
+    const request = posted[1];
+    assert.deepStrictEqual({ line: request.line, ch: request.ch, explicit: request.explicit }, { line: 1, ch: 14, explicit: false });
+    const items = [{ label: 'orders', type: 'class', boost: 99 }];
+    send({ type: 'completions', id: request.id + 1, items: [] });
+    send({ type: 'completions', id: request.id, items });
+    assert.deepStrictEqual(await answer, items);
+  });
 });

@@ -272,6 +272,24 @@
     timer = setTimeout(flush, 400);
   }
 
+  /** Completion requests waiting for the extension's answer, by id. */
+  const completions = new Map();
+  let completionId = 0;
+
+  /** Asks the extension for the completion items at `offset` (the text editor's provider answers). */
+  function complete(offset, explicit) {
+    flush();
+    const id = ++completionId;
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => completions.delete(id) && resolve(null), 10000);
+      completions.set(id, (items) => {
+        clearTimeout(timeout);
+        resolve(items);
+      });
+      post({ type: 'complete', id, explicit, ...pos(view.state.doc, offset) });
+    });
+  }
+
   function selectionPositions() {
     const range = view.state.selection.main;
     return { anchor: pos(view.state.doc, range.anchor), head: pos(view.state.doc, range.head) };
@@ -313,6 +331,7 @@
         { key: 'Shift-Mod-Enter', run: () => (run('file'), true) },
       ],
       onChange,
+      complete,
     });
     currentDialect = toolbarState.dialect;
     view.focus();
@@ -375,6 +394,12 @@
       case 'insert':
         insert(msg.text);
         break;
+      case 'completions': {
+        const resolve = completions.get(msg.id);
+        completions.delete(msg.id);
+        resolve?.(msg.items);
+        break;
+      }
       case 'goto':
         if (view) {
           const at = offsetOf(view.state.doc, { line: msg.line, ch: msg.character });

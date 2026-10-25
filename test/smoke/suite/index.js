@@ -559,6 +559,50 @@ exports.run = async function () {
     await vscode.workspace.getConfiguration('dbclient').update('sqlEditor.resultsPosition', undefined, vscode.ConfigurationTarget.Global);
     await reconnectAndRun(session, conn.id, 'sqlite');
 
+    // Completion: the webview asks, the text editor's provider answers (keywords, tables, columns).
+    {
+      const setText = async (text) => {
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(doc.uri, new vscode.Range(0, 0, doc.lineCount, 0), text);
+        await vscode.workspace.applyEdit(edit);
+      };
+      const answers = [];
+      const realSessionPost = session.post;
+      session.post = function (m) {
+        if (m.type === 'completions') answers.push(m);
+        return realSessionPost.call(this, m);
+      };
+      const complete = async (line, ch) => {
+        await session.receive({ type: 'complete', id: answers.length + 1, line, ch });
+        const answer = answers.at(-1);
+        assert.strictEqual(answer.id, answers.length, 'answered with the id of the request');
+        return answer.items;
+      };
+      try {
+        await setText('create table smoke_complete (id integer primary key, label text);\n');
+        await session.receive({ type: 'run', mode: 'file', anchor: { line: 0, ch: 0 }, head: { line: 0, ch: 0 } });
+        await until(async () => (await api.manager.driver(conn.id).catalog()).tables.some((t) => t.name === 'smoke_complete'), 'completion table created');
+        await setText('sel');
+        const keywords = await complete(0, 3);
+        const select = keywords.find((i) => i.label === 'select');
+        assert.ok(select && select.type === 'keyword', 'lower-case keyword while typing in lower case');
+        assert.ok(keywords.some((i) => i.type === 'function' && i.apply?.endsWith('()') && i.cursor === i.apply.length - 1), 'functions put the caret inside the parentheses');
+        await setText('select * from smoke_c');
+        const tables = await complete(0, 21);
+        assert.ok(tables.some((i) => i.label === 'smoke_complete' && i.type === 'class'), 'tables after FROM');
+        assert.ok(tables.findIndex((i) => i.label === 'smoke_complete') < tables.findIndex((i) => i.type === 'keyword'), 'tables before keywords');
+        await setText('select la from smoke_complete;');
+        const columns = await complete(0, 9);
+        const label = columns.find((i) => i.label === 'label');
+        assert.ok(label && label.type === 'property' && /text/i.test(label.detail ?? ''), `columns of the statement's table (${JSON.stringify(label)})`);
+      } finally {
+        session.post = realSessionPost;
+        await setText('select 1 as one;\nselect 2 as two;\n');
+        await doc.save();
+      }
+      console.log('✓ sql editor: completion of keywords, functions, tables and columns from the text editor provider');
+    }
+
     // Untitled queries (New Query) in the SQL editor.
     const untitled = await vscode.workspace.openTextDocument({ language: 'sql', content: 'select 3 as three;\n' });
     await api.bindings.set(untitled, { connectionId: conn.id });

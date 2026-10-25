@@ -2,6 +2,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { ConnectionManager } from '../connections/manager';
+import { toWebviewCompletions } from '../completion/webviewCompletion';
 import { DocumentBindings } from '../editor/bindings';
 import { HistoryPicker, HistoryTarget } from '../editor/historyPicker';
 import { reopenWith } from '../editor/tabs';
@@ -33,7 +34,9 @@ type FromEditor =
   | { type: 'run'; mode: 'auto' | 'statement' | 'file'; anchor: Pos; head: Pos }
   | { type: 'cancel' | 'connect' | 'disconnect' | 'history' | 'saveToFolder' | 'paste' | 'export' | 'import' | 'addConnection' | 'openAsText' | 'resultsPosition' }
   | { type: 'setConnection'; connectionId: string }
-  | { type: 'setDatabase'; database: string };
+  | { type: 'setDatabase'; database: string }
+  /** Completion at a place of the text; answered with `completions` and the same `id`. */
+  | { type: 'complete'; id: number; line: number; ch: number; explicit?: boolean };
 
 /** Where the results go around the SQL: `dbclient.sqlEditor.resultsPosition`. */
 export type ResultsPosition = 'bottom' | 'top' | 'left' | 'right';
@@ -76,6 +79,8 @@ export interface SqlEditorServices {
   runner: SqlRunner;
   results: ResultsView;
   history: HistoryPicker;
+  /** The SQL completion of the text editor, so both editors suggest the same. */
+  completion: vscode.CompletionItemProvider;
 }
 
 /**
@@ -223,6 +228,17 @@ export class SqlEditorSession implements vscode.Disposable {
         const mode: RunMode = m.mode === 'file' ? 'file' : m.mode === 'statement' ? { offset: this.document.offsetAt(selection.active) } : 'auto';
         // Not awaited: Stop must get through while the query runs.
         void runner.run({ document: this.document, selection }, mode).catch((err) => vscode.window.showErrorMessage((err as Error).message));
+        return;
+      }
+      case 'complete': {
+        // The edits sent before the request are in the document by then.
+        await this.edits;
+        const cancel = new vscode.CancellationTokenSource();
+        const context: vscode.CompletionContext = { triggerKind: m.explicit ? vscode.CompletionTriggerKind.Invoke : vscode.CompletionTriggerKind.TriggerCharacter, triggerCharacter: undefined };
+        const items = await Promise.resolve(this.services.completion.provideCompletionItems(this.document, this.position(m), cancel.token, context))
+          .catch(() => undefined)
+          .finally(() => cancel.dispose());
+        this.post({ type: 'completions', id: m.id, items: toWebviewCompletions(items) });
         return;
       }
       case 'cancel':

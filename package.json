@@ -1243,6 +1243,7 @@
     "ssh2": "^1.16.0"
   },
   "devDependencies": {
+    "@codemirror/autocomplete": "^6.20.4",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-sql": "^6.10.0",
     "@codemirror/language": "^6.13.1",

@@ -94,7 +94,8 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   const historyPicker = new HistoryPicker(manager, bindings, history);
   const catalog = new CatalogCache(manager);
   const runner = new SqlRunner(manager, bindings, results, history, catalog);
-  const sqlEditors = new SqlEditorProvider(context.extensionUri, { manager, bindings, runner, results, history: historyPicker });
+  const sqlCompletion = new SqlCompletionProvider(manager, bindings, catalog);
+  const sqlEditors = new SqlEditorProvider(context.extensionUri, { manager, bindings, runner, results, history: historyPicker, completion: sqlCompletion });
   const tableActions = new TableActions(manager, bindings, catalog, results, runner);
   const redisRunner = new RedisRunner(manager, bindings, results, history);
   const natsConsoles = new NatsConsoles(context.extensionUri, manager);
@@ -129,7 +130,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
       webviewOptions: { retainContextWhenHidden: true, enableFindWidget: true },
       supportsMultipleEditorsPerDocument: false,
     }),
-    vscode.languages.registerCompletionItemProvider(sqlDocs, new SqlCompletionProvider(manager, bindings, catalog), '.', ' '),
+    vscode.languages.registerCompletionItemProvider(sqlDocs, sqlCompletion, '.', ' '),
     vscode.languages.registerCodeLensProvider([...sqlDocs, ...redisDocs], new ConnectionCodeLens(bindings, manager, runner)),
     vscode.languages.registerCodeLensProvider(sqlDocs, new RunCodeLens(bindings, manager, runner)),
     vscode.languages.registerCompletionItemProvider(redisDocs, new RedisCompletionProvider(manager, bindings), ' ', ':'),
