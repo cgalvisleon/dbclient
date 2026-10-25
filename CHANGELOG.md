@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.21.0 — 2026-10-25
 
 - DB Client SQL editor: autocompletion, with the same suggestions as the text editor — keywords, types and functions of the connection's dialect and, with the connection open, its schemas, tables, views and columns (resolving aliases). It opens as you type, after `.` or a space, or with `Ctrl+Space`.
 
