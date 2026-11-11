@@ -259,6 +259,25 @@ exports.run = async function () {
     console.log('✓ folders: nesting, drag and drop, cycle refused, delete moves content up');
   }
 
+  // Production connections: only an explicit Connect opens them, and the session ends on its own.
+  {
+    const conn = await addConnection(`smoke-production-${run}`, 'sqlite', {
+      file: path.join(os.tmpdir(), `dbclient-prod-${run}.db`),
+      production: true,
+      sessionMinutes: 0.02,
+    });
+    await assert.rejects(api.manager.connectSql(conn.id), /production/, 'implicit connect refused');
+    const children = await api.tree.getChildren(await rootOf(conn));
+    assert.ok(!api.manager.isConnected(conn.id), 'expanding the tree does not connect');
+    assert.ok(children.some((c) => /production/.test(String(c.label))), 'tree explains why');
+    await vscode.commands.executeCommand('dbclient.connect', await rootOf(conn));
+    assert.ok(api.manager.isConnected(conn.id), 'Connect opens it');
+    assert.ok(api.manager.sessionEndsAt(conn.id) > Date.now(), 'session timer running');
+    await until(() => !api.manager.isConnected(conn.id), 'production session expired', 10000);
+    await api.store.delete(conn.id, []);
+    console.log('✓ production connection: manual connect only, session time limit');
+  }
+
   // Saved SQL files: SQL node per connection, implicit binding when opened, running them.
   {
     const conn = await addConnection(`smoke-sqlfiles-${run}`, 'sqlite', { file: path.join(os.tmpdir(), `dbclient-files-${run}.db`) });

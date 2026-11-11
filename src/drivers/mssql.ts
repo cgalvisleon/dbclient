@@ -3,6 +3,7 @@ import { createTableSql } from '../sql/generate';
 import { bindTemporal, checkCount } from './params';
 import { SSL_SECTION, tlsOptions } from './tls';
 import { sshFields } from './sshTunnel';
+import { productionFields } from './production';
 import {
   Catalog,
   ConnectionConfig,
@@ -463,6 +464,7 @@ export const mssqlFactory: DriverFactory = {
     },
     { key: 'sslCa', label: 'CA certificate', kind: 'file', section: SSL_SECTION, showWhen: { field: 'encrypt', values: [true] }, placeholder: 'PEM file (optional: system CAs otherwise)' },
     ...sshFields(),
+    ...productionFields(),
   ],
   create: (config, secrets) => new MssqlDriver(config, secrets),
 };

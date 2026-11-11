@@ -431,5 +431,15 @@
   "Left": "Esquerda",
   "Right": "Direita",
   "Where should the results of the SQL editor go?": "Onde ficam os resultados do editor SQL?",
-  "Open in the DB Client SQL editor": "Abrir no editor SQL do DB Client"
+  "Open in the DB Client SQL editor": "Abrir no editor SQL do DB Client",
+  "Disconnects after this time; connect again to go on. 0 = no limit.": "Desconecta após esse tempo; conecte de novo para continuar. 0 = sem limite.",
+  "Never connects on its own (expanding the tree, running a query): use Connect on the connection.": "Nunca conecta sozinha (ao expandir a árvore ou executar uma consulta): use Conectar na conexão.",
+  "PROD": "PROD",
+  "Production": "Produção",
+  "Production connection": "Conexão de produção",
+  "Production connection: connect it with Connect.": "Conexão de produção: conecte-a com Conectar.",
+  "Session ends at {0}.": "A sessão termina às {0}.",
+  "Session time (minutes)": "Tempo de sessão (minutos)",
+  "{0} is a production connection: connect it with Connect on the connection.": "{0} é uma conexão de produção: conecte-a com Conectar na conexão.",
+  "{0} was disconnected: its production session time ended. Connect again to go on.": "{0} foi desconectada: o tempo de sessão de produção terminou. Conecte de novo para continuar."
 }

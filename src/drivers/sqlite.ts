@@ -1,4 +1,5 @@
 import type { DatabaseSync, StatementSync } from 'node:sqlite';
+import { productionFields } from './production';
 import { checkCount } from './params';
 import {
   Catalog,
@@ -256,6 +257,7 @@ export const sqliteFactory: DriverFactory = {
   fields: [
     { key: 'file', label: 'Database file', kind: 'file', required: true, hint: 'Created if it does not exist.' },
     { key: 'readOnly', label: 'Read only', kind: 'checkbox', default: false },
+    ...productionFields(),
   ],
   create: (config) => new SqliteDriver(config),
 };

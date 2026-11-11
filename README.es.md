@@ -33,6 +33,7 @@ Las conexiones se guardan una sola vez por usuario y se comparten entre todas la
 | Configuración y acerca de | El botón ⚙ del título de la vista abre un panel con dónde guarda la extensión sus datos (carpeta de almacenamiento, `connections.json`, historial de consultas, archivos SQL guardados) con **Copiar** y **Abrir carpeta**, la configuración `dbclient.*` actual frente a sus valores por defecto, el entorno (editor, Node.js, soporte de SQLite) y los enlaces de GitHub del autor. |
 | SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis y NATS: **desactivado**, **requerido** (cifrado) o **verificar todo** (certificado y nombre del host), con archivo de CA, certificado y clave del cliente (con frase). SQL Server: **Cifrar** confiando o no en el certificado, y un archivo de CA. |
 | Túnel SSH | Todos los motores menos SQLite pueden conectarse a través de un servidor SSH, con contraseña o clave privada (con frase) y una huella opcional de la llave del host. |
+| Conexiones productivas | Marca una conexión como **Conexión productiva**: nunca se conecta sola (al expandir el árbol o ejecutar una consulta te pide usar **Conectar**), se muestra con `PROD` en el árbol y se desconecta al cumplirse su **Tiempo de sesión** (30 minutos por defecto, 0 = sin límite). |
 | Idiomas | Inglés, español y portugués de Brasil. Por defecto la interfaz sigue el idioma del editor; `dbclient.language` (o el selector de **Configuración y acerca de**) elige uno. |
 | Exportar / importar | **Export Connections…** guarda todas las conexiones, una carpeta (sobre la carpeta) o las conexiones seleccionadas (sobre una conexión) en un archivo JSON sin contraseñas; **Import Connections…** lo fusiona (conserva las existentes y omite las idénticas) o reemplaza la lista, y sobre una carpeta importa dentro de ella. |
 | Iconos y colores | Cada conexión puede elegir su icono en el árbol (base de datos, servidor, nube, con engranaje o con lupa) y uno de 7 colores (azul, verde, rojo, naranja, morado, amarillo, gris) en la sección **Apariencia** del formulario; por ejemplo, rojo para producción. Las carpetas también cambian de color con **Change Color…** (**Cambiar color…**). |
@@ -67,6 +68,12 @@ Con el editor en español, los comandos y menús aparecen traducidos; en esta gu
 ```text
 Host: db.internal   Puerto: 5432   SSL: verificar todo   Certificado de la CA: ~/certs/ca.pem
 Túnel SSH: clave privada   Host SSH: bastion.example.com   Usuario SSH: deploy   Clave privada: ~/.ssh/id_ed25519
+```
+
+**Proteger una base productiva.** En la sección **Producción** del formulario marca **Conexión productiva** y define **Tiempo de sesión (minutos)**. La conexión entonces solo se abre con **Conectar** (menú de la conexión en el árbol o botón Conectar del editor); al cumplirse el tiempo se desconecta y ofrece **Conectar** de nuevo.
+
+```text
+Conexión productiva: ☑   Tiempo de sesión (minutos): 15
 ```
 
 **Llevar las conexiones a otra máquina.** En el menú **…** de la vista elige **Export Connections…** (o **Export Connections…** sobre una carpeta para exportar solo esa carpeta) y guarda el archivo `.json`; contiene carpetas, conexiones y ubicaciones SQL, nunca contraseñas. En la otra máquina elige **Import Connections…**, selecciona el archivo y **Merge** o **Replace**, y luego ingresa las contraseñas con **Edit Connection**. Al restaurar una copia en la misma máquina se conserva el id de cada conexión, así que su contraseña guardada y sus archivos SQL vuelven a funcionar.

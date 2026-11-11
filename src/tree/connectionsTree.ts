@@ -1,3 +1,4 @@
+import { isProduction } from '../drivers/production';
 import { TREE_WORDS } from './words';
 import * as path from 'path';
 import * as vscode from 'vscode';
@@ -62,6 +63,14 @@ export class ConnectionItem extends vscode.TreeItem {
     this.description = [factory.label, target].filter(Boolean).join(' · ');
     this.tooltip = `${config.name}\n${factory.label} · ${o.file ?? o.servers ?? `${target}${o.database ? `/${o.database}` : ''}`}`;
     this.iconPath = connectionIcon(config.icon, config.color, connected, DEFAULT_SHAPES[factory.category]);
+    if (isProduction(config)) {
+      this.description = `${t('PROD')} · ${this.description}`;
+      const endsAt = manager.sessionEndsAt(connectionId);
+      this.tooltip += `\n${t('Production connection: connect it with Connect.')}`;
+      if (endsAt) {
+        this.tooltip += `\n${t('Session ends at {0}.', new Date(endsAt).toLocaleTimeString())}`;
+      }
+    }
     if (connected) {
       this.description = `● ${this.description}`;
     }

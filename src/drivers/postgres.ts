@@ -4,6 +4,7 @@ import { createTableSql } from '../sql/generate';
 import { checkCount } from './params';
 import { sslFields, tlsOptions } from './tls';
 import { sshFields } from './sshTunnel';
+import { productionFields } from './production';
 import { qualifiedName } from '../sql/identifiers';
 import {
   Catalog,
@@ -492,6 +493,7 @@ export const postgresFactory: DriverFactory = {
     { key: 'password', label: 'Password', kind: 'password', secret: true },
     ...sslFields(),
     ...sshFields(),
+    ...productionFields(),
   ],
   create: (config, secrets) => new PostgresDriver(config, secrets),
 };

@@ -4,6 +4,7 @@ import { bindTemporal, checkCount } from './params';
 import { sslFields, tlsOptions } from './tls';
 import { ORACLE_BY_URL, connectString, formatJdbcUrl, parseJdbcUrl, usesJdbcUrl } from './oracleUrl';
 import { sshFields } from './sshTunnel';
+import { productionFields } from './production';
 import {
   Catalog,
   ConnectionConfig,
@@ -445,6 +446,7 @@ export const oracleFactory: DriverFactory = {
     { key: 'autoCommit', label: 'Auto-commit', kind: 'checkbox', default: true },
     ...sslFields(),
     ...sshFields(),
+    ...productionFields(),
   ],
   create: (config, secrets) => new OracleDriver(config, secrets),
   prepare: (options, secrets) => {

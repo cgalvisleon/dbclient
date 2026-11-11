@@ -247,7 +247,7 @@ export class SqlEditorSession implements vscode.Disposable {
       case 'connect': {
         const id = binding()?.connectionId;
         if (id) {
-          await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: t('Connecting to {0}…', manager.config(id).name) }, () => manager.connect(id));
+          await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: t('Connecting to {0}…', manager.config(id).name) }, () => manager.connect(id, { manual: true }));
         }
         return;
       }

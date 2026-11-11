@@ -33,6 +33,7 @@ As conexões são salvas uma vez por usuário e compartilhadas por todas as jane
 | Settings and About | O botão ⚙ no título da visão abre um painel com onde a extensão guarda seus dados (pasta de armazenamento, `connections.json`, histórico de consultas, arquivos SQL salvos) com **Copy** e **Open folder**, as configurações `dbclient.*` atuais comparadas aos padrões, o ambiente (editor, Node.js, suporte a SQLite) e os links do autor no GitHub. |
 | SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis e NATS: **disable**, **require** (criptografado) ou **verify-full** (certificado e nome do host), com arquivo de CA, certificado e chave de cliente (com senha). SQL Server: **Encrypt** confiando ou não no certificado, e um arquivo de CA. |
 | Túnel SSH | Todos os motores exceto SQLite podem se conectar através de um servidor SSH, com senha ou chave privada (com senha) e uma impressão digital opcional da chave do host. |
+| Conexões de produção | Marque uma conexão como **Conexão de produção**: ela nunca conecta sozinha (ao expandir a árvore ou executar uma consulta pede para usar **Conectar**), aparece com `PROD` na árvore e desconecta ao fim do **Tempo de sessão** (30 minutos por padrão, 0 = sem limite). |
 | Idiomas | Inglês, espanhol e português do Brasil. Por padrão a interface segue o idioma de exibição do editor; `dbclient.language` (ou o seletor em **Configurações e sobre**) escolhe um. |
 | Exportar / importar | **Export Connections…** grava todas as conexões, uma pasta (na pasta) ou as conexões selecionadas (em uma conexão) em um arquivo JSON sem senhas; **Import Connections…** mescla (as existentes são mantidas, as idênticas ignoradas) ou substitui a lista, e em uma pasta importa para dentro dela. |
 | Ícones e cores | Cada conexão pode escolher seu ícone na árvore (banco de dados, servidor, nuvem, com engrenagem ou lupa) e uma de 7 cores (azul, verde, vermelho, laranja, roxo, amarelo, cinza) na seção **Appearance** do formulário — por exemplo, vermelho para produção. As pastas também recebem cor com **Change Color…**. |
@@ -65,6 +66,12 @@ As conexões são salvas uma vez por usuário e compartilhadas por todas as jane
 ```text
 Host: db.internal   Port: 5432   SSL: verify-full   CA certificate: ~/certs/ca.pem
 SSH tunnel: private key   SSH host: bastion.example.com   SSH user: deploy   Private key: ~/.ssh/id_ed25519
+```
+
+**Proteger um banco de produção.** Na seção **Produção** do formulário marque **Conexão de produção** e defina **Tempo de sessão (minutos)**. A conexão então só abre com **Conectar** (menu da conexão na árvore ou botão Conectar do editor); quando o tempo acaba ela desconecta e oferece **Conectar** de novo.
+
+```text
+Conexão de produção: ☑   Tempo de sessão (minutos): 15
 ```
 
 **Levar conexões para outra máquina.** No menu **…** da visão escolha **Export Connections…** (ou **Export Connections…** em uma pasta, só para essa pasta) e salve o arquivo `.json`; ele contém pastas, conexões e locais SQL, nunca senhas. Na outra máquina escolha **Import Connections…**, selecione o arquivo e **Merge** ou **Replace**, depois informe as senhas com **Edit Connection**. Restaurar um backup na mesma máquina mantém o id de cada conexão, então sua senha salva e seus arquivos SQL voltam a funcionar.

@@ -31,3 +31,4 @@
 - las carpetas de conexiones también pueden cambiar el color de su icono
 - se puede actualizar una conexión o un nodo del árbol (base, esquema, carpeta, tabla) para ver los cambios de esquemas o tablas borradas hechos fuera de la extensión
 - desde el árbol se pueden borrar tablas, vistas y esquemas según lo que permita el driver de la conexión
+- una conexión se puede marcar como productiva: no se conecta sola, solo de forma manual desde las opciones de la conexión, y tiene un tiempo de conexión después del cual se desconecta y hay que volver a conectarse

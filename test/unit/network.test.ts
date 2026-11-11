@@ -82,10 +82,21 @@ describe('connection form sections', () => {
     const doc = window.document;
     const headings = () => [...doc.querySelectorAll('h4.section')].map((h) => h.textContent);
     const ids = () => [...doc.querySelectorAll('[id^="f-"]')].map((e) => e.id.slice(2));
-    expect(headings()).toEqual(['SSL / TLS', 'SSH tunnel', 'SQL files']);
+    expect(headings()).toEqual(['SSL / TLS', 'SSH tunnel', 'Production', 'SQL files']);
     expect(ids()).toContain('ssl');
     expect(ids()).not.toContain('sslCa');
     expect(ids()).not.toContain('sshHost');
+    expect(ids()).toContain('production');
+    expect(ids()).not.toContain('sessionMinutes');
+    const toggleProduction = (on: boolean) => {
+      const box = doc.getElementById('f-production') as HTMLInputElement;
+      box.checked = on;
+      box.dispatchEvent(new window.Event('change'));
+    };
+    toggleProduction(true);
+    expect((doc.getElementById('f-sessionMinutes') as HTMLInputElement).value).toBe('30');
+    toggleProduction(false);
+    expect(ids()).not.toContain('sessionMinutes');
 
     const select = (id: string, value: string) => {
       const el = doc.getElementById(`f-${id}`) as HTMLSelectElement;

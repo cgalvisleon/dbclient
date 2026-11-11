@@ -2,6 +2,7 @@ import * as mysql from 'mysql2';
 import { checkCount } from './params';
 import { sslFields, tlsOptions } from './tls';
 import { sshFields } from './sshTunnel';
+import { productionFields } from './production';
 import {
   Catalog,
   ConnectionConfig,
@@ -376,6 +377,7 @@ export const mysqlFactory: DriverFactory = {
     { key: 'password', label: 'Password', kind: 'password', secret: true },
     ...sslFields(),
     ...sshFields(),
+    ...productionFields(),
   ],
   create: (config, secrets) => new MysqlDriver(config, secrets),
 };

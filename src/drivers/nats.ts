@@ -14,6 +14,7 @@ import {
 } from 'nats';
 import { expandHome, sslFields, tlsOptions } from './tls';
 import { sshFields } from './sshTunnel';
+import { productionFields } from './production';
 import { ConnectionConfig, ConnectionSecrets, DbNode, DriverFactory, PubSubDriver, PubSubMessage, Subscription } from './types';
 
 const decoder = new TextDecoder();
@@ -308,6 +309,7 @@ export const natsFactory: DriverFactory = {
     { key: 'credsFile', label: 'Credentials file', kind: 'file', required: true, showWhen: { field: 'auth', values: ['credentials file'] } },
     ...sslFields(),
     ...sshFields(),
+    ...productionFields(),
   ],
   create: (config, secrets) => new NatsDriver(config, secrets),
 };

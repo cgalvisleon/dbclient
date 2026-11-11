@@ -2,6 +2,7 @@ import IORedis from 'ioredis';
 import { ConnectionConfig, ConnectionSecrets, DbNode, DriverFactory, KvDriver } from './types';
 import { sslFields, tlsOptions } from './tls';
 import { sshFields } from './sshTunnel';
+import { productionFields } from './production';
 
 type RedisClient = InstanceType<typeof IORedis>;
 
@@ -217,6 +218,7 @@ export const redisFactory: DriverFactory = {
     { key: 'showEmptyDbs', label: 'Show empty databases', kind: 'checkbox', default: false },
     ...sslFields(),
     ...sshFields(),
+    ...productionFields(),
   ],
   create: (config, secrets) => new RedisDriver(config, secrets),
 };

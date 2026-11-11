@@ -803,7 +803,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
     if (id) {
       await vscode.window.withProgress(
         { location: { viewId: 'dbclient.connections' }, title: t('Connecting…') },
-        () => manager.connect(id),
+        () => manager.connect(id, { manual: true }),
       );
     }
   });

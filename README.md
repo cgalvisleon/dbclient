@@ -33,6 +33,7 @@ Connections are stored once per user, shared by every window and workspace. Pass
 | Settings and About | The ⚙ button in the view title opens a panel with where the extension keeps its data (storage folder, `connections.json`, query history, saved SQL files) with **Copy** and **Open folder**, the current `dbclient.*` settings against their defaults, the environment (editor, Node.js, SQLite support) and the author's GitHub links. |
 | SSL/TLS | PostgreSQL, MySQL, Oracle (TCPS), Redis and NATS: **disable**, **require** (encrypted) or **verify-full** (certificate and host name), with CA file, client certificate and key (with passphrase). SQL Server: **Encrypt** with or without trusting the certificate, and a CA file. |
 | SSH tunnel | Every engine but SQLite can connect through an SSH server, with password or private key (with passphrase) and an optional host key fingerprint. |
+| Production connections | Mark a connection as **Production connection**: it never connects on its own (expanding the tree or running a query asks you to use **Connect**), shows `PROD` in the tree and disconnects after its **Session time** (30 minutes by default, 0 = no limit). |
 | Languages | English, Spanish and Brazilian Portuguese. By default the interface follows the editor's display language; `dbclient.language` (or the selector in **Settings and About**) picks one. |
 | Export / import | **Export Connections…** writes all connections, one folder (on the folder) or the selected connections (on a connection) to a JSON file without passwords; **Import Connections…** merges it (existing ones kept, identical ones skipped) or replaces the list, and on a folder imports into that folder. |
 | Icons and colors | Each connection can pick its tree icon (database, server, cloud, with gear or magnifier) and one of 7 colors (blue, green, red, orange, purple, yellow, gray) in the form's **Appearance** section — e.g. red for production. Folders take a color too with **Change Color…**. |
@@ -65,6 +66,12 @@ Connections are stored once per user, shared by every window and workspace. Pass
 ```text
 Host: db.internal   Port: 5432   SSL: verify-full   CA certificate: ~/certs/ca.pem
 SSH tunnel: private key   SSH host: bastion.example.com   SSH user: deploy   Private key: ~/.ssh/id_ed25519
+```
+
+**Protect a production database.** In the form's **Production** section check **Production connection** and set **Session time (minutes)**. The connection then opens only with **Connect** (the tree's connection menu or the editor's Connect button); when the time is up it disconnects and offers **Connect** again.
+
+```text
+Production connection: ☑   Session time (minutes): 15
 ```
 
 **Move connections to another machine.** In the view's **…** menu choose **Export Connections…** (or **Export Connections…** on a folder for just that folder) and save the `.json` file; it holds folders, connections and SQL locations, never passwords. On the other machine choose **Import Connections…**, pick the file and **Merge** or **Replace**, then enter passwords with **Edit Connection**. Restoring a backup on the same machine keeps each connection's id, so its saved password and SQL files work again.
