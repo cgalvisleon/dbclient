@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.22.0 — 2026-11-11
+
+- Production connections: a new **Production** section in the connection form (every engine) with **Production connection** and **Session time (minutes)** (30 by default, 0 = no limit). A production connection never connects on its own — expanding it in the tree, running a query or autocompletion ask you to use **Connect** (the connection's menu in the tree or the editor's Connect button) — and it disconnects when its session time is up, with a notice that offers **Connect** again. The tree marks it `PROD` and its tooltip shows when the session ends.
+
 ## 0.21.0 — 2026-10-25
 
 - DB Client SQL editor: autocompletion, with the same suggestions as the text editor — keywords, types and functions of the connection's dialect and, with the connection open, its schemas, tables, views and columns (resolving aliases). It opens as you type, after `.` or a space, or with `Ctrl+Space`.
