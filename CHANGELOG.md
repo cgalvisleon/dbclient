@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.0 — 2026-11-21
+
+- **Truncate Table…** in the context menu of SQL tables: deletes every row and keeps the table. A modal shows the statement first; on PostgreSQL **Truncate with CASCADE** also empties the tables that reference it. MySQL, SQL Server and Oracle use `TRUNCATE TABLE`, SQLite `DELETE FROM`.
+
 ## 0.22.0 — 2026-11-11
 
 - Production connections: a new **Production** section in the connection form (every engine) with **Production connection** and **Session time (minutes)** (30 by default, 0 = no limit). A production connection never connects on its own — expanding it in the tree, running a query or autocompletion ask you to use **Connect** (the connection's menu in the tree or the editor's Connect button) — and it disconnects when its session time is up, with a notice that offers **Connect** again. The tree marks it `PROD` and its tooltip shows when the session ends.
