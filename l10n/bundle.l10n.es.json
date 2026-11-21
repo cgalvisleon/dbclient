@@ -441,5 +441,12 @@
   "Session ends at {0}.": "La sesión termina a las {0}.",
   "Session time (minutes)": "Tiempo de sesión (minutos)",
   "{0} is a production connection: connect it with Connect on the connection.": "{0} es una conexión productiva: conéctala con Conectar en la conexión.",
-  "{0} was disconnected: its production session time ended. Connect again to go on.": "{0} se desconectó: terminó su tiempo de sesión productiva. Conéctate de nuevo para seguir."
+  "{0} was disconnected: its production session time ended. Connect again to go on.": "{0} se desconectó: terminó su tiempo de sesión productiva. Conéctate de nuevo para seguir.",
+  "Truncate table {0}? All its rows are deleted.": "¿Limpiar la tabla {0}? Se borran todas sus filas; la tabla se conserva.",
+  "Truncate": "Limpiar (truncate)",
+  "Truncate with CASCADE": "Limpiar con CASCADE",
+  "CASCADE also empties the tables that reference it.": "CASCADE también limpia las tablas que la referencian.",
+  "Truncating {0}…": "Limpiando {0}…",
+  "Could not truncate {0}: {1}": "No se pudo limpiar {0}: {1}",
+  "Truncated {0}.": "Se limpió {0}."
 }

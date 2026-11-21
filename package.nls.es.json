@@ -28,6 +28,7 @@
   "command.showStructure": "Ver estructura",
   "command.showDdl": "Ver DDL",
   "command.drop": "Eliminar…",
+  "command.truncateTable": "Limpiar tabla (truncate)…",
   "command.generateSelect": "SELECT",
   "command.generateInsert": "INSERT",
   "command.generateUpdate": "UPDATE",

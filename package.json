@@ -198,6 +198,11 @@
         "category": "DB Client"
       },
       {
+        "command": "dbclient.truncateTable",
+        "title": "%command.truncateTable%",
+        "category": "DB Client"
+      },
+      {
         "command": "dbclient.generateSelect",
         "title": "%command.generateSelect%",
         "category": "DB Client"
@@ -813,6 +818,11 @@
           "command": "dbclient.drop",
           "when": "view == dbclient.connections && (viewItem =~ /^(table|view|schema) sql\\b/ || viewItem =~ /^database sql mysql\\b/)",
           "group": "9_drop@1"
+        },
+        {
+          "command": "dbclient.truncateTable",
+          "when": "view == dbclient.connections && viewItem =~ /^table sql\\b/",
+          "group": "9_drop@0"
         }
       ],
       "webview/context": [
@@ -1070,6 +1080,10 @@
         },
         {
           "command": "dbclient.drop",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.truncateTable",
           "when": "false"
         }
       ],

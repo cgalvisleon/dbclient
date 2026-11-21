@@ -74,7 +74,7 @@ Estado: `0` pendiente · `0.5` parcial · `1` completo. Peso total = 117 (los pe
 | D4 | MSSQL | 3 | 1 |
 | D5 | Oracle (por host y servicio o por URL JDBC: servicio, SID, `tcps://`, descriptor o alias de tnsnames.ora) | 3 | 1 |
 
-### S — Editor SQL (49)
+### S — Editor SQL (50)
 
 Referencia funcional: el editor SQL de NetBeans (selector de conexión en el editor, ejecutar archivo o sentencia con atajos, resultados en pestañas bajo el editor, paginación de filas traídas, salida SQL con tiempos y errores navegables, edición de datos en la grilla).
 
@@ -94,6 +94,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 | S12 | Eliminar desde el árbol según el motor: tablas y vistas en todos los SQL (CASCADE en PostgreSQL, CASCADE CONSTRAINTS en Oracle; vistas materializadas en PostgreSQL) y esquemas en PostgreSQL y SQL Server, bases en MySQL y usuarios en Oracle; confirmación modal con el `DROP`, y para esquemas escribir el nombre | 2 | 0.5 |
 | S13 | Menú contextual de una celda del resultado: copiar valor, copiar registro (TSV o JSON) y generar INSERT/UPDATE/DELETE del registro con literales del dialecto (por clave primaria; sin ella, por todas las columnas con aviso) en un editor vinculado | 2 | 0.5 |
 | S14 | Editor SQL propio de DB Client (opcional, al estilo NetBeans): barra con listas de conexión y base y botones de icono, editor con resaltado (CodeMirror) y resultados en la misma pestaña; el archivo sigue siendo un documento de VS Code. Entrega 1: barra, edición sincronizada, ejecutar archivo/sentencia/selección, detener, conectar, historial, guardar, copiar/pegar/exportar/importar, resultados propios, apertura por defecto (activada desde el 2026-10-21, desactivable). Entrega 2: autocompletado (hecho: el mismo proveedor del editor de texto), errores subrayados en el texto y ▶ por sentencia (pendientes) | 4 | 0.5 |
+| S15 | Limpiar una tabla desde el árbol (**Truncate Table…** en el menú de la tabla): confirmación modal con la sentencia; `TRUNCATE TABLE` en PostgreSQL (con opción CASCADE para las tablas que la referencian), MySQL, SQL Server y Oracle, `DELETE FROM` en SQLite; la tabla y su estructura se conservan | 1 | 0.5 |
 
 ### R — Redis (11)
 
@@ -115,7 +116,7 @@ Referencia funcional: el editor SQL de NetBeans (selector de conexión en el edi
 ## 4. Cálculo de la brecha
 
 ```
-total   = Σ peso                      (hoy 128)
+total   = Σ peso                      (hoy 129)
 avance  = Σ (peso × estado)
 brecha  = (total − avance) / total × 100 %
 ```
@@ -125,12 +126,12 @@ brecha  = (total − avance) / total × 100 %
 | F — Fundación | 10 | 9 | 1 |
 | C — Conexiones y persistencia | 31 | 29,5 | 1,5 |
 | D — Drivers SQL | 16 | 16 | 0 |
-| S — Editor SQL | 49 | 45 | 4 |
+| S — Editor SQL | 50 | 45,5 | 4,5 |
 | R — Redis | 11 | 11 | 0 |
 | N — NATS | 11 | 11 | 0 |
-| **Total** | **128** | **121,5** | **6,5** |
+| **Total** | **129** | **122** | **7** |
 
-**Brecha actual: 5,1 % (6,5 de 128 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español y al portugués de Brasil, con idioma elegible; las conexiones productivas solo se conectan a mano y se desconectan al cumplirse su tiempo de sesión. Falta: ver en Cursor el formulario y el aviso de fin de sesión de una conexión productiva (C10: verificado con pruebas en jsdom y de humo en SQLite); la segunda entrega del editor SQL propio (S14: errores en el texto y ▶ por sentencia; el autocompletado ya está); ver el modo automático (idioma del editor) dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento; el idioma elegido con `dbclient.language` sí está verificado); probar en Cursor la actualización por nodo (C9) y el borrado desde el árbol, y verificar el `DROP` contra MySQL, SQL Server y Oracle (S12: verificado en PostgreSQL y SQLite); verificar contra MySQL, SQL Server y Oracle el SQL generado desde un registro y ver el menú contextual en Cursor (S13: verificado en PostgreSQL y SQLite).
+**Brecha actual: 5,4 % (7 de 129 pts)** — los 7 motores funcionan en el mismo listado de conexiones, agrupables en carpetas; el editor SQL está completo al estilo NetBeans: archivos y ubicaciones `.sql`, historial, acciones sobre tablas desde el árbol, autocompletado de esquemas, tablas y columnas con alias, y edición de datos en la grilla; los resultados se exportan a Excel y NATS está verificado con todas sus autenticaciones; la configuración se exporta e importa sin secretos y un panel muestra dónde se guarda todo; las conexiones de red usan SSL/TLS y túnel SSH, y la interfaz está traducida al español y al portugués de Brasil, con idioma elegible; las conexiones productivas solo se conectan a mano y se desconectan al cumplirse su tiempo de sesión. Falta: ver en Cursor el formulario y el aviso de fin de sesión de una conexión productiva (C10: verificado con pruebas en jsdom y de humo en SQLite); la segunda entrega del editor SQL propio (S14: errores en el texto y ▶ por sentencia; el autocompletado ya está); ver el modo automático (idioma del editor) dentro de VS Code/Cursor (F3 parcial: el VS Code de pruebas no tomó el idioma por argumento; el idioma elegido con `dbclient.language` sí está verificado); probar en Cursor la actualización por nodo (C9) y el borrado desde el árbol, y verificar el `DROP` contra MySQL, SQL Server y Oracle (S12: verificado en PostgreSQL y SQLite); verificar contra MySQL, SQL Server y Oracle el `TRUNCATE` y ver el menú en Cursor (S15: verificado en PostgreSQL y SQLite); verificar contra MySQL, SQL Server y Oracle el SQL generado desde un registro y ver el menú contextual en Cursor (S13: verificado en PostgreSQL y SQLite).
 
 ## 5. Orden sugerido para cerrar la brecha
 
@@ -273,3 +274,4 @@ brecha  = (total − avance) / total × 100 %
 | 2026-10-22 | Editor de texto SQL (S1): el CodeLens de la primera línea, además del selector de conexión/base, tiene los mismos botones que la barra del editor SQL de DB Client (ejecutar archivo, sentencia y selección, ■ Cancel mientras corre, conectar/desconectar, historial, guardar, copiar, pegar, exportar, importar) y al final uno que abre el archivo en el editor SQL de DB Client. Prueba de humo verde con PostgreSQL y SQLite (orden de las lentes de la línea 0). Sin verificar a mano en Cursor. Sin cambio de puntaje; v0.20.4 | 4,4 % |
 | 2026-10-24 | Editor SQL de DB Client (S14, entrega 2): autocompletado con el mismo alcance que el editor de texto — CodeMirror pide las sugerencias a la extensión (al escribir, después de `.` o de un espacio, o con Ctrl+Espacio) y responde el mismo `SqlCompletionProvider` (palabras clave, tipos y funciones del dialecto; esquemas, tablas, vistas y columnas con alias con la conexión abierta), con íconos codicon y los colores de la lista de sugerencias de VS Code. Prueba en jsdom (ediciones enviadas antes de pedir, respuesta por id) y de humo en SQLite (palabra clave en minúscula, función con el cursor entre paréntesis, tablas después de FROM antes que las palabras clave, columnas de la tabla de la sentencia). Sin verificar a mano en Cursor (aspecto, atajos). S14 sigue en 0,5: faltan los errores subrayados y ▶ por sentencia. Sin cambio de puntaje; v0.21.0 | 4,4 % |
 | 2026-11-11 | Conexión productiva (C10, nuevo, 2 pts): atributo **Conexión productiva** y **Tiempo de sesión (minutos)** en la sección Producción del formulario de todos los motores (`src/drivers/production.ts`); `ConnectionManager.connect` rechaza la conexión implícita (expandir el árbol, ejecutar, autocompletar) y solo conecta con **Conectar** (`manual: true`, árbol y editor SQL); temporizador de sesión que desconecta y avisa con botón **Conectar**; `PROD` y hora de fin en el árbol. Pruebas unitarias (campos en todos los motores, límite de sesión, formulario en jsdom) y de humo en SQLite (conexión implícita rechazada, árbol sin conectar, Conectar, expiración). Sin verificar a mano en Cursor: C10 en 0,5; v0.22.0 | 5,1 % |
+| 2026-11-21 | Limpiar tabla (S15, nuevo, 1 pt): **Truncate Table…** en el menú contextual de las tablas SQL (`truncateSql` en `src/sql/generate.ts`, `TableActions.truncate`): modal con la sentencia, CASCADE en PostgreSQL, `DELETE FROM` en SQLite, ejecutado con `driver.transaction`. Eliminar esquemas ya existía (S12). Pruebas unitarias del SQL por dialecto e integración en PostgreSQL (rechazo sin CASCADE si otra tabla la referencia, CASCADE limpia ambas) y SQLite. Sin verificar contra MySQL, SQL Server y Oracle ni en Cursor: S15 en 0,5 | 5,4 % |

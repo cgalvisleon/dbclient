@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { CatalogCache } from '../connections/catalog';
 import { ConnectionManager } from '../connections/manager';
 import { TableInfo, TableRef } from '../drivers/types';
-import { canCascade, deleteTemplate, DropTarget, dropSql, insertTemplate, openDataSql, selectTemplate, structureTables, updateTemplate } from '../sql/generate';
+import { canCascade, canCascadeTruncate, deleteTemplate, DropTarget, dropSql, truncateSql, insertTemplate, openDataSql, selectTemplate, structureTables, updateTemplate } from '../sql/generate';
 import { qualifiedName } from '../sql/identifiers';
 import { NodeItem } from '../tree/connectionsTree';
 import { ResultsView } from '../webviews/resultsView';
@@ -192,5 +192,45 @@ export class TableActions {
       this.manager.contentChangedOf(id);
     }
     vscode.window.setStatusBarMessage(t('Dropped {0}.', qualifiedName(target, dialect)), 4000);
+  }
+
+  /** Deletes every row of a table node after a modal that shows the SQL (PostgreSQL may CASCADE). */
+  async truncate(item: NodeItem): Promise<void> {
+    if (item.node.kind !== 'table') {
+      return;
+    }
+    const dialect = this.dialectOf(item);
+    const ref = this.refOf(item);
+    const name = qualifiedName(ref, dialect);
+    const question = t('Truncate table {0}? All its rows are deleted.', name);
+    const truncate = t('Truncate');
+    const cascade = t('Truncate with CASCADE');
+    const cascades = canCascadeTruncate(dialect);
+    const answer = await vscode.window.showWarningMessage(
+      question,
+      {
+        modal: true,
+        detail: [
+          truncateSql(ref, dialect),
+          cascades ? t('CASCADE also empties the tables that reference it.') : undefined,
+          t('This cannot be undone.'),
+        ].filter(Boolean).join('\n\n'),
+      },
+      ...(cascades ? [truncate, cascade] : [truncate]),
+    );
+    if (!answer) {
+      return;
+    }
+    const sql = truncateSql(ref, dialect, answer === cascade);
+    try {
+      await vscode.window.withProgress(
+        { location: vscode.ProgressLocation.Notification, title: t('Truncating {0}…', name) },
+        async () => (await this.manager.connectSql(item.connectionId)).transaction(item.node.database, [{ sql, params: [] }]),
+      );
+    } catch (err) {
+      vscode.window.showErrorMessage(t('Could not truncate {0}: {1}', name, (err as Error).message));
+      return;
+    }
+    vscode.window.setStatusBarMessage(t('Truncated {0}.', name), 4000);
   }
 }

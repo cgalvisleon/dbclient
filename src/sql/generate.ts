@@ -1,4 +1,4 @@
-import { ColumnInfo, ParamStatement, ParamValue, TableInfo } from '../drivers/types';
+import { ColumnInfo, ParamStatement, ParamValue, TableInfo, TableRef } from '../drivers/types';
 import { placeholder, qualifiedName, quoteIdent } from './identifiers';
 
 // SQL text built from table metadata: tree actions (SELECT/INSERT/UPDATE/DELETE templates,
@@ -270,4 +270,18 @@ export function dropSql(target: DropTarget, dialect: string, cascade = false): s
       // MySQL calls schemas databases; an Oracle schema is its user.
       return dialect === 'mysql' ? `DROP DATABASE ${name}` : dialect === 'oracle' ? `DROP USER ${name}${tail}` : `DROP SCHEMA ${name}${tail}`;
   }
+}
+
+/** Only PostgreSQL can truncate the tables that reference this one in the same statement. */
+export function canCascadeTruncate(dialect: string): boolean {
+  return dialect === 'postgres';
+}
+
+/** Empties a table: TRUNCATE (CASCADE only in PostgreSQL); SQLite has no TRUNCATE, so DELETE. */
+export function truncateSql(ref: TableRef, dialect: string, cascade = false): string {
+  const name = qualifiedName({ schema: ref.schema, name: ref.name }, dialect);
+  if (dialect === 'sqlite') {
+    return `DELETE FROM ${name}`;
+  }
+  return `TRUNCATE TABLE ${name}${cascade && canCascadeTruncate(dialect) ? ' CASCADE' : ''}`;
 }

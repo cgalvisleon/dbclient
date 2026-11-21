@@ -846,6 +846,7 @@ export function activate(context: vscode.ExtensionContext): DbClientInternals {
   command('dbclient.showStructure', (item: NodeItem) => tableActions.showStructure(item));
   command('dbclient.showDdl', (item: NodeItem) => tableActions.showDdl(item));
   command('dbclient.drop', (item: NodeItem) => tableActions.drop(item));
+  command('dbclient.truncateTable', (item: NodeItem) => tableActions.truncate(item));
   for (const kind of ['select', 'insert', 'update', 'delete'] as TemplateKind[]) {
     command(`dbclient.generate${kind[0].toUpperCase()}${kind.slice(1)}`, (item: NodeItem) => tableActions.generate(item, kind));
   }

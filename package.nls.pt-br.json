@@ -28,6 +28,7 @@
   "command.showStructure": "Ver estrutura",
   "command.showDdl": "Ver DDL",
   "command.drop": "Excluir…",
+  "command.truncateTable": "Esvaziar tabela (truncate)…",
   "command.generateSelect": "SELECT",
   "command.generateInsert": "INSERT",
   "command.generateUpdate": "UPDATE",

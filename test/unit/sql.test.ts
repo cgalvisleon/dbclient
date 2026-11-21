@@ -13,6 +13,7 @@ import {
   selectTemplate,
   sqlLiteral,
   structureTables,
+  truncateSql,
   updateTemplate,
 } from '../../src/sql/generate';
 import { placeholder, qualifiedName, quoteIdent } from '../../src/sql/identifiers';
@@ -275,5 +276,16 @@ describe('row SQL', () => {
     expect(editMapping(select, ['name', 'upper', 'name'], items)).toHaveProperty('reason');
     expect(resultColumnMapping(select, ['name', 'upper', 'name'], items)).toEqual(['name', null, null]);
     expect(resultColumnMapping(singleTableSelect('select *, 1 from items')!, ['id', 'x'], items)).toBeUndefined();
+  });
+});
+
+describe('truncateSql', () => {
+  it('TRUNCATE per dialect, CASCADE only in postgres, DELETE in sqlite', () => {
+    expect(truncateSql({ schema: 'public', name: 'items' }, 'postgres')).toBe('TRUNCATE TABLE public.items');
+    expect(truncateSql({ schema: 'public', name: 'items' }, 'postgres', true)).toBe('TRUNCATE TABLE public.items CASCADE');
+    expect(truncateSql({ name: 'items' }, 'mysql', true)).toBe('TRUNCATE TABLE items');
+    expect(truncateSql({ schema: 'dbo', name: 'items' }, 'mssql')).toBe('TRUNCATE TABLE dbo.items');
+    expect(truncateSql({ schema: 'APP', name: 'ITEMS' }, 'oracle')).toBe('TRUNCATE TABLE APP.ITEMS');
+    expect(truncateSql({ name: 'items' }, 'sqlite')).toBe('DELETE FROM items');
   });
 });
