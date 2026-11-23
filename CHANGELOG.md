@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.0 — 2026-11-23
+
+- **Disk Usage** in the context menu of SQL connections, databases, schemas and tables: opens and runs the engine's size query, in MB, in an editor bound to the node — every database of the server, a database's total and its tables largest first (rows, data, indexes), a schema, or one table. PostgreSQL, MySQL and SQL Server everywhere; Oracle per schema and table (its own schema through `USER_*` views, others need `DBA_*`); SQLite for the whole file.
+
 ## 0.23.0 — 2026-11-21
 
 - **Truncate Table…** in the context menu of SQL tables: deletes every row and keeps the table. A modal shows the statement first; on PostgreSQL **Truncate with CASCADE** also empties the tables that reference it. MySQL, SQL Server and Oracle use `TRUNCATE TABLE`, SQLite `DELETE FROM`.

@@ -448,5 +448,6 @@
   "CASCADE also empties the tables that reference it.": "CASCADE também esvazia as tabelas que a referenciam.",
   "Truncating {0}…": "Esvaziando {0}…",
   "Could not truncate {0}: {1}": "Não foi possível esvaziar {0}: {1}",
-  "Truncated {0}.": "{0} foi esvaziada."
+  "Truncated {0}.": "{0} foi esvaziada.",
+  "Disk usage is not available for this item.": "O espaço em disco não está disponível para este item."
 }

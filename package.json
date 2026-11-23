@@ -2,7 +2,7 @@
   "name": "dbclient",
   "displayName": "DB Client: SQL, Redis & NATS",
   "description": "%extension.description%",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "publisher": "cgalvisleon",
   "engines": {
     "vscode": "^1.90.0"
@@ -200,6 +200,11 @@
       {
         "command": "dbclient.truncateTable",
         "title": "%command.truncateTable%",
+        "category": "DB Client"
+      },
+      {
+        "command": "dbclient.diskUsage",
+        "title": "%command.diskUsage%",
         "category": "DB Client"
       },
       {
@@ -823,6 +828,11 @@
           "command": "dbclient.truncateTable",
           "when": "view == dbclient.connections && viewItem =~ /^table sql\\b/",
           "group": "9_drop@0"
+        },
+        {
+          "command": "dbclient.diskUsage",
+          "when": "view == dbclient.connections && (viewItem =~ /^connection sql .*\\b(postgres|mysql|mssql|sqlite)$/ || viewItem =~ /^database sql (postgres|mysql|mssql)$/ || viewItem =~ /^schema sql (postgres|mssql|oracle)$/ || viewItem =~ /^table sql (postgres|mysql|mssql|oracle)$/)",
+          "group": "7_info@1"
         }
       ],
       "webview/context": [
@@ -1084,6 +1094,10 @@
         },
         {
           "command": "dbclient.truncateTable",
+          "when": "false"
+        },
+        {
+          "command": "dbclient.diskUsage",
           "when": "false"
         }
       ],

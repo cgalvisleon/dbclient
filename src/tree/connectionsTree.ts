@@ -74,7 +74,7 @@ export class ConnectionItem extends vscode.TreeItem {
     if (connected) {
       this.description = `● ${this.description}`;
     }
-    this.contextValue = `connection ${factory.category} ${connected ? 'connected' : 'disconnected'}`;
+    this.contextValue = `connection ${factory.category} ${connected ? 'connected' : 'disconnected'}${factory.dialect ? ` ${factory.dialect}` : ''}`;
   }
 }
 

@@ -33,3 +33,4 @@
 - desde el árbol se pueden borrar tablas, vistas y esquemas según lo que permita el driver de la conexión
 - una conexión se puede marcar como productiva: no se conecta sola, solo de forma manual desde las opciones de la conexión, y tiene un tiempo de conexión después del cual se desconecta y hay que volver a conectarse
 - desde el árbol se puede limpiar una tabla (truncate) con confirmación, sin eliminarla
+- desde el árbol se puede ver el espacio en disco que usan las bases de datos, los esquemas y las tablas (total, datos e índices en MB)

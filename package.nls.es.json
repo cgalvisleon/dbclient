@@ -29,6 +29,7 @@
   "command.showDdl": "Ver DDL",
   "command.drop": "Eliminar…",
   "command.truncateTable": "Limpiar tabla (truncate)…",
+  "command.diskUsage": "Espacio en disco",
   "command.generateSelect": "SELECT",
   "command.generateInsert": "INSERT",
   "command.generateUpdate": "UPDATE",

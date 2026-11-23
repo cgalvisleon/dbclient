@@ -3,8 +3,9 @@ import { CatalogCache } from '../connections/catalog';
 import { ConnectionManager } from '../connections/manager';
 import { TableInfo, TableRef } from '../drivers/types';
 import { canCascade, canCascadeTruncate, deleteTemplate, DropTarget, dropSql, truncateSql, insertTemplate, openDataSql, selectTemplate, structureTables, updateTemplate } from '../sql/generate';
+import { diskUsageSql, DiskUsageTarget } from '../sql/diskUsage';
 import { qualifiedName } from '../sql/identifiers';
-import { NodeItem } from '../tree/connectionsTree';
+import { ConnectionItem, NodeItem } from '../tree/connectionsTree';
 import { ResultsView } from '../webviews/resultsView';
 import { DocumentBindings } from './bindings';
 import { showSqlDocument } from './sqlDocument';
@@ -232,5 +233,41 @@ export class TableActions {
       return;
     }
     vscode.window.setStatusBarMessage(t('Truncated {0}.', name), 4000);
+  }
+
+  /** What a tree item measures for Disk Usage: the server (connection), a database, a schema or a table. */
+  private diskUsageTarget(item: NodeItem | ConnectionItem): DiskUsageTarget | undefined {
+    if (item instanceof ConnectionItem) {
+      return { kind: 'server' };
+    }
+    const node = item.node;
+    switch (node.kind) {
+      case 'database':
+        return node.database ? { kind: 'database', database: node.database } : undefined;
+      case 'schema':
+        return { kind: 'schema', database: node.database, schema: node.label };
+      case 'table':
+        return { kind: 'table', ...this.refOf(item) };
+      default:
+        return undefined;
+    }
+  }
+
+  /** Opens the dialect's disk usage query (MB per database or table) in an editor bound to the node and runs it. */
+  async diskUsage(item: NodeItem | ConnectionItem): Promise<void> {
+    const target = this.diskUsageTarget(item);
+    const config = this.manager.config(item.connectionId);
+    const dialect = this.manager.factoryOf(config).dialect ?? 'ansi';
+    const sql = target && diskUsageSql(target, dialect, { currentUser: String(config.options.user ?? '') });
+    if (!sql) {
+      vscode.window.showInformationMessage(t('Disk usage is not available for this item.'));
+      return;
+    }
+    const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: `${sql}\n` });
+    const database = item instanceof ConnectionItem ? undefined : item.node.database;
+    await this.bindings.set(doc, { connectionId: item.connectionId, database });
+    const editor = await showSqlDocument(doc);
+    editor.selection = new vscode.Selection(0, 0, 0, 0);
+    await this.runner.run(editor, 'file');
   }
 }

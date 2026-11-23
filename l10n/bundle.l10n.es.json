@@ -448,5 +448,6 @@
   "CASCADE also empties the tables that reference it.": "CASCADE también limpia las tablas que la referencian.",
   "Truncating {0}…": "Limpiando {0}…",
   "Could not truncate {0}: {1}": "No se pudo limpiar {0}: {1}",
-  "Truncated {0}.": "Se limpió {0}."
+  "Truncated {0}.": "Se limpió {0}.",
+  "Disk usage is not available for this item.": "El espacio en disco no está disponible para este elemento."
 }

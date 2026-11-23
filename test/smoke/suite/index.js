@@ -705,6 +705,16 @@ exports.run = async function () {
       assert.deepStrictEqual(structure[0].rows.map((r) => [String(r[0]).toLowerCase(), r[4]]), [['id', '1'], ['name', '']], `${name}: structure rows`);
       console.log(`✓ ${name} tables: tree node, SELECT/INSERT/UPDATE/DELETE templates, DDL, structure`);
 
+      // Disk Usage runs the size query of the table (SQLite has no per-table size).
+      if (config.type !== 'sqlite') {
+        posted.length = 0;
+        await vscode.commands.executeCommand('dbclient.diskUsage', item);
+        const usage = await until(() => posted.find((m) => m.type === 'result')?.tab, `${name}: disk usage result`);
+        assert.ok(usage.columns.some((c) => c.name.toLowerCase() === 'total_mb'), `${name}: disk usage columns (${usage.columns.map((c) => c.name).join(', ')})`);
+        assert.strictEqual(usage.rows.length, 1, `${name}: disk usage of one table`);
+        console.log(`✓ ${name} disk usage`);
+      }
+
       // Completion: tables after FROM, columns after an alias.
       const doc = await vscode.workspace.openTextDocument({ language: 'sql', content: `select x. from ${table} x;\nselect * from ` });
       await api.bindings.set(doc, { connectionId: config.id, database });
